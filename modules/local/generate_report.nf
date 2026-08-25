@@ -7,16 +7,16 @@
 // renders each section either with real data or an explicit "Analysis not
 // performed" message, so a partial pipeline still yields a complete report.
 //
-// Container: python:3.11-slim + Jinja2. Jinja2 is installed at runtime only if
-// the image does not already provide it — for fully offline (LMIC) deployments,
-// bake jinja2 into a custom image so no network access is needed at run time.
+// Container: python:3.11-slim + Jinja2 3.1.6. The Docker path installs Jinja2 at
+// runtime only if it is missing. For fully offline deployments, pre-build/cache
+// a report image containing Jinja2 3.1.6 (see docs/OFFLINE_DEPLOYMENT.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
 process GENERATE_REPORT {
     tag "generate_report"
     label 'process_single'
 
-    conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.4'
+    conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.6'
     container 'python:3.11-slim'
 
     input:
@@ -57,12 +57,12 @@ process GENERATE_REPORT {
     export PYTHONUSERBASE=\$(mktemp -d)
 
     # Install Jinja2 only if the image doesn't already provide it
-    python3 -c "import jinja2" 2>/dev/null || pip install --quiet --no-input --user jinja2==3.1.4
+    python3 -c "import jinja2" 2>/dev/null || pip install --quiet --no-input --user jinja2==3.1.6
 
     generate_report.py \\
         --template ${template} \\
         --output   outbreak_report.html \\
-        --pipeline-version ${workflow.manifest.version ?: '0.1.0'} \\
+        --pipeline-version ${workflow.manifest.version ?: '0.2.0'} \\
         --run-date "\$(date +%Y-%m-%d)" \\
         --mode ${params.use_case} \\
         --snp-threshold ${params.snp_outbreak_threshold} \\

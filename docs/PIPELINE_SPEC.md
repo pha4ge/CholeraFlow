@@ -1,14 +1,14 @@
 # CholeraFlow — Pipeline Specification
 
-**Version:** 0.1 (Pre-implementation draft)  
-**Status:** Authoritative reference for Claude Code implementation  
+**Version:** 0.2.0
+**Status:** Current implementation reference
 **Scope:** Outbreak Investigation branch (MVP). Surveillance and Transmission & Context Analysis branches are defined in outline only and implemented in subsequent phases.
 
 ---
 
 ## How to use this document
 
-This spec is the single source of truth for pipeline implementation. Every architectural decision, tool choice, parameter default, and output specification recorded here has been made deliberately. Claude Code must read this document in full before writing any code, and must not deviate from these decisions without explicit instruction. When a choice is ambiguous, refer to this document — do not infer.
+This document describes the current CholeraFlow implementation and scientific intent. Repository agents must verify claims against the code, tests, `README.md`, and `AGENTS.md` before changing behavior. Historical sections must not override the implementation. When scientific behavior is ambiguous, do not guess.
 
 ---
 
@@ -19,7 +19,7 @@ CholeraFlow is a public health genomics pipeline for *Vibrio cholerae* outbreak 
 It is **not** a reinvention of existing tools. It is a cholera-specific orchestration layer that:
 
 - Uses **Bactopia** as its infrastructure backbone for all general bacterial genomics steps
-- Wraps **validated third-party tools** (CholeraeFinder, VicPred, ChewBBACA, ResFinder) as local nf-core-style modules for cholera-specific characterisation
+- Uses local modules for **custom marker-based cholera typing**, ChewBBACA cgMLST, VirulenceFinder, and ResFinder alongside Bactopia outputs
 - Implements **CholeraFlow-specific logic** in `bin/` scripts for steps that do not exist anywhere else: sample QC filtering, parsimony-informative site extraction, outbreak cluster flagging, global context merging, and public health report generation
 
 The analytical logic for the phylogenetic and outbreak components is derived from the published CholeraSeq paper (Tagliamonte et al., *Bioinformatics* 2026) and the PHA4GE Cholera Genomics Guidance Document. The CholeraSeq codebase itself is **not** a dependency — only the published methods are used.
@@ -91,15 +91,16 @@ Once containers are pulled and databases downloaded, the pipeline runs entirely 
 | Bakta | `bakta` | Genome annotation (Phase 2) |
 | Kraken2 | `kraken2` | Taxonomic screening for contamination |
 
-### Tier 2 — External tools wrapped as local modules
+### Tier 2 — Cholera-specific modules and external tools
 
-| Tool | Container | Purpose |
+| Tool/module | Runtime | Purpose |
 |---|---|---|
-| CholeraeFinder | `genomicepidemiology/choleraefinder` | *V. cholerae* species confirmation via *ompW* |
-| VicPred | Docker/Conda | O1/O139 serogroup, CTX prophage, biotype, SXT elements |
-| ResFinder | `genomicepidemiology/resfinder` | Mutation-level AMR — gyrA/parC fluoroquinolone resistance |
-| VirulenceFinder | `genomicepidemiology/virulencefinder` | ctxA, ctxB, tcpA, VPI-1, VPI-2, hlyA virulence screening |
-| ChewBBACA | `quay.io/biocontainers/chewbbaca` | cgMLST allele calling against EnteroBase scheme (2,402 loci) |
+| Custom `cholera_typing.py` | Python 3.11 | Marker-based *V. cholerae* confirmation (`ompW`), O1/O139 serogroup, tcpA biotype, CTX and SXT/ICE screening |
+| ResFinder 4.5.0 | `genomicepidemiology/resfinder:4.5.0` | Independent acquired-resistance gene screen |
+| VirulenceFinder 3.2.1 | `genomicepidemiology/virulencefinder:3.2.1` | Virulence-gene screening |
+| ChewBBACA | Biocontainers/Conda | cgMLST allele calling against EnteroBase `VIBwgMLST.cgMLSTv1` (1,128 loci) |
+
+Fluoroquinolone point mutations such as `gyrA`/`parC` are interpreted from AMRFinderPlus output; the current ResFinder module does not use PointFinder for *V. cholerae*.
 
 ### Tier 3 — CholeraFlow-specific logic (write from scratch)
 
@@ -129,10 +130,10 @@ Once containers are pulled and databases downloaded, the pipeline runs entirely 
 | Database | Tool | Location |
 |---|---|---|
 | AMRFinderPlus DB | AMRFinderPlus | `assets/databases/amrfinderplus/` |
-| ResFinder DB | ResFinder | `assets/databases/resfinder/` |
-| VirulenceFinder DB | VirulenceFinder | `assets/databases/virulencefinder/` |
+| ResFinder DB | ResFinder | `assets/databases/resfinder_db/` |
+| VirulenceFinder DB | VirulenceFinder | `assets/databases/virulencefinder_db/` |
 | BUSCO lineage | BUSCO | `assets/databases/busco/gammaproteobacteria_odb10` |
-| EnteroBase cgMLST scheme | ChewBBACA | `assets/databases/cgmlst_vibrio/` |
+| EnteroBase cgMLST scheme | ChewBBACA | prepared schema: `assets/databases/cgmlst_vibrio/schema/` (raw loci: `assets/databases/cgmlst_vibrio/raw_loci/`) |
 | Global core alignment | merge_alignments.py | `assets/databases/global_core_alignment.fasta.gz` — 4,196 strains, Zenodo DOI: 10.5281/zenodo.16909942 |
 
 ---
@@ -178,15 +179,15 @@ Required field failures halt the pipeline. Missing recommended fields produce a 
 
 ### Step 0: Input validation (always first — blocks all downstream on failure)
 
-**Module:** `local/INPUT_VALIDATE`  
-**Logic:** Normalise sample names, verify all files exist, match paired-end mates, validate metadata required fields and date formats, detect input type per sample.  
+**Module:** `local/INPUT_VALIDATE`
+**Logic:** Normalise sample names, verify all files exist, match paired-end mates, validate metadata required fields and date formats, detect input type per sample.
 **Failure behaviour:** Hard stop with a plain-English message identifying the exact failing sample and field, with a suggested fix. Never silently skip a failing sample at this stage.
 
 ---
 
 ### Step 1: Raw read QC (FASTQ inputs only)
 
-**Tier 1** — FastQC → fastp → MultiQC  
+**Tier 1** — FastQC → fastp → MultiQC
 
 **Key parameters (CholeraSeq validated defaults):**
 
@@ -200,7 +201,7 @@ Required field failures halt the pipeline. Missing recommended fields produce a 
 
 ### Step 2: Assembly (parallel with Steps 1 outputs, routing by data type)
 
-**Tier 1** — SPAdes (short) / Flye (long) / Unicycler (hybrid) / skip (FASTA input)  
+**Tier 1** — SPAdes (short) / Flye (long) / Unicycler (hybrid) / skip (FASTA input)
 **SPAdes flags for V. cholerae:** `--careful`, k-mers `21,33,55,77`
 
 ---
@@ -225,35 +226,32 @@ Samples that **fail** are excluded and flagged. Samples that **warn** continue w
 
 ### Step 4: Cholera characterisation (parallel, all run after Step 3)
 
-#### 4a. Species confirmation — CholeraeFinder (Tier 2)
-ompW BLAST screening. If ompW not detected: flag "Species confirmation failed — verify isolate identity before interpreting genomic results."
-
-#### 4b. Serogroup, biotype, toxin — VicPred (Tier 2)
-Outputs: serogroup (O1/O139/non-O1), biotype (El Tor/Classical), OAGC classification, CTX prophage arrangement, SXT element presence/absence.
+#### 4a/4b. Species confirmation and cholera typing — custom marker module (Tier 2)
+`bin/cholera_typing.py` performs k-mer detection against curated local marker FASTAs. It reports `ompW` species confirmation, O1/O139 serogroup markers, El Tor/Classical `tcpA` markers, `ctxA`/`ctxB`, and the SXT/ICE integrase marker. If the typing references are unavailable, the module reports `not_run` rather than fabricating a call. If `ompW` is not detected when references are present, the isolate is flagged for identity review.
 
 #### 4c. Virulence profiling — VirulenceFinder (Tier 2)
 Targets: ctxA, ctxB, tcpA, tcpB, tcpC, VPI-1, VPI-2, hlyA, mshA, hapA.
 
 #### 4d. AMR screening — AMRFinderPlus (Tier 1) + ResFinder (Tier 2)
-Run both, merge results. AMRFinderPlus for gene-level; ResFinder for mutation-level.
+Run both and merge results. AMRFinderPlus contributes acquired genes and supported point-mutation calls; ResFinder provides an independent acquired-gene screen. The current ResFinder module does not run PointFinder for *V. cholerae*.
 
 **Key V. cholerae AMR targets:**
 
 | Gene/Mutation | Drug class | Primary tool |
 |---|---|---|
 | tet(O), tet(M) | Tetracycline | AMRFinderPlus |
-| gyrA Ser83Ile, Asp87Asn/Tyr | Fluoroquinolones | ResFinder |
-| parC Ser85Leu | Fluoroquinolones | ResFinder |
+| gyrA Ser83Ile, Asp87Asn/Tyr | Fluoroquinolones | AMRFinderPlus |
+| parC Ser85Leu | Fluoroquinolones | AMRFinderPlus |
 | blaA, blaB | Beta-lactams | AMRFinderPlus |
 | erm(B) | Azithromycin | AMRFinderPlus |
-| sul2, dfrA, strAB (SXT) | Multi-drug | VicPred + AMRFinderPlus |
+| sul2, dfrA, strAB (SXT-associated resistance) | Multi-drug | AMRFinderPlus + ResFinder; SXT integrase marker from custom cholera typing |
 | catB9 | Chloramphenicol | AMRFinderPlus |
 
 ---
 
 ### Step 5: Reference mapping and consensus generation
 
-**Tier 1** — Snippy  
+**Tier 1** — Snippy
 **Reference:** `assets/references/GCF_003063785.full.gbk` (GenBank — required for SnpEff)
 
 **Parameters (CholeraSeq validated defaults):**
@@ -271,7 +269,7 @@ Sites failing any criterion masked as `N`. Outputs: per-sample VCF, BAM, consens
 
 ### Step 6: Sample QC filtering — CRITICAL, must run before Gubbins
 
-**Tier 3** — `bin/seq_cleaner.py`  
+**Tier 3** — `bin/seq_cleaner.py`
 Calculate N/gap proportion per consensus FASTA. Exclude samples exceeding `--max_missing_percentage` (default 50%). Write excluded samples to `qc/excluded_samples.tsv`.
 
 **Failure action:** If fewer than 4 samples pass, halt with: "Insufficient samples passed QC for phylogenetic analysis (n=X). Minimum 4 required. Review QC report and consider relaxing --max_missing_percentage."
@@ -280,7 +278,7 @@ Calculate N/gap proportion per consensus FASTA. Exclude samples exceeding `--max
 
 ### Step 7: Recombination masking
 
-**Tier 1** — Gubbins (integrated in Bactopia snippy workflow)  
+**Tier 1** — Gubbins (integrated in Bactopia snippy workflow)
 **Input:** Multi-sample core SNP alignment, QC-filtered samples only.
 
 **fastBAPS (optional, default: skip):**
@@ -292,7 +290,7 @@ Calculate N/gap proportion per consensus FASTA. Exclude samples exceeding `--max
 
 ### Step 8: Parsimony-informative site extraction
 
-**Tier 3** — `bin/varcodons.py`  
+**Tier 3** — `bin/varcodons.py`
 **Logic (ported from CholeraSeq paper — do not copy CholeraSeq source code):**
 - Retain sites that are parsimony-informative AND genotyped in ≥70% of samples (`--min_parsimony_coverage 0.7`)
 - Produce PIS alignment for phylogenetics and SNP distance calculation
@@ -306,11 +304,11 @@ Calculate N/gap proportion per consensus FASTA. Exclude samples exceeding `--max
 ### Steps 9a and 9b: Phylogenetics + cgMLST (run in parallel)
 
 #### 9a. Maximum-likelihood tree — IQ-TREE2 (Tier 1, in Bactopia snippy workflow)
-**Input:** PIS alignment from Step 8  
+**Input:** PIS alignment from Step 8
 **Flags:** `-m TEST` (auto model selection), `+ASC` (mandatory for SNP data), `-B 1000` (ultrafast bootstrap)
 
 #### 9b. cgMLST allele calling — ChewBBACA (Tier 2)
-**Schema:** EnteroBase V. cholerae cgMLST, 2,402 loci, from `assets/databases/cgmlst_vibrio/`  
+**Schema:** EnteroBase Vibrio cgMLST v1 (`VIBwgMLST.cgMLSTv1`), 1,128 loci. Raw official locus FASTAs are staged in `assets/databases/cgmlst_vibrio/raw_loci/`; the prepared chewBBACA schema is `assets/databases/cgmlst_vibrio/schema/`.
 **Input:** Assembly FASTA files from Step 2 (not consensus FASTA — cgMLST requires assembly)
 
 ---
@@ -327,7 +325,7 @@ Count loci with different allele calls per sample pair, excluding missing/incomp
 
 ### Step 11: Global context placement (optional — `--global_context true`)
 
-**Tier 3** — `bin/merge_alignments.py`  
+**Tier 3** — `bin/merge_alignments.py`
 1. Take cohort core alignment (Step 7 output)
 2. Load `assets/databases/global_core_alignment.fasta.gz` (4,196 strains)
 3. Validate sequence lengths match N16961 coordinate space
@@ -340,7 +338,7 @@ The global context tree is a **separate additional output** — it does not repl
 
 ### Step 12: Outbreak cluster interpretation
 
-**Tier 3** — `bin/outbreak_cluster.py`  
+**Tier 3** — `bin/outbreak_cluster.py`
 **Inputs:** `snp_distance_matrix.tsv`, `cgmlst_distance_matrix.tsv`, metadata
 
 **Thresholds (PHA4GE Cholera Guidance Document):**
@@ -358,7 +356,7 @@ The global context tree is a **separate additional output** — it does not repl
 
 ### Step 13: Public health report generation
 
-**Tier 3** — `bin/generate_report.py` + Jinja2 template  
+**Tier 3** — `bin/generate_report.py` + Jinja2 template
 
 **Required sections (in this order):**
 1. Run summary — date, versions, sample count, mode, parameters, runtime
@@ -411,7 +409,7 @@ The global context tree is a **separate additional output** — it does not repl
 | `--run_phylogeny` | `true` | bool | Build phylogenetic tree |
 | `--report_level` | `full` | `rapid`, `full` | Report detail level |
 | `--profile` | `docker` | see Section 2 | Compute profile |
-| `--bactopia_bin` | `/root/miniforge3/envs/bactopia/bin/bactopia` | Path | Full path to Bactopia executable. Override if Bactopia is installed elsewhere. |
+| `--bactopia_bin` | `bactopia` | Executable/path | Resolves Bactopia from PATH by default; pass an absolute path if its conda environment is not activated. |
 
 ### Tier 2 — Technical (YAML file or advanced GUI panel)
 
@@ -578,8 +576,8 @@ Pipeline is complete when all pass:
 - [ ] `test_results/qc/multiqc/multiqc_report.html` exists and is non-empty
 - [ ] `test_results/qc/passed_samples.txt` contains at least one sample
 - [ ] `test_results/assembly/` contains one FASTA per FASTQ input sample
-- [ ] `test_results/characterisation/species/` contains CholeraeFinder output per sample
-- [ ] `test_results/characterisation/serogroup/` contains VicPred output per sample
+- [ ] cholera typing outputs contain per-sample species/serogroup/biotype/CTX/SXT marker calls or an explicit `not_run` status
+- [ ] typing aggregation produces `typing_summary.tsv` and `species_failed.txt`
 - [ ] `test_results/characterisation/amr/` contains merged AMR table
 - [ ] `test_results/phylogenetics/pis_alignment.fasta` has ≥2 sequences
 - [ ] `test_results/phylogenetics/iqtree.treefile` is valid Newick format

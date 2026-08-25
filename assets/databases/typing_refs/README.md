@@ -1,8 +1,13 @@
 # Cholera Typing Reference Database
 
-This directory contains reference FASTA files used by `bin/cholera_typing.py`
-for k-mer-based V. cholerae species confirmation and phenotypic characterisation
-(equivalent to CholeraeFinder + VicPred).
+This directory contains curated reference FASTA files used by
+`bin/cholera_typing.py` for CholeraFlow's custom k-mer-based *V. cholerae*
+species/serogroup/biotype/toxin/SXT marker screen.
+
+This is **not** a downloaded third-party serotyping database and should not be
+described as equivalent to a validated external serotyping service without
+benchmarking. The marker references and calling threshold must be validated
+against appropriate positive and negative controls before production use.
 
 ## Required files
 
@@ -77,13 +82,15 @@ hard dependency.
 
 ## Verification
 
-After downloading, verify with a known V. cholerae O1 El Tor assembly:
+Validate the marker set using independently characterised positive and negative
+controls before relying on the calls scientifically. For any chosen control:
+
 ```bash
-gzip -dc bactopia_results/VC_HAITI_001/main/assembler/VC_HAITI_001.fna.gz > /tmp/test.fna
-cholera_typing.py --sample VC_HAITI_001 --assembly /tmp/test.fna \
+cholera_typing.py --sample CONTROL --assembly control.fasta \
     --db assets/databases/typing_refs --output /tmp/typing_test.json
 cat /tmp/typing_test.json
 ```
 
-Expected: `ompW=detected`, `rfbN=detected`, `rfbO139=absent`, `tcpA_ElTor=detected`,
-`ctxA=detected`, `ctxB=detected`, `int_SXT=absent` (for VC_HAITI_001 Haiti isolate).
+Record the control accession/isolate identity, expected laboratory or validated
+reference calls, marker-source versions, and observed CholeraFlow calls. Do not
+encode an expected biological result for an unspecified example isolate.

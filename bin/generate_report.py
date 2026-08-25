@@ -153,6 +153,17 @@ def build_characterisation(typing):
     if typing is None:
         return {"status": "not_performed",
                 "reason": "Cholera characterisation (species/serogroup/biotype) not performed."}
+
+    # The typing module emits one row per sample even when its marker database is
+    # unavailable. Treat an all-not_run table as analysis not performed rather
+    # than reporting "0 of N confirmed", which can be misread as a biological
+    # species-screening failure.
+    if typing and all(
+        str(r.get("species_confirmation", "")).strip().lower() in NOT_RUN_TOKENS
+        for r in typing
+    ):
+        return {"status": "not_performed",
+                "reason": "Cholera characterisation database was not configured."}
     return {"status": "ok", "rows": typing}
 
 
@@ -482,7 +493,7 @@ def main():
     p.add_argument("--template", required=True)
     p.add_argument("--output", required=True)
     # Run summary
-    p.add_argument("--pipeline-version", default="0.1.0")
+    p.add_argument("--pipeline-version", default="0.2.0")
     p.add_argument("--run-date", default=datetime.date.today().isoformat())
     p.add_argument("--mode", default="outbreak")
     p.add_argument("--sample-count", type=int, default=None)

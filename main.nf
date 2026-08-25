@@ -53,7 +53,7 @@ workflow {
         """.stripIndent()
     }
 
-    if (!params.use_case in ['outbreak', 'surveillance', 'transmission_context']) {
+    if (!(params.use_case in ['outbreak', 'surveillance', 'transmission_context'])) {
         error """
         Invalid --use_case '${params.use_case}'.
         Fix: use one of: outbreak, surveillance, transmission_context

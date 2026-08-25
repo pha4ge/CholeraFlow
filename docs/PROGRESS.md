@@ -1,3 +1,9 @@
+> **Current-specification notice (2026-08-25):** This file is a historical build log.
+> Current database/runtime instructions are in `README.md`, `AGENTS.md`, and
+> `assets/databases/README.md`. In particular, the supported EnteroBase Vibrio
+> cgMLST v1 scheme is `VIBwgMLST.cgMLSTv1` with **1,128 core loci**; older
+> references below to 2,402 loci are retained only as historical notes.
+
 # CholeraFlow Pipeline — Build Progress
 
 ## Completed

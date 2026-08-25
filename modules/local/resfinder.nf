@@ -27,7 +27,7 @@ process RESFINDER {
     label 'process_medium'
 
     conda 'bioconda::resfinder=4.5.0'
-    container 'genomicepidemiology/resfinder:latest'
+    container 'genomicepidemiology/resfinder:4.5.0'
     containerOptions '--entrypoint ""'   // override ENTRYPOINT ["python -m resfinder"]
 
     input:
@@ -127,7 +127,7 @@ with open("${meta.id}_resfinder.json", "w") as fh:
     json.dump({
         "sample":  sample,
         "status":  "not_run",
-        "reason":  "resfinder_db not provided (see docs/PROGRESS.md for setup)",
+        "reason":  "resfinder_db not provided (see README.md database setup)",
         "genes":   [],
     }, fh, indent=2)
 with open("${meta.id}_resfinder.tsv", "w") as fh:

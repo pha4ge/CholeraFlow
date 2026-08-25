@@ -119,20 +119,19 @@ process RUN_BACTOPIA {
 
     script:
     def profile_flag = params.bactopia_profile ? "-profile ${params.bactopia_profile}" : ""
-    // The bactopia wrapper invokes sibling executables (bactopia-workflows,
-    // bactopia-prepare, …) plus its own nextflow/python from the same conda-env
-    // bin/. Calling the binary by absolute path does not put that bin/ on PATH,
-    // so it must be prepended explicitly (derived from params.bactopia_bin —
-    // still a single, overridable source of truth).
-    def bactopia_bindir = file(params.bactopia_bin).parent
+    def bactopia_cmd  = params.bactopia_bin.toString()
+    // A bare command such as `bactopia` should resolve from the active PATH.
+    // When the user supplies an explicit path, prepend its parent directory so
+    // Bactopia can also find sibling executables from the same environment.
+    def bactopia_path_export = bactopia_cmd.contains('/') ? "export PATH=\"${file(bactopia_cmd).parent}:\$PATH\"" : ""
     """
-    export PATH="${bactopia_bindir}:\$PATH"
+    ${bactopia_path_export}
     # CholeraFlow pins itself to NXF_VER=24.10.5, but that env var is inherited by
     # this subprocess and would force Bactopia's OWN Nextflow to 24.10.5 too.
     # Bactopia 4.0.0 requires Nextflow 26.x — unset NXF_VER so it selects its own.
     unset NXF_VER
 
-    ${params.bactopia_bin} \\
+    ${bactopia_cmd} \\
         --samples ${bactopia_samplesheet} \\
         --outdir bactopia_results \\
         --shovill_assembler spades \\

@@ -173,6 +173,22 @@ class TestClustering(unittest.TestCase):
         self.assertEqual(row_a['collection_date'], '2022-10-14')
         self.assertEqual(row_a['specimen_type'], 'stool')
 
+
+    def test_snippy_suffix_is_normalized_for_metadata_and_cgmlst(self):
+        r = _run(
+            ['A_snippy', 'B_snippy'],
+            {('A_snippy', 'B_snippy'): 2},
+            cg_samples=['A', 'B'],
+            cg_dist={('A', 'B'): 3},
+            metadata_rows=[['A', '2022-10-14', 'Haiti', 'stool'],
+                           ['B', '2023-01-17', 'Kenya', 'stool']],
+        )
+        samples = [row['sample'] for row in r['assignments']]
+        self.assertEqual(samples, ['A', 'B'])
+        row_a = next(x for x in r['assignments'] if x['sample'] == 'A')
+        self.assertEqual(row_a['country'], 'Haiti')
+        self.assertEqual(row_a['cgmlst_category'], 'same_outbreak')
+
     def test_sample_missing_from_metadata_gets_na(self):
         r = _run(['A', 'B'], {('A', 'B'): 3},
                  metadata_rows=[['A', '2022-10-14', 'Haiti', 'stool']])

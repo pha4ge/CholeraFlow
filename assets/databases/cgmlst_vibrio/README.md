@@ -1,62 +1,44 @@
-# EnteroBase V. cholerae cgMLST Schema
+# EnteroBase Vibrio cgMLST v1 schema
 
-This directory holds the prepared ChewBBACA schema for V. cholerae cgMLST
-(EnteroBase wgMLST scheme, 2,402 core loci).
+CholeraFlow uses the **EnteroBase Vibrio cgMLST v1** scheme:
 
-## Status
+- Scheme directory: `VIBwgMLST.cgMLSTv1`
+- Official source: `https://enterobase.warwick.ac.uk/schemes/VIBwgMLST.cgMLSTv1/`
+- Core loci: **1,128**
 
-**Not yet downloaded.** The pipeline will emit a `not_run` placeholder for
-Step 9b (cgMLST) until the schema is set up here.
+The previous CholeraFlow documentation referred to `Vibrio.cgMLSTv1` and 2,402
+loci. That description was incorrect for the current EnteroBase Vibrio cgMLST
+scheme and must not be used for new analyses.
 
-## Setup (run once)
+## Recommended setup
 
-### 1. Download the raw scheme from EnteroBase
-
-```bash
-# Requires an EnteroBase account (free)
-# Download: https://enterobase.warwick.ac.uk/schemes/Vibrio.cgMLSTv1/
-# Select "Download loci FASTA" → save to cgmlst_vibrio_raw/
-```
-
-### 2. Prepare the schema for ChewBBACA
+From the repository root:
 
 ```bash
-# Run from the project root
-docker run --rm \
-    -v $(pwd)/assets/databases/cgmlst_vibrio_raw:/raw:ro \
-    -v $(pwd)/assets/databases/cgmlst_vibrio:/out \
-    quay.io/biocontainers/chewbbaca:3.3.10--pyhdfd78af_0 \
-    chewBBACA.py PrepExternalSchema \
-        -g /raw \
-        -o /out \
-        --cpu 4
+python3 scripts/setup_databases.py --cgmlst
 ```
 
-### 3. Verify
+Raw compressed files are stored under `raw_loci_gz/`; decompressed locus FASTA
+files are stored under `raw_loci/`.
+
+Adapt the external schema for chewBBACA:
 
 ```bash
-ls assets/databases/cgmlst_vibrio/short/ | wc -l   # should print 2402
+python3 scripts/setup_databases.py --prepare-cgmlst --cpu 4
 ```
 
-### 4. Run the pipeline with cgMLST enabled
+The prepared schema is written to:
+
+```text
+assets/databases/cgmlst_vibrio/schema/
+```
+
+Then run CholeraFlow with:
 
 ```bash
-NXF_VER=24.10.5 nextflow run main.nf \
-    --input samplesheet.csv \
-    --outdir results/ \
-    --cgmlst_schema assets/databases/cgmlst_vibrio \
-    -profile docker
+--cgmlst_schema assets/databases/cgmlst_vibrio/schema
 ```
 
-## Parameters
-
-| Parameter | Default | Description |
-|---|---|---|
-| `--cgmlst_schema` | `assets/databases/cgmlst_vibrio` | Prepared schema directory |
-| `--run_cgmlst` | `true` | Enable/disable cgMLST step |
-
-## Reference
-
-Enterobase Vibrio cgMLST v1 — 2,402 core loci selected from a panel of
->50,000 V. cholerae genomes. See:
-> Wirth T et al. (2006) *PLoS Genetics*; Enterobase documentation.
+The downloader expects exactly 1,128 locus files and stops if EnteroBase exposes
+a different count. This is intentional: a changed schema can alter allele
+distances and therefore requires scientific review before use.

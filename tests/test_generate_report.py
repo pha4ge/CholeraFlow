@@ -178,6 +178,19 @@ class TestRender(unittest.TestCase):
             # No AMR sentence generated when AMR absent
             self.assertFalse(any("resistance markers" in x for x in ctx["sentences"]))
 
+
+    def test_typing_all_not_run_is_not_performed(self):
+        typing_not_run = (
+            "sample\toverall_status\tspecies_confirmation\tserogroup\tbiotype\tctx_prophage\tsxt_element\tompW_kmer_frac\n"
+            "A\tpass\tnot_run\tnot_run\tnot_run\tnot_run\tnot_run\t\n"
+            "B\tpass\tnot_run\tnot_run\tnot_run\tnot_run\tnot_run\t\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            args = _args(d, typing=_write(d, "typing.tsv", typing_not_run))
+            ctx = gr.build_context(args)
+            self.assertEqual(ctx["characterisation"]["status"], "not_performed")
+            self.assertFalse(any("confirmed as Vibrio cholerae" in x for x in ctx["sentences"]))
+
     def test_cgmlst_not_run_placeholder_is_not_performed(self):
         with tempfile.TemporaryDirectory() as d:
             cg = _write(d, "cgmlst_distance_matrix.tsv", CGMLST_NOT_RUN)

@@ -55,9 +55,20 @@ def _parse_val(val):
     return int(v)
 
 
-def parse_matrix(path):
+def _strip_snippy_suffix(name):
+    """Return the biological sample ID for snippy-core labels.
+
+    snippy-core names per-sample inputs from their directory basename, which in
+    CholeraFlow is commonly ``<sample>_snippy``.  Downstream metadata and cgMLST
+    use the original sample ID, so only a terminal ``_snippy`` suffix is removed.
+    """
+    return name[:-7] if name.endswith('_snippy') else name
+
+
+def parse_matrix(path, name_normalizer=None):
     """Parse a symmetric distance matrix with a blank top-left cell.
 
+    ``name_normalizer`` can canonicalize labels before they are used as keys.
     Returns (samples, dist) where dist[(a, b)] is an int or None. Returns
     (None, {}) when the file is a not_run placeholder or is empty.
     """
@@ -73,15 +84,21 @@ def parse_matrix(path):
     if data_rows and data_rows[0] and data_rows[0][0] == 'not_run':
         return None, {}
 
-    samples = header[1:]  # first header cell is blank for a distance matrix
+    normalizer = name_normalizer or (lambda x: x)
+    samples = [normalizer(x) for x in header[1:]]
+    if len(samples) != len(set(samples)):
+        raise ValueError("Distance-matrix sample names collide after normalization")
+
     dist = {}
     row_samples = []
     for row in data_rows:
-        rname = row[0]
+        rname = normalizer(row[0])
         row_samples.append(rname)
         for j, cell in enumerate(row[1:]):
             if j < len(samples):
                 dist[(rname, samples[j])] = _parse_val(cell)
+    if len(row_samples) != len(set(row_samples)):
+        raise ValueError("Distance-matrix row names collide after normalization")
     return row_samples, dist
 
 
@@ -162,7 +179,7 @@ def run(snp_path, cgmlst_path, metadata_path, thresholds, outdir):
     cg_ob = thresholds['cgmlst_outbreak']
     cg_cl = thresholds['cgmlst_cluster']
 
-    snp_samples, snp_dist = parse_matrix(snp_path)
+    snp_samples, snp_dist = parse_matrix(snp_path, name_normalizer=_strip_snippy_suffix)
     if snp_samples is None:
         snp_samples, snp_dist = [], {}
 
