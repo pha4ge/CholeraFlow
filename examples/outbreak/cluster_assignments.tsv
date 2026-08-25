@@ -1,0 +1,5 @@
+sample	cluster_id	snp_category	cgmlst_category	country	collection_date	specimen_type
+VC_HAITI_001_snippy	1	related_cluster	not_available	NA	NA	NA
+VC_INDIA_005_snippy	2	same_outbreak	not_available	NA	NA	NA
+VC_MALAWI_002_snippy	2	same_outbreak	not_available	NA	NA	NA
+VC_YEMEN_004_snippy	3	related_cluster	not_available	NA	NA	NA

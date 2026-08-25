@@ -1,0 +1,5 @@
+sample,fastq_1,fastq_2,fasta
+VC_HAITI_001,SRR39372291_1.fastq.gz,SRR39372291_2.fastq.gz,
+VC_MALAWI_002,DRR189279_1.fastq.gz,DRR189279_2.fastq.gz,
+VC_YEMEN_004,,,N16961.fna.gz
+VC_INDIA_005,DRR189335_1.fastq.gz,DRR189335_2.fastq.gz,

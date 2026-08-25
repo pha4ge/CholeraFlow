@@ -1,0 +1,5 @@
+sample	overall_status	genome_size_mb	gc_percent	largest_contig_kb	n50	contig_count	busco	checkm
+VC_HAITI_001	pass	4.055	47.63	822.6	248199	51	not_run	not_run
+VC_INDIA_005	fail	3.94	47.81	93.3	18881	361	not_run	not_run
+VC_MALAWI_002	pass	4.041	47.5	635.2	176798	79	not_run	not_run
+VC_YEMEN_004	pass	4.033	47.48	2961.1	2961149	2	not_run	not_run

@@ -1,0 +1,5 @@
+sample	status	tetracycline	tet_genes	quinolone	qnr_genes	betalactam	bla_genes	macrolide	mac_genes	sulfonamide	sul_genes	trimethoprim	dfr_genes	aminoglycoside	ami_genes	phenicol	phe_genes	sxt_mdr	sxt_markers	class_summary
+VC_HAITI_001	pass	no		no		no		no		no		no		no		no		False		No acquired resistance genes detected
+VC_INDIA_005	acquired_resistance	no		no		no		no		yes		yes		yes		yes		True	floR;aph(6)-Id;aph(3'')-Ib;sul2;catB9;dfrA1	SXT-MDR element markers present
+VC_MALAWI_002	pass	no		yes		no		no		no		yes		no		yes		False	dfrA1;catB9;dfrA31	No acquired resistance genes detected
+VC_YEMEN_004	pass	no		no		no		no		no		no		no		yes		False	catB9	No acquired resistance genes detected

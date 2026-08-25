@@ -1,0 +1,93 @@
+/* Design tokens lifted verbatim from reference_gui.html — colours, type, radii.
+   Do not introduce new values here; only values already present in the reference. */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../assets/fonts/inter-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../assets/fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
+:root {
+  /* surfaces */
+  --cf-bg: #f6f8fa;
+  --cf-surface: #fff;
+  --cf-header-bg: #fff;
+
+  /* text */
+  --cf-text: #0f172a;
+  --cf-text-muted: #64748b;
+  --cf-text-faint: #94a3b8;
+  --cf-text-faint-2: #b6c0cc;
+
+  /* borders */
+  --cf-border: #e7edf3;
+  --cf-border-input: #dbe3ec;
+  --cf-row-border: #f1f5f9;
+
+  /* brand teal */
+  --cf-teal: #0d9488;
+  --cf-teal-dark-text: #0f766e;
+  --cf-teal-pale-bg: #f0fdfa;
+  --cf-teal-pale-border: #cdeee9;
+  --cf-teal-soft-bg: #f3fbfa;
+  --cf-teal-soft-border: #b9d8d3;
+  --cf-teal-icon-bg: #e3f5f2;
+  --cf-teal-done-bg: #ccfbf1;
+  --cf-teal-done-border: #99f6e4;
+
+  /* dark green (sidebar / info panels) */
+  --cf-night: #0f2e2a;
+  --cf-night-text: #cfe9e3;
+  --cf-night-text-soft: #7fcabb;
+  --cf-night-text-strong: #d7efe9;
+  --cf-night-text-row: #e6f4f0;
+  --cf-night-accent: #34d3bf;
+
+  /* status: success */
+  --cf-success-bg: #dcfce7;
+  --cf-success-text: #15803d;
+
+  /* status: warn */
+  --cf-warn-bg: #fff7ed;
+  --cf-warn-border: #fde9c8;
+  --cf-warn-text: #b45309;
+  --cf-warn-text-2: #92681e;
+
+  /* status: error */
+  --cf-error-bg: #fef2f2;
+  --cf-error-border: #fecaca;
+  --cf-error-text: #dc2626;
+  --cf-error-text-strong: #b91c1c;
+
+  /* neutral pills / segments */
+  --cf-neutral-bg: #f1f5f9;
+  --cf-neutral-bg-2: #eef2f6;
+  --cf-neutral-text: #334155;
+  --cf-table-head-bg: #f8fafc;
+  --cf-avatar-bg: #e2e8f0;
+  --cf-disabled-bg: #e8edf2;
+  --cf-disabled-text: #9aa7b4;
+  --cf-scrollbar: #cdd6e0;
+
+  /* radii */
+  --cf-radius-card: 14px;
+  --cf-radius-md: 12px;
+  --cf-radius-btn: 10px;
+  --cf-radius-sm: 9px;
+  --cf-radius-xs: 7px;
+  --cf-radius-pill: 20px;
+
+  /* type */
+  --cf-font: 'Inter', system-ui, sans-serif;
+  --cf-font-mono: 'JetBrains Mono', monospace;
+}

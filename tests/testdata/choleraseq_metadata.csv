@@ -1,0 +1,5 @@
+sample_id,collection_date,country,admin1,admin2,gps_lat,gps_lon,specimen_type,serogroup,patient_age,patient_sex,sequencing_platform,submitting_institution,notes
+VC_HAITI_001,2022-10-14,Haiti,Ouest,Port-au-Prince,-18.5425,-72.3386,stool,O1,34,F,Illumina MiSeq,Laboratoire National de Santé Publique Haiti,Outbreak investigation Oct 2022
+VC_MALAWI_002,2022-12-03,Malawi,Southern Region,Blantyre,-15.7861,34.9803,rectal_swab,O1,12,M,Illumina NextSeq,Kamuzu University of Health Sciences,Paediatric case
+VC_YEMEN_004,2023-03-05,Yemen,Aden,Aden,12.7797,45.0095,stool,O1,45,M,Illumina HiSeq,WHO Yemen Emergency Response,Assembly submitted - reads unavailable
+VC_INDIA_005,2015-01-01,India,West Bengal,Kolkata,22.5726,88.3639,stool,O1,,,Illumina MiSeq,"Draft genome sequences of Vibrio cholerae O1 from Kolkata, India and Dhaka, Bangladesh (published study)","Real clinical isolate, strain IDH-08341 (ENA: DRR189335). collection_date is ENA-reported year only (2015) with month/day defaulted to 01-01 — exact date not provided by the source record. admin2 (Kolkata) inferred from study title/strain naming (IDH), not a directly-provided field."

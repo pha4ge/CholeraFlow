@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload &amp; validate — CholeraFlow</title>
+<link rel="stylesheet" href="../components/base.css">
+</head>
+<body>
+<div class="cf-page">
+  <div id="cf-header-root"></div>
+
+  <main class="cf-main">
+    <div class="cf-main__inner">
+      <div class="cf-screen" data-screen-label="01 Upload">
+        <div class="cf-step-label">Step 1 of 5</div>
+        <h1 class="cf-h1">Upload &amp; validate sequencing data</h1>
+        <p class="cf-subtitle">Add your sequencing files and sample metadata. CholeraFlow checks every file before you continue, so nothing slips through.</p>
+
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:18px;align-items:start">
+          <!-- Dropzone -->
+          <div class="cf-card cf-card--pad">
+            <div style="font-size:13.5px;font-weight:600;margin-bottom:12px">Sequencing files</div>
+            <div id="cf-dropzone" class="cf-dropzone" tabindex="0" role="button" aria-label="Upload sequencing files">
+              <div class="cf-dropzone__icon-wrap"><span class="cf-dropzone__arrow"></span></div>
+              <div class="cf-dropzone__title">Drag &amp; drop files here</div>
+              <div class="cf-dropzone__sub">or <span class="cf-dropzone__link">browse your computer</span></div>
+              <div class="cf-dropzone__hint">FASTQ.GZ / FASTA &middot; paired-end auto-detected &middot; max 2&nbsp;GB / file</div>
+            </div>
+            <input type="file" id="cf-file-input" multiple accept=".fastq.gz,.fasta,.csv" style="display:none">
+            <div class="cf-hint-row">
+              <span class="cf-tooltip" title="Paired-end sequencing reads each fragment from both ends. CholeraFlow matches R1 and R2 files automatically by name.">Paired-end detection</span>
+              <span>is on. Files named <span class="cf-mono">*_R1 / *_R2</span> (or <span class="cf-mono">*_1 / *_2</span>) are matched into one sample.</span>
+            </div>
+          </div>
+
+          <!-- Metadata -->
+          <div class="cf-card cf-card--pad">
+            <div style="font-size:13.5px;font-weight:600;margin-bottom:12px">Sample metadata</div>
+            <div class="cf-seg" style="margin-bottom:14px">
+              <button type="button" class="cf-seg__btn cf-seg__btn--active" id="cf-meta-tab-csv">Upload CSV</button>
+              <button type="button" class="cf-seg__btn" id="cf-meta-tab-manual">Manual entry</button>
+            </div>
+
+            <div id="cf-meta-csv-panel">
+              <div id="cf-meta-dropzone" tabindex="0" role="button" aria-label="Upload metadata CSV" style="border:1.5px dashed #cfd8e3;border-radius:10px;padding:18px;text-align:center;background:#fafbfc;cursor:pointer">
+                <div style="font-size:13px;color:#475569;font-weight:500">Drop a <span class="cf-mono">.csv</span> metadata sheet</div>
+                <div style="font-size:11.5px;color:#94a3b8;margin-top:5px">Columns auto-mapped to sample names</div>
+                <a href="#" id="cf-meta-template-link" style="display:inline-block;margin-top:10px;font-size:12px;color:#0d9488;font-weight:600;text-decoration:none;border-bottom:1px solid #0d9488">Download template</a>
+              </div>
+              <input type="file" id="cf-meta-file-input" accept=".csv" style="display:none">
+              <div id="cf-meta-status" style="display:none;margin-top:10px;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;background:#f0fdfa;border:1px solid #cdeee9;border-radius:8px;padding:8px 10px">
+                <span id="cf-meta-status-name" class="cf-mono" style="color:#0f766e;font-weight:600"></span>
+                <button type="button" id="cf-meta-remove-btn" style="background:none;border:none;color:#0f766e;text-decoration:underline;font-size:12px;cursor:pointer;font-weight:600;flex:none">Remove</button>
+              </div>
+              <div id="cf-meta-error" style="display:none;margin-top:10px"></div>
+            </div>
+
+            <div id="cf-meta-manual-panel" style="display:none">
+              <div style="display:grid;gap:10px">
+                <label style="font-size:11.5px;color:#64748b;font-weight:500">Collection date
+                  <input type="date" id="cf-meta-date" style="display:block;width:100%;margin-top:4px;padding:7px 9px;border:1px solid #dbe3ec;border-radius:8px;font-size:13px;color:#0f172a"></label>
+                <label style="font-size:11.5px;color:#64748b;font-weight:500">Source type
+                  <select id="cf-meta-source" style="display:block;width:100%;margin-top:4px;padding:7px 9px;border:1px solid #dbe3ec;border-radius:8px;font-size:13px;color:#0f172a;background:#fff">
+                    <option>Clinical isolate</option><option>Food sample</option><option>Environmental</option>
+                  </select></label>
+                <label style="font-size:11.5px;color:#64748b;font-weight:500">Collection location
+                  <input type="text" id="cf-meta-location" placeholder="Region / facility" style="display:block;width:100%;margin-top:4px;padding:7px 9px;border:1px solid #dbe3ec;border-radius:8px;font-size:13px;color:#0f172a"></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live validation -->
+        <div id="cf-validation-card" class="cf-card cf-card--pad-sm" style="margin-top:18px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:13.5px;font-weight:600">Live validation</div>
+            <div id="cf-checks-passed-label" class="cf-mono" style="font-size:12px;color:#64748b"></div>
+          </div>
+          <div id="cf-checks-list" style="display:grid;gap:10px"></div>
+        </div>
+
+        <!-- Sample preview -->
+        <div id="cf-sample-card" class="cf-card" style="margin-top:18px;overflow:hidden;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eef2f6">
+            <div style="font-size:13.5px;font-weight:600">Sample preview <span id="cf-sample-count" style="color:#94a3b8;font-weight:500"></span></div>
+            <span class="cf-pill cf-pill--badge-lg cf-pill--teal">Paired-end auto-detected</span>
+          </div>
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Sample name</th>
+                <th>Files</th>
+                <th><span class="cf-tooltip" title="Total sequencing reads detected for the sample, or assembled contigs for FASTA input.">Reads</span></th>
+                <th class="cf-table__right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="cf-sample-rows"></tbody>
+          </table>
+        </div>
+
+        <!-- Metadata preview (full width so wide columns/long URLs can't squish the layout above) -->
+        <div id="cf-meta-preview-card" class="cf-card" style="margin-top:18px;overflow:hidden;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eef2f6">
+            <div style="font-size:13.5px;font-weight:600">Metadata preview <span id="cf-meta-preview-count" style="color:#94a3b8;font-weight:500"></span></div>
+            <button type="button" id="cf-meta-remove-btn-2" style="background:none;border:1px solid #dbe3ec;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:600;color:#475569;cursor:pointer">Remove</button>
+          </div>
+          <div id="cf-meta-preview-table-wrap" style="overflow:auto;max-width:100%"></div>
+        </div>
+
+        <!-- Specific fix messages -->
+        <div id="cf-error-banner" class="cf-error-banner" style="display:none"></div>
+
+        <!-- Continue -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
+          <div id="cf-continue-hint" style="font-size:12.5px;color:#94a3b8">All checks must pass before you can continue.</div>
+          <button type="button" id="cf-continue-btn" class="cf-btn-primary" disabled>Validate &amp; continue <span style="font-size:16px;line-height:1">&rarr;</span></button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/state.js"></script>
+<script src="../components/header-nav.js"></script>
+<script src="../js/upload.js"></script>
+<script>
+  window.CholeraFlowHeader.render(document.getElementById('cf-header-root'), 1);
+  window.CholeraFlowUpload.init();
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+// ── GENERATE_REPORT ───────────────────────────────────────────────────────────
+//
+// Step 13: Public health outbreak report. Calls bin/generate_report.py (Tier 3)
+// with the Jinja2 template. Final step of the outbreak branch, after Steps 11–12.
+//
+// Every data input is OPTIONAL (pass [] when a step did not run): the report
+// renders each section either with real data or an explicit "Analysis not
+// performed" message, so a partial pipeline still yields a complete report.
+//
+// Container: python:3.11-slim + Jinja2. Jinja2 is installed at runtime only if
+// the image does not already provide it — for fully offline (LMIC) deployments,
+// bake jinja2 into a custom image so no network access is needed at run time.
+// ─────────────────────────────────────────────────────────────────────────────
+
+process GENERATE_REPORT {
+    tag "generate_report"
+    label 'process_single'
+
+    conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.4'
+    container 'python:3.11-slim'
+
+    input:
+    path template
+    path genome_qc            // genome_qc_summary.tsv        (optional [])
+    path typing               // typing_summary.tsv           (optional [])
+    path virulence            // virulencefinder_summary.tsv  (optional [])
+    path amr                  // amr_summary.tsv              (optional [])
+    path snp_matrix           // snp_distance_matrix.tsv      (optional [])
+    path treefile             // iqtree.treefile              (optional [])
+    path cluster_assignments  // cluster_assignments.tsv      (optional [])
+    path cluster_summary      // cluster_summary.json         (optional [])
+    path outbreak_pairs       // outbreak_pairs.tsv           (optional [])
+    path cgmlst_matrix        // cgmlst_distance_matrix.tsv   (optional [])
+    path global_tree          // global_context treefile      (optional [])
+    path metadata             // metadata CSV                 (optional [])
+
+    output:
+    path 'outbreak_report.html', emit: report
+
+    script:
+    def genome_qc_arg  = genome_qc           ? "--genome-qc ${genome_qc}"                       : ""
+    def typing_arg     = typing              ? "--typing ${typing}"                             : ""
+    def virulence_arg  = virulence           ? "--virulence ${virulence}"                       : ""
+    def amr_arg        = amr                 ? "--amr ${amr}"                                   : ""
+    def snp_arg        = snp_matrix          ? "--snp-matrix ${snp_matrix}"                     : ""
+    def tree_arg       = treefile            ? "--treefile ${treefile}"                         : ""
+    def clust_arg      = cluster_assignments ? "--cluster-assignments ${cluster_assignments}"  : ""
+    def csum_arg       = cluster_summary     ? "--cluster-summary ${cluster_summary}"           : ""
+    def pairs_arg      = outbreak_pairs      ? "--outbreak-pairs ${outbreak_pairs}"             : ""
+    def cgmlst_arg     = cgmlst_matrix       ? "--cgmlst-matrix ${cgmlst_matrix}"               : ""
+    def global_arg     = global_tree         ? "--global-tree ${global_tree}"                   : ""
+    def meta_arg       = metadata            ? "--metadata ${metadata}"                         : ""
+    """
+    export PATH="${moduleDir.parent.parent}/bin:\$PATH"
+    
+    # Set a temporary directory for pip to use, bypassing the /.local permission error
+    export PYTHONUSERBASE=\$(mktemp -d)
+
+    # Install Jinja2 only if the image doesn't already provide it
+    python3 -c "import jinja2" 2>/dev/null || pip install --quiet --no-input --user jinja2==3.1.4
+
+    generate_report.py \\
+        --template ${template} \\
+        --output   outbreak_report.html \\
+        --pipeline-version ${workflow.manifest.version ?: '0.1.0'} \\
+        --run-date "\$(date +%Y-%m-%d)" \\
+        --mode ${params.use_case} \\
+        --snp-threshold ${params.snp_outbreak_threshold} \\
+        --cgmlst-threshold ${params.cgmlst_outbreak_alleles} \\
+        --max-missing ${params.max_missing_percentage} \\
+        --min-parsimony-coverage ${params.min_parsimony_coverage} \\
+        ${genome_qc_arg} ${typing_arg} ${virulence_arg} ${amr_arg} \\
+        ${snp_arg} ${tree_arg} ${clust_arg} ${csum_arg} ${pairs_arg} \\
+        ${cgmlst_arg} ${global_arg} ${meta_arg}
+    """
+}

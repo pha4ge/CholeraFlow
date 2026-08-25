@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Select analysis mode — CholeraFlow</title>
+<link rel="stylesheet" href="../components/base.css">
+<style>
+/* Screen-2-specific styling only — shared chrome (header, fonts, page layout,
+   buttons, cards) comes from components/base.css, same as Screen 1. */
+
+.help-toggle {
+  flex: none; margin-top: 6px; background: #fff; border: 1px solid var(--cf-border-input); border-radius: 9px;
+  padding: 8px 13px; font-size: 12.5px; font-weight: 600; color: var(--cf-teal-dark-text); cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+}
+.help-toggle__q {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--cf-teal-pale-bg); border: 1px solid var(--cf-teal-pale-border);
+  display: flex; align-items: center; justify-content: center; font-size: 11px; flex: none;
+}
+.help-panel {
+  background: var(--cf-night); color: var(--cf-night-text); border-radius: 12px; padding: 18px 20px; margin-top: 16px;
+  font-size: 13px; line-height: 1.6; position: relative; animation: cf-fade .2s ease;
+}
+.help-panel__close {
+  position: absolute; top: 10px; right: 12px; background: none; border: none;
+  color: var(--cf-night-text-soft); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px;
+}
+.help-panel h2 { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 12px; }
+.help-item { margin-bottom: 12px; }
+.help-item:last-of-type { margin-bottom: 0; }
+.help-item__mode { color: #fff; font-weight: 700; }
+.help-item__q { color: var(--cf-night-text); }
+.help-item__example { color: #9fd9cb; margin-top: 2px; }
+.help-panel__note { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); color: #9fd9cb; }
+
+.mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+.mode-card {
+  position: relative; background: var(--cf-surface); border-radius: var(--cf-radius-card); padding: 20px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s;
+  border: 2px solid var(--cf-border); display: flex; flex-direction: column; min-width: 0;
+}
+.mode-card:focus-visible { outline: 2px solid var(--cf-teal); outline-offset: 2px; }
+.mode-card--selected { border-color: var(--cf-teal); box-shadow: 0 4px 14px rgba(13, 148, 136, .12); }
+.mode-card__badge {
+  position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--cf-teal); color: #fff; display: none; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800;
+}
+.mode-card--selected .mode-card__badge { display: flex; }
+.mode-card__icon-wrap {
+  width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center;
+  justify-content: center; margin-bottom: 14px; background: var(--cf-neutral-bg); color: var(--cf-text-muted);
+}
+.mode-card--selected .mode-card__icon-wrap { background: var(--cf-teal-pale-bg); color: var(--cf-teal); }
+.mode-card__icon-wrap svg { width: 20px; height: 20px; display: block; }
+.mode-card__title { font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+.mode-card__tagline { font-size: 11.5px; font-weight: 600; color: var(--cf-teal); margin-top: 3px; }
+.mode-card__desc { font-size: 12.5px; color: var(--cf-text-muted); margin: 10px 0 13px; line-height: 1.5; }
+.mode-card__produces { font-size: 11px; font-weight: 600; color: var(--cf-text-faint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px; }
+.mode-card__bullets { display: grid; gap: 6px; margin-bottom: 16px; }
+.mode-card__bullet { display: flex; gap: 8px; font-size: 12.5px; color: var(--cf-neutral-text); }
+.mode-card__bullet span.dot { color: var(--cf-teal); font-weight: 700; flex: none; }
+.mode-card__select {
+  margin-top: auto; border: 1px solid var(--cf-border-input); border-radius: 9px; padding: 9px 14px;
+  font-size: 13px; font-weight: 600; color: #475569; background: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px; transition: all .15s;
+}
+.mode-card--selected .mode-card__select {
+  background: var(--cf-teal); color: #fff; border-color: var(--cf-teal); box-shadow: 0 1px 2px rgba(13, 148, 136, .4);
+}
+
+.footer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="cf-page">
+  <div id="cf-header-root"></div>
+
+  <main class="cf-main">
+    <div class="cf-main__inner">
+      <div class="cf-screen" data-screen-label="02 Analysis">
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <div class="cf-step-label">Step 2 of 5</div>
+            <h1 class="cf-h1">Select an analysis mode</h1>
+            <p class="cf-subtitle" style="margin-bottom:0">Each mode runs a curated pipeline tuned for a specific public-health question.</p>
+          </div>
+          <button type="button" class="help-toggle" id="help-toggle" aria-expanded="false">
+            <span class="help-toggle__q">?</span>What mode should I choose?
+          </button>
+        </div>
+
+        <div class="help-panel" id="help-panel" style="display:none">
+          <button type="button" class="help-panel__close" id="help-close" aria-label="Close guidance">&times;</button>
+          <h2>Quick guide</h2>
+
+          <div class="help-item">
+            <div><span class="help-item__mode">Outbreak Investigation</span> <span class="help-item__q">answers: "Are these cases part of the same outbreak, and how is it spreading?"</span></div>
+            <div class="help-item__example">Example: you've received 15 new isolates during an active outbreak — use Outbreak Investigation to see how closely related they are.</div>
+          </div>
+
+          <div class="help-item">
+            <div><span class="help-item__mode">Routine Surveillance</span> <span class="help-item__q">answers: "What strains and resistance patterns are circulating right now?"</span></div>
+            <div class="help-item__example">Example: you're processing this month's batch of routine sentinel samples — use Routine Surveillance to track trends over time.</div>
+          </div>
+
+          <div class="help-item">
+            <div><span class="help-item__mode">Source Attribution</span> <span class="help-item__q">answers: "Where did this contamination most likely come from?"</span></div>
+            <div class="help-item__example">Example: you have clinical isolates plus water or food samples from the same period — use Source Attribution to compare them.</div>
+          </div>
+
+          <div class="help-panel__note">You can change the mode later — nothing is locked in until you start the run.</div>
+        </div>
+
+        <div class="mode-grid" id="mode-grid"></div>
+
+        <div class="footer-row">
+          <button type="button" class="cf-btn-secondary" id="back-btn">&larr; Back</button>
+          <button type="button" class="cf-btn-primary" id="continue-btn" disabled>Continue to configuration <span style="font-size:16px;line-height:1">&rarr;</span></button>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/state.js"></script>
+<script src="../components/header-nav.js"></script>
+<script>
+(function () {
+  var MODE_STORAGE_KEY = 'choleraflow_selected_mode';
+  var BACK_PAGE = '01-upload.html';
+  var NEXT_PAGE = 'screen3_configure.html';
+  var CURRENT_STEP = 2;
+
+  var ICONS = {
+    network:
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
+      '<circle cx="4.5" cy="5" r="2.2"/><circle cx="15.5" cy="5" r="2.2"/><circle cx="10" cy="15.5" r="2.2"/>' +
+      '<line x1="6.5" y1="5.6" x2="13.5" y2="5.6"/><line x1="5.5" y1="7" x2="9" y2="13.3"/><line x1="14.5" y1="7" x2="11" y2="13.3"/>' +
+      '</svg>',
+    trend:
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M3 17V3"/><path d="M3 17h14"/><path d="M5 13.5l3.2-4 2.6 2 4.2-6"/>' +
+      '</svg>',
+    pin:
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">' +
+      '<path d="M10 18s6-6.7 6-10.8A6 6 0 1 0 4 7.2C4 11.3 10 18 10 18Z"/><circle cx="10" cy="7.2" r="2"/>' +
+      '</svg>',
+  };
+
+  var MODES = [
+    {
+      id: 'outbreak',
+      title: 'Outbreak Investigation',
+      tagline: 'For near-real-time outbreak response',
+      description: 'Compares the genomes of your isolates in fine detail to work out how closely related they are and how a suspected outbreak is spreading. Built for speed, so you get a confident answer about transmission links while the outbreak is still unfolding.',
+      bullets: ['SNP-based phylogenetic tree', 'cgMLST cluster assignments', 'Likely transmission links between isolates', 'Rapid outbreak report'],
+      icon: 'network',
+    },
+    {
+      id: 'surveillance',
+      title: 'Routine Surveillance',
+      tagline: 'For ongoing genomic monitoring',
+      description: 'Tracks which strains and resistance genes are circulating across your routine samples over time. Helps you spot emerging lineages or rising drug resistance early, before they become a bigger problem.',
+      bullets: ['Lineage and strain-type trends', 'Antimicrobial resistance (AMR) prevalence', 'Comparison against previous surveillance rounds', 'Surveillance summary report'],
+      icon: 'trend',
+    },
+    {
+      id: 'source_attribution',
+      title: 'Source Attribution',
+      tagline: 'For linking isolates to transmission sources',
+      description: 'Compares clinical isolates against environmental or food samples to help narrow down where a contamination event most likely came from. Useful whenever you have samples from more than one setting that might be connected.',
+      bullets: ['Clinical vs environmental comparison', 'Geographic context for each isolate', 'Ranked list of likely sources', 'Source attribution report'],
+      icon: 'pin',
+    },
+  ];
+
+  var selectedMode = null;
+  try { selectedMode = localStorage.getItem(MODE_STORAGE_KEY) || null; } catch (e) { selectedMode = null; }
+  if (selectedMode && !MODES.some(function (m) { return m.id === selectedMode; })) selectedMode = null;
+
+  var helpOpen = false;
+
+  function renderCards() {
+    var grid = document.getElementById('mode-grid');
+    grid.innerHTML = MODES.map(function (m) {
+      var selected = selectedMode === m.id;
+      return '<div class="mode-card' + (selected ? ' mode-card--selected' : '') + '" data-mode="' + m.id + '" tabindex="0" role="button" aria-pressed="' + selected + '" aria-label="Select ' + m.title + '">' +
+        '<span class="mode-card__badge">✓</span>' +
+        '<div class="mode-card__icon-wrap">' + ICONS[m.icon] + '</div>' +
+        '<div class="mode-card__title">' + m.title + '</div>' +
+        '<div class="mode-card__tagline">' + m.tagline + '</div>' +
+        '<div class="mode-card__desc">' + m.description + '</div>' +
+        '<div class="mode-card__produces">Produces</div>' +
+        '<div class="mode-card__bullets">' +
+        m.bullets.map(function (b) { return '<div class="mode-card__bullet"><span class="dot">&middot;</span><span>' + b + '</span></div>'; }).join('') +
+        '</div>' +
+        '<button type="button" class="mode-card__select" data-mode="' + m.id + '">' + (selected ? '✓ Selected' : 'Select') + '</button>' +
+        '</div>';
+    }).join('');
+
+    grid.querySelectorAll('.mode-card').forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('.mode-card__select')) return;
+        selectMode(card.getAttribute('data-mode'));
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMode(card.getAttribute('data-mode')); }
+      });
+    });
+    grid.querySelectorAll('.mode-card__select').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        selectMode(btn.getAttribute('data-mode'));
+      });
+    });
+  }
+
+  function selectMode(id) {
+    selectedMode = id;
+    try { localStorage.setItem(MODE_STORAGE_KEY, id); } catch (e) { /* storage unavailable */ }
+    renderCards();
+    updateContinueState();
+  }
+
+  function updateContinueState() {
+    document.getElementById('continue-btn').disabled = !selectedMode;
+  }
+
+  function toggleHelp(open) {
+    helpOpen = open;
+    var panel = document.getElementById('help-panel');
+    var toggle = document.getElementById('help-toggle');
+    panel.style.display = helpOpen ? '' : 'none';
+    toggle.setAttribute('aria-expanded', String(helpOpen));
+  }
+
+  function init() {
+    window.CholeraFlowHeader.render(document.getElementById('cf-header-root'), CURRENT_STEP);
+    renderCards();
+    updateContinueState();
+
+    document.getElementById('help-toggle').addEventListener('click', function () { toggleHelp(!helpOpen); });
+    document.getElementById('help-close').addEventListener('click', function () { toggleHelp(false); });
+
+    document.getElementById('back-btn').addEventListener('click', function () { window.location.href = BACK_PAGE; });
+    document.getElementById('continue-btn').addEventListener('click', function () {
+      if (!selectedMode) return;
+      window.CholeraFlowState.update({ maxStepReached: 3 });
+      window.location.href = NEXT_PAGE;
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

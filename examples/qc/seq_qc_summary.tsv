@@ -1,0 +1,5 @@
+sample	status	n_sequences	total_bp	gap_bp	n_percentage	reason
+VC_HAITI_001	pass	2	4047835	468823	11.58	N/gap 11.6% within threshold 50.0%
+VC_INDIA_005	pass	2	4047835	199323	4.92	N/gap 4.9% within threshold 50.0%
+VC_MALAWI_002	pass	2	4047835	136672	3.38	N/gap 3.4% within threshold 50.0%
+VC_YEMEN_004	pass	2	4047835	65399	1.62	N/gap 1.6% within threshold 50.0%

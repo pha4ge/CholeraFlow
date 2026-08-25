@@ -1,0 +1,8 @@
+{
+  "n_clusters": 1,
+  "largest_cluster_size": 2,
+  "samples_in_outbreak": 2,
+  "snp_threshold_used": 5,
+  "cgmlst_threshold_used": 10,
+  "interpretation_caveat": "These thresholds are based on published literature for V. cholerae O1 and are provided as a screening aid only. Epidemiological data, geographic context, and clinical information are required for any final public health interpretation. Thresholds may require local calibration based on transmission intensity in your setting."
+}

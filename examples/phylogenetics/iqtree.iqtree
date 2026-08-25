@@ -1,0 +1,207 @@
+IQ-TREE 2.3.4 COVID-edition built May 23 2024
+
+Input file name: pis_alignment.fasta
+Type of analysis: ModelFinder + tree reconstruction + ultrafast bootstrap (1000 replicates)
+Random seed number: 651720
+
+REFERENCES
+----------
+
+To cite IQ-TREE please use:
+
+Bui Quang Minh, Heiko A. Schmidt, Olga Chernomor, Dominik Schrempf,
+Michael D. Woodhams, Arndt von Haeseler, and Robert Lanfear (2020)
+IQ-TREE 2: New models and efficient methods for phylogenetic inference
+in the genomic era. Mol. Biol. Evol., in press.
+https://doi.org/10.1093/molbev/msaa015
+
+To cite ModelFinder please use: 
+
+Subha Kalyaanamoorthy, Bui Quang Minh, Thomas KF Wong, Arndt von Haeseler,
+and Lars S Jermiin (2017) ModelFinder: Fast model selection for
+accurate phylogenetic estimates. Nature Methods, 14:587–589.
+https://doi.org/10.1038/nmeth.4285
+
+Since you used ultrafast bootstrap (UFBoot) please also cite: 
+
+Diep Thi Hoang, Olga Chernomor, Arndt von Haeseler, Bui Quang Minh,
+and Le Sy Vinh (2018) UFBoot2: Improving the ultrafast bootstrap
+approximation. Mol. Biol. Evol., 35:518–522.
+https://doi.org/10.1093/molbev/msx281
+
+SEQUENCE ALIGNMENT
+------------------
+
+Input data: 5 sequences with 83 nucleotide sites
+Number of constant sites: 0 (= 0% of all sites)
+Number of invariant (constant or ambiguous constant) sites: 0 (= 0% of all sites)
+Number of parsimony informative sites: 83
+Number of distinct site patterns: 21
+
+ModelFinder
+-----------
+
+Best-fit model according to BIC: TNe+ASC
+
+List of models sorted by BIC scores: 
+
+Model                  LogL         AIC      w-AIC        AICc     w-AICc         BIC      w-BIC
+TNe+ASC            -234.618     487.236 +    0.111     489.702 +    0.168     509.006 +    0.315
+K2P+ASC            -237.744     491.487 -   0.0132     493.433 -   0.0261     510.838 +    0.126
+TIM2e+ASC          -233.398     486.795 +    0.138     489.851 +    0.156     510.984 +    0.117
+TIMe+ASC           -233.530     487.061 +    0.121     490.116 +    0.137     511.249 +    0.103
+TIM3e+ASC          -234.077     488.154 +     0.07     491.210 +   0.0792     512.343 +   0.0594
+K3P+ASC            -236.315     490.630 -   0.0203     493.096 -   0.0309     512.399 +   0.0577
+TNe+ASC+G4         -234.191     488.382 +   0.0625     491.437 +   0.0707     512.570 +    0.053
+TPM2+ASC           -236.801     491.602 -   0.0125     494.068 -    0.019     513.372 -   0.0355
+TPM3+ASC           -237.069     492.138 -  0.00955     494.604 -   0.0145     513.907 -   0.0272
+K2P+ASC+G4         -237.079     492.159 -  0.00945     494.625 -   0.0144     513.928 -   0.0269
+TIM2e+ASC+G4       -233.123     488.247 +   0.0668     491.965 +   0.0543     514.854 -   0.0169
+TIMe+ASC+G4        -233.316     488.632 +   0.0551     492.350 -   0.0448     515.239 -    0.014
+TIM3e+ASC+G4       -233.621     489.242 -   0.0406     492.960 -    0.033     515.849 -   0.0103
+SYM+ASC            -231.559     487.118 +    0.118     491.575 +    0.066     516.144 -  0.00888
+K3P+ASC+G4         -236.026     492.052 -  0.00997     495.108 -   0.0113     516.240 -  0.00846
+TPM2+ASC+G4        -236.213     492.427 -  0.00827     495.483 -  0.00936     516.615 -  0.00701
+TPM3+ASC+G4        -236.362     492.725 -  0.00712     495.780 -  0.00806     516.913 -  0.00604
+TVMe+ASC           -234.600     491.199 -   0.0153     494.918 -   0.0124     517.807 -  0.00387
+SYM+ASC+G4         -231.547     489.094 -   0.0437     494.370 -   0.0163     520.539 - 0.000986
+HKY+F+ASC          -236.145     494.290 -  0.00326     498.008 -  0.00265     520.897 - 0.000824
+TVMe+ASC+G4        -234.509     493.018 -  0.00615     497.475 -  0.00345     522.044 - 0.000465
+TN+F+ASC           -234.706     493.411 -  0.00505     497.868 -  0.00284     522.437 - 0.000382
+K3Pu+F+ASC         -234.715     493.430 -    0.005     497.888 -  0.00281     522.457 - 0.000378
+TPM2u+F+ASC        -235.251     494.501 -  0.00293     498.959 -  0.00165     523.528 - 0.000221
+TPM3u+F+ASC        -235.442     494.884 -  0.00242     499.342 -  0.00136     523.911 - 0.000183
+HKY+F+ASC+G4       -235.530     495.059 -  0.00222     499.516 -  0.00125     524.085 - 0.000167
+TIM+F+ASC          -233.440     492.879 -  0.00659     498.154 -  0.00246     524.324 - 0.000149
+TIM2+F+ASC         -233.675     493.350 -  0.00521     498.626 -  0.00194     524.795 - 0.000117
+TIM3+F+ASC         -234.157     494.314 -  0.00322     499.589 -   0.0012     525.758 - 7.25e-05
+K3Pu+F+ASC+G4      -234.465     494.931 -  0.00236     500.206 - 0.000882     526.376 - 5.33e-05
+TN+F+ASC+G4        -234.526     495.052 -  0.00222     500.327 -  0.00083     526.497 - 5.01e-05
+TPM2u+F+ASC+G4     -234.741     495.482 -  0.00179     500.758 - 0.000669     526.927 - 4.04e-05
+TPM3u+F+ASC+G4     -234.796     495.592 -   0.0017     500.868 - 0.000634     527.037 - 3.83e-05
+TVM+F+ASC          -233.005     494.009 -  0.00375     500.186 - 0.000891     527.873 - 2.52e-05
+TIM+F+ASC+G4       -233.385     494.770 -  0.00256     500.946 - 0.000609     528.633 - 1.72e-05
+TIM2+F+ASC+G4      -233.609     495.218 -  0.00205     501.395 - 0.000487     529.082 - 1.38e-05
+GTR+F+ASC          -231.724     493.448 -  0.00496     500.612 -  0.00072     529.731 - 9.95e-06
+TIM3+F+ASC+G4      -233.935     495.870 -  0.00148     502.046 - 0.000351     529.734 - 9.94e-06
+TVM+F+ASC+G4       -233.010     496.019 -  0.00137     503.184 - 0.000199     532.302 - 2.75e-06
+GTR+F+ASC+G4       -231.652     495.305 -  0.00196     503.547 - 0.000166     534.006 - 1.17e-06
+JC+ASC+G4          -265.221     546.441 - 1.54e-14     548.387 - 3.04e-14     565.792 - 1.47e-13
+JC+ASC             -267.942     549.884 - 2.76e-15     551.377 - 6.82e-15     566.816 - 8.81e-14
+F81+F+ASC+G4       -263.036     548.073 - 6.82e-15     551.791 - 5.54e-15     574.680 - 1.73e-15
+F81+F+ASC          -265.763     551.526 - 1.21e-15     554.582 - 1.37e-15     575.714 - 1.03e-15
+
+AIC, w-AIC   : Akaike information criterion scores and weights.
+AICc, w-AICc : Corrected AIC scores and weights.
+BIC, w-BIC   : Bayesian information criterion scores and weights.
+
+Plus signs denote the 95% confidence sets.
+Minus signs denote significant exclusion.
+
+SUBSTITUTION PROCESS
+--------------------
+
+Model of substitution: TNe+ASC
+
+Rate parameter R:
+
+  A-C: 1.0000
+  A-G: 7.2825
+  A-T: 1.0000
+  C-G: 1.0000
+  C-T: 29.5485
+  G-T: 1.0000
+
+State frequencies: (equal frequencies)
+
+Rate matrix Q:
+
+  A   -0.4547   0.04898    0.3567   0.04898
+  C   0.04898    -1.545   0.04898     1.447
+  G    0.3567   0.04898   -0.4547   0.04898
+  T   0.04898     1.447   0.04898    -1.545
+
+Model of rate heterogeneity: Uniform
+
+MAXIMUM LIKELIHOOD TREE
+-----------------------
+
+Log-likelihood of the tree: -234.6144 (s.e. 16.8059)
+Unconstrained log-likelihood (without tree): -211.7200
+Number of free parameters (#branches + #model parameters): 9
+Akaike information criterion (AIC) score: 487.2288
+Corrected Akaike information criterion (AICc) score: 489.6946
+Bayesian information criterion (BIC) score: 508.9984
+
+Total tree length (sum of branch lengths): 1.9880
+Sum of internal branch lengths: 1.8877 (94.9565% of tree length)
+
+WARNING: 1 near-zero internal branches (<0.0120) should be treated with caution
+         Such branches are denoted by '**' in the figure below
+
+NOTE: Tree is UNROOTED although outgroup taxon 'Reference' is drawn at root
+Numbers in parentheses are  ultrafast bootstrap support (%)
+
++**Reference
+|
+|  +--VC_HAITI_001_snippy
++**| (27)
+|  |                                                          +**VC_INDIA_005_snippy
+|  +----------------------------------------------------------| (100)
+|                                                             +--VC_MALAWI_002_snippy
+|
++**VC_YEMEN_004_snippy
+
+Tree in newick format:
+
+(Reference:0.0000010000,(VC_HAITI_001_snippy:0.0722941510,(VC_INDIA_005_snippy:0.0000010000,VC_MALAWI_002_snippy:0.0279675433)100:1.8877373710)27:0.0000027877,VC_YEMEN_004_snippy:0.0000010000);
+
+CONSENSUS TREE
+--------------
+
+Consensus tree is constructed from 1000 bootstrap trees
+Log-likelihood of consensus tree: -234.615053
+Robinson-Foulds distance between ML tree and consensus tree: 2
+
+Branches with support >0.000000% are kept (extended consensus)
+Branch lengths are optimized by maximum likelihood on original alignment
+Numbers in parentheses are bootstrap supports (%)
+
++--Reference
+|
+|  +--VC_HAITI_001_snippy
++--| (47)
+|  +--VC_YEMEN_004_snippy
+|
+|                                                          +--VC_INDIA_005_snippy
++----------------------------------------------------------| (100)
+                                                           +--VC_MALAWI_002_snippy
+
+
+Consensus tree in newick format: 
+
+(Reference:0.0000021305,(VC_HAITI_001_snippy:0.0723060840,VC_YEMEN_004_snippy:0.0000021305)47:0.0000024825,(VC_INDIA_005_snippy:0.0000020846,VC_MALAWI_002_snippy:0.0280257997)100:1.8882853746);
+
+ALISIM COMMAND
+--------------
+To simulate an alignment of the same length as the original alignment, using the tree and model parameters estimated from this analysis, you can use the following command:
+
+--alisim simulated_MSA -t iqtree.treefile -m "TNe{7.28251,29.5485}+FQ+ASC" --length 83
+
+To mimic the alignment used to produce this analysis, i.e. simulate an alignment of the same length as the original alignment, using the tree and model parameters estimated from this analysis *and* copying the same gap positions as the original alignment, you can use the following command:
+
+iqtree -s pis_alignment.fasta --alisim mimicked_MSA
+
+To simulate any number of alignments in either of the two commandlines above, use the --num-alignments options, for example mimic 100 alignments you would use the command line:
+
+iqtree -s pis_alignment.fasta --alisim mimicked_MSA --num-alignments 100
+
+For more information on using AliSim, please visit: www.iqtree.org/doc/AliSim
+
+TIME STAMP
+----------
+
+Date and time: Fri Jul 10 14:58:38 2026
+Total CPU time used: 24.482159 seconds (0h:0m:24s)
+Total wall-clock time used: 17.8073466 seconds (0h:0m:17s)
+
