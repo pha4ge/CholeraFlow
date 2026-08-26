@@ -1,260 +1,319 @@
 # CholeraFlow
 
-A Nextflow pipeline for *Vibrio cholerae* outbreak genomic surveillance — QC,
-species/serogroup/toxin characterisation, AMR screening, reference mapping,
-phylogenetics, cgMLST, and automatic outbreak cluster detection, ending in a
-single self-contained HTML report for public health interpretation.
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Active-success" alt="Status: Active" />
+  <img src="https://img.shields.io/badge/Nextflow-24.10.5-23aa62" alt="Nextflow 24.10.5" />
+  <img src="https://img.shields.io/badge/Java-21%20LTS-blue" alt="Java 21 LTS" />
+  <img src="https://img.shields.io/badge/Python-3.11-blue" alt="Python 3.11" />
+  <img src="https://img.shields.io/badge/Jinja2-3.1.6-orange" alt="Jinja2 3.1.6" />
+</p>
 
-**Don't want to install anything yet?** Open
-[`examples/reports/outbreak_report.html`](examples/reports/outbreak_report.html)
-in any browser right now — it's a real report from a real pipeline run, no
-server or setup required.
+CholeraFlow is a Nextflow DSL2 pipeline for *Vibrio cholerae* genomic
+surveillance: input validation, QC/assembly, species and virulence
+characterisation, AMR screening, reference mapping, recombination-aware
+phylogenetics, cgMLST, outbreak clustering, and a self-contained HTML report.
 
----
+The browser GUI in `reference_gui.html` is a front-end prototype; the scientific
+analysis engine is the Nextflow workflow beginning at `main.nf`.
+
+<p align="center">
+  <img src="flow.png" width="1000" alt="CholeraFlow workflow" />
+</p>
 
 ## Quick start
 
-If you already have Docker, Nextflow, and Bactopia installed (see
-[Prerequisites](#prerequisites) below if not), this is the whole thing:
+CholeraFlow's reproducible runtime baseline is **Java 21 LTS + Nextflow
+24.10.5**. Bactopia should be available on `PATH` (usually by activating its
+conda environment).
 
 ```bash
-git clone <this-repo-url>
-cd choleraflow
+git clone https://github.com/pha4ge/CholeraFlow.git
+cd CholeraFlow
 
-# Download the real test genomes (~450 MB, not stored in git — see why below)
+conda activate bactopia
 ./tests/testdata/download_test_data.sh
 
-# Point the pipeline at your own Bactopia install (see Prerequisites)
-NXF_VER=24.10.5 nextflow run main.nf -profile docker --use_case outbreak \
+NXF_VER=24.10.5 nextflow run main.nf \
+  -profile docker \
+  --use_case outbreak \
   --input tests/testdata/local_samplesheet.csv \
   --metadata tests/testdata/choleraseq_metadata.csv \
-  --outdir results \
-  --bactopia_bin "$(conda info --base)/envs/bactopia/bin/bactopia"
+  --outdir results
 ```
 
-Takes **around 90 minutes** for the bundled 4-sample test set (most of that is
-Bactopia's assembly step) — see [Compute requirements](#compute-requirements)
-below. When it finishes, open `results/reports/outbreak_report.html` in a
-browser.
+If Bactopia is installed but not on `PATH`, provide it explicitly:
 
+```bash
+--bactopia_bin /absolute/path/to/bactopia
+```
 
-<p align="center">
-  <img src="flow.png" width="1000" alt="Project Screenshot">
-</p>
-
----
+When the run completes, open `results/reports/outbreak_report.html`.
 
 ## Prerequisites
 
-You need three things installed. All commands below are for Linux, macOS, or
-WSL2 on Windows (what this pipeline was built and tested on).
+### 1. Java 21 LTS
 
-### 1. Docker
-CholeraFlow runs almost every step inside Docker containers, so no other
-bioinformatics tools need to be installed by hand.
+Confirm the runtime:
 
-- **Windows**: install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-  with the WSL2 backend enabled.
-- **macOS**: install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-- **Linux**: install [Docker Engine](https://docs.docker.com/engine/install/).
+```bash
+java -version
+```
 
-Confirm it works:
+The recommended baseline begins with `openjdk version "21` (or another Java 21
+LTS distribution).
+
+### 2. Docker
+
+Most analysis steps use containers. Confirm Docker works:
+
 ```bash
 docker run hello-world
 ```
 
-### 2. Nextflow (pinned to 24.10.5)
+Docker Desktop is suitable on macOS/Windows; Docker Engine is suitable on Linux.
+Apptainer/Singularity and conda profiles are also defined in `nextflow.config`.
+
+### 3. Nextflow 24.10.5
+
 ```bash
-curl -s https://get.nextflow.io | bash
-sudo mv nextflow /usr/local/bin/    # or anywhere on your PATH
+curl -fsSL https://get.nextflow.io | bash
+sudo mv nextflow /usr/local/bin/   # or another directory on PATH
+NXF_VER=24.10.5 nextflow -version
 ```
-CholeraFlow checks its own version at startup and refuses to run on anything
-other than 24.10.x — always invoke it with `NXF_VER=24.10.5` in front, as
-shown in every command in this README. Nextflow downloads and caches that
-exact version automatically the first time; you don't need to install it
-separately.
 
-### 3. Bactopia (via conda/miniforge)
-Bactopia is the pipeline's assembly/annotation backbone. It's *not* run inside
-Docker itself — it runs directly on your machine and launches its own Docker
-containers as it goes — so it needs its own conda environment.
+For reproducible CholeraFlow runs, invoke Nextflow with `NXF_VER=24.10.5`.
 
-If you don't have conda/miniforge yet, install
-[Miniforge](https://github.com/conda-forge/miniforge) first. Then:
+### 4. Bactopia
+
+Bactopia provides the assembly/annotation backbone and launches its own
+configured execution environment.
+
 ```bash
 conda create -n bactopia -c conda-forge -c bioconda bactopia
+conda activate bactopia
+bactopia --help
 ```
-This installs Bactopia 4.x into a new environment. Find where conda put it:
+
+The portable CholeraFlow default is now `bactopia` from `PATH`; the repository
+no longer contains a developer-specific `/root/...` Bactopia path.
+
+## Database setup
+
+Large third-party databases are intentionally not committed. The canonical
+helper is:
+
 ```bash
-conda info --base   # e.g. /home/you/miniforge3
-```
-The Bactopia binary will be at
-`<that path>/envs/bactopia/bin/bactopia`. **You must pass this path to every
-CholeraFlow run** with `--bactopia_bin`, exactly as shown in Quick start above
-— the default baked into `nextflow.config` is specific to the machine this
-pipeline was developed on and will not exist on yours.
-
----
-
-## Running the pipeline
-
-### With the bundled test data (recommended first run)
-```bash
-./tests/testdata/download_test_data.sh   # one-time, ~450 MB, verifies as it downloads
-NXF_VER=24.10.5 nextflow run main.nf -profile docker --use_case outbreak \
-  --input tests/testdata/local_samplesheet.csv \
-  --metadata tests/testdata/choleraseq_metadata.csv \
-  --outdir results \
-  --bactopia_bin "$(conda info --base)/envs/bactopia/bin/bactopia"
-```
-The 4 test samples are real, publicly available *V. cholerae* genomes
-(species and read-mapping quality independently verified — see
-`docs/PROGRESS.md` for how and why). One (`VC_YEMEN_004`) is FASTA-only, to
-exercise the assembly-input code path; the other three are paired/real reads.
-
-### With your own data
-1. Build a samplesheet CSV — same format as
-   [`tests/testdata/local_samplesheet.csv`](tests/testdata/local_samplesheet.csv)
-   (`sample,fastq_1,fastq_2,fasta` — leave `fasta` blank for reads, or
-   `fastq_1`/`fastq_2` blank for an assembled FASTA input).
-2. Build a metadata CSV — same format as
-   [`tests/testdata/choleraseq_metadata.csv`](tests/testdata/choleraseq_metadata.csv).
-   Full field list and rules are in `docs/PIPELINE_SPEC.md` Section 5.
-3. Run:
-   ```bash
-   NXF_VER=24.10.5 nextflow run main.nf -profile docker --use_case outbreak \
-     --input <your samplesheet>.csv \
-     --metadata <your metadata>.csv \
-     --outdir results \
-     --bactopia_bin "$(conda info --base)/envs/bactopia/bin/bactopia"
-   ```
-
-If a run is interrupted, add `-resume` to pick up from where it left off
-instead of starting over.
-
-### Optional databases
-The pipeline runs and produces a complete report **without** any of these —
-missing ones just show as "not performed" in the report rather than causing an
-error. Add them later for fuller results:
-
-| Feature | Setup |
-|---|---|
-| ResFinder (mutation-level AMR) | `git clone https://bitbucket.org/genomicepidemiology/resfinder_db.git assets/databases/resfinder_db` |
-| VirulenceFinder | `git clone https://bitbucket.org/genomicepidemiology/virulencefinder_db.git assets/databases/virulencefinder_db` |
-| Species/serogroup typing refs | See `assets/databases/typing_refs/README.md` |
-| cgMLST (EnteroBase scheme) | See `assets/databases/cgmlst_vibrio/README.md` |
-
----
-
-## What you get
-
-```
-results/
-├── qc/                    Genome + sequence QC pass/fail per sample
-├── characterisation/      Species, serogroup, virulence, AMR
-├── mapping/               Per-sample Snippy output
-├── phylogenetics/         ML tree, SNP distance matrix
-├── cgmlst/                Allele calls + distance matrix (if schema configured)
-├── outbreak/              Cluster assignments + interpretation
-└── reports/
-    └── outbreak_report.html   ← open this first
+python3 scripts/setup_databases.py --all
 ```
 
-`outbreak_report.html` is a single self-contained file (no external CSS/JS —
-works fully offline) with 11 sections: run summary, QC, characterisation,
-virulence, AMR, phylogenetics, global context, outbreak interpretation, a
-mandatory limitations section, next steps, and methods. See
-[`examples/`](examples/) for a real one from a completed run, without
-running anything yourself.
+It installs/records:
 
----
-
-## How it works
-
-CholeraFlow doesn't reimplement standard bacterial genomics tools — it uses
-[Bactopia](https://bactopia.github.io/) as an infrastructure backbone for QC,
-assembly, and annotation, wraps a few validated external tools for
-cholera-specific screening, and adds custom logic only for the analysis steps
-that don't exist anywhere else (parsimony-site extraction, outbreak
-clustering, report generation).
-
-Each sample flows through these stages, roughly in order:
-
-| Stage | What happens | Tool(s) |
+| Analysis | Canonical path | Source/provenance |
 |---|---|---|
-| Input validation | Checks samplesheet/metadata for missing files, bad dates, invalid fields | Custom Python |
-| QC, assembly, annotation | Read trimming, de novo assembly, gene annotation, species ID, MLST, core AMR screen | **Bactopia** (FastQC, fastp, SPAdes, Prokka, Mash, AMRFinderPlus) |
-| Genome QC | *V. cholerae*-specific genome size/GC/contiguity thresholds | Custom Python |
-| Species & toxin screening | O1/O139 serogroup, biotype, CTX prophage, SXT element, virulence genes | Custom k-mer typing + **VirulenceFinder** |
-| AMR screening | Acquired resistance genes + resistance-conferring mutations | **AMRFinderPlus** + **ResFinder** |
-| Reference mapping | Maps reads to the N16961 reference genome, calls variants | **Snippy** |
-| Sequence QC | Excludes samples with too much low-confidence/missing sequence | Custom Python |
-| Recombination masking | Builds a core-genome alignment, masks recombinant regions | **snippy-core** + **Gubbins** |
-| Site extraction | Keeps only parsimony-informative SNP sites for tree-building | Custom Python |
-| Phylogenetics | Maximum-likelihood tree from the SNP alignment | **IQ-TREE2** |
-| cgMLST | Core-genome allele calling (2,402-locus scheme) | **ChewBBACA** |
-| Distance matrices | Pairwise SNP and cgMLST allele distances between all samples | **snp-dists** + custom Python |
-| Outbreak clustering | Groups samples into clusters using published SNP/allele thresholds | Custom Python |
-| Reporting | Renders everything above into the final HTML report | Custom Python (Jinja2) |
+| ResFinder | `assets/databases/resfinder_db/` | CGE ResFinder DB Git repository |
+| VirulenceFinder | `assets/databases/virulencefinder_db/` | CGE VirulenceFinder DB Git repository |
+| Vibrio cgMLST raw loci | `assets/databases/cgmlst_vibrio/raw_loci/` | EnteroBase `VIBwgMLST.cgMLSTv1` |
+| cgMLST prepared schema | `assets/databases/cgmlst_vibrio/schema/` | Produced by chewBBACA `PrepExternalSchema` |
 
-cgMLST and global-context placement are optional and gracefully skipped (shown
-as "not performed" in the report) if their reference databases aren't
-configured — see [Optional databases](#optional-databases) above. Full detail
-on every step, parameter, and threshold is in
-[`docs/PIPELINE_SPEC.md`](docs/PIPELINE_SPEC.md).
+The supported EnteroBase Vibrio cgMLST v1 scheme is
+**`VIBwgMLST.cgMLSTv1` with 1,128 core loci**. The setup helper checks that
+count and refuses an unexpected schema-size change unless it is explicitly
+authorized after scientific review.
 
----
+Prepare the downloaded EnteroBase loci for chewBBACA:
 
-## Known issues
+```bash
+python3 scripts/setup_databases.py --cgmlst
+python3 scripts/setup_databases.py --prepare-cgmlst --cpu 4
+```
 
-Two real findings from the most recent full run, not yet fixed (see
-`docs/PROGRESS.md` for full detail):
+Then enable cgMLST:
 
-1. **Sample names in the tree/SNP matrix/outbreak tables carry a `_snippy`
-   suffix** (e.g. `VC_HAITI_001_snippy`), which currently breaks the join
-   against your metadata CSV — `country`/`collection_date`/`specimen_type`
-   show as `NA` in the outbreak section even when correct metadata was
-   provided. Cosmetic to the tree/matrix, but does lose the metadata columns.
-2. The auto-generated sentence *"N of Y samples were confirmed as Vibrio
-   cholerae by species screening"* reads as a failed check even when species
-   screening was never run at all (e.g. no typing database configured) —
-   technically accurate, but easy to misread.
+```bash
+--cgmlst_schema assets/databases/cgmlst_vibrio/schema
+```
 
-Neither affects the underlying scientific results (SNP distances, clustering,
-AMR calls) — both are report/labeling issues.
+Optional database arguments for a full run are therefore:
 
----
+```bash
+--resfinder_db assets/databases/resfinder_db \
+--virulencefinder_db assets/databases/virulencefinder_db \
+--cgmlst_schema assets/databases/cgmlst_vibrio/schema
+```
 
-## Compute requirements
+Species/serogroup marker-reference instructions remain in
+`assets/databases/typing_refs/README.md`.
 
-| Profile | CPUs | RAM | Storage |
-|---|---|---|---|
-| `low_resource` (laptop) | 2 | 6 GB | 50 GB |
-| Recommended | 8 | 32 GB | 500 GB |
+### Legacy MLST database
 
-Add `-profile docker,low_resource` to any run command to cap resource use to
-the laptop profile. The ~90 minute test-set runtime quoted above was measured
-on the default (uncapped) `docker` profile — the low-resource profile will run
-slower on constrained hardware but should still complete.
+Seven-locus MLST is currently produced through **Bactopia**. CholeraFlow does
+not maintain a second local `mlst_db/` directory, because doing so would create
+duplicate database state. Record the Bactopia/MLST versions and provenance used
+for each analysis.
 
----
+Every download performed by `scripts/setup_databases.py` is summarized in
+`assets/databases/database_manifest.json` (not committed), including exact Git
+commits and an EnteroBase cgMLST archive checksum.
+
+## Running with your own data
+
+Prepare a samplesheet following `tests/testdata/local_samplesheet.csv`:
+
+```text
+sample,fastq_1,fastq_2,fasta
+```
+
+For paired reads, populate `fastq_1`/`fastq_2`; for an assembly, populate
+`fasta`. Metadata follows `tests/testdata/choleraseq_metadata.csv` and the
+rules in `docs/PIPELINE_SPEC.md`.
+
+```bash
+conda activate bactopia
+NXF_VER=24.10.5 nextflow run main.nf \
+  -profile docker \
+  --use_case outbreak \
+  --input samplesheet.csv \
+  --metadata metadata.csv \
+  --outdir results \
+  --resfinder_db assets/databases/resfinder_db \
+  --virulencefinder_db assets/databases/virulencefinder_db \
+  --cgmlst_schema assets/databases/cgmlst_vibrio/schema
+```
+
+Use `-resume` after an interrupted run.
+
+## Analysis stages
+
+| Stage | Function | Main implementation |
+|---|---|---|
+| Input validation | file/metadata validation | custom Python |
+| QC, assembly, annotation | bacterial genomics backbone | Bactopia |
+| Genome QC | *V. cholerae*-specific QC | custom Python |
+| Species/serogroup/toxin | marker and virulence screening | custom typing + VirulenceFinder |
+| AMR | acquired genes and resistance determinants | AMRFinderPlus + ResFinder |
+| Reference mapping | N16961 mapping/variant calls | Snippy |
+| Sequence QC | missing/low-confidence sequence filtering | custom Python |
+| Recombination masking | core alignment + recombination masking | snippy-core + Gubbins |
+| Site extraction | parsimony-informative sites | custom Python |
+| Phylogenetics | maximum-likelihood tree | IQ-TREE2 |
+| cgMLST | 1,128-locus EnteroBase Vibrio cgMLST v1 | chewBBACA |
+| Distances | SNP and allele distance matrices | snp-dists + custom Python |
+| Outbreak clustering | configurable distance-based screening | custom Python |
+| Reporting | self-contained HTML report | Python + Jinja2 3.1.6 |
+
+The SNP/cgMLST outbreak thresholds remain configurable and are **not** changed
+by database setup or weekly automation. They require scientific review before
+methodological alteration.
+
+## Outputs
+
+```text
+results/
+├── qc/
+├── characterisation/
+├── mapping/
+├── phylogenetics/
+├── cgmlst/
+├── outbreak/
+└── reports/
+    └── outbreak_report.html
+```
+
+The report is self-contained and can be opened offline.
+
+## Correctness fixes in this package
+
+This corrected version includes regression-tested fixes for two previously
+recorded report/integration problems:
+
+- terminal `_snippy` labels in SNP matrices are normalized back to biological
+  sample IDs before joining metadata and cgMLST results;
+- when all typing markers are `not_run`, the report now says characterisation
+  was not performed instead of generating a misleading `0 of N confirmed`
+  species sentence.
+
+It also corrects the EnteroBase scheme identity/locus count, removes the
+machine-specific Bactopia default, pins ResFinder/VirulenceFinder container
+versions already used by the project, and updates Jinja2 to 3.1.6.
+
+## Testing
+
+Install the lightweight development dependencies:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+```
+
+Run the Python suite:
+
+```bash
+python3 -m py_compile bin/*.py scripts/*.py
+python3 -m pytest -q -rs
+```
+
+Validate the Nextflow configuration when Nextflow is installed:
+
+```bash
+NXF_VER=24.10.5 nextflow config -profile test >/tmp/choleraflow.config.txt
+```
+
+Module-level Nextflow workflows live in `tests/test_*.nf`; container-dependent
+tests require Docker and the corresponding databases/tools.
+
+GitHub CI is defined in `.github/workflows/python-ci.yml`.
+
+## Weekly OpenAI Codex maintenance
+
+A guarded weekly maintenance workflow is included at:
+
+```text
+.github/workflows/weekly-codex-maintenance.yml
+```
+
+It uses OpenAI's official `openai/codex-action@v1`, runs the test baseline,
+allows Codex to make a small maintenance patch, reruns tests, and then uses a
+**separate GitHub publishing job** to create an `ai/weekly-maintenance-*` branch
+and pull request. It never merges its own changes into `main`.
+
+One-time GitHub setup:
+
+1. Add the repository Actions secret `OPENAI_API_KEY`.
+2. Allow Actions to create pull requests if your organization disables that by
+   default.
+3. Keep `main` branch protection/human review enabled.
+
+The schedule is Monday at 06:00 UTC and can also be triggered manually.
+Detailed security/operation notes are in `docs/MAINTENANCE_AUTOMATION.md` and
+persistent agent rules are in `AGENTS.md`.
+
+## Offline deployments
+
+See `docs/OFFLINE_DEPLOYMENT.md`. In particular, the report module requires
+Jinja2 3.1.6. The conda profile pins it; a strictly disconnected Docker
+deployment should pre-cache/build a report image containing that dependency
+rather than relying on runtime package installation.
 
 ## Project structure
 
-```
-main.nf                Pipeline entry point
-nextflow.config         All parameters, defaults, profiles
-subworkflows/           CORE_BACKBONE (QC/AMR/mapping) + OUTBREAK_BRANCH (phylo/cluster/report)
-modules/local/          One Nextflow process per tool/step
-bin/                    Custom analysis scripts (Tier 3 — cholera-specific logic)
-assets/                 Reference genome, report template, database setup docs
-tests/                  Unit tests (Python) + standalone Nextflow tests, one per step
-tests/testdata/         Test genomes + download script
-examples/               Real output from a completed run, for quick review
-docs/                   Full pipeline specification and build history
+```text
+main.nf                     Pipeline entry point
+nextflow.config             Parameters and execution profiles
+subworkflows/               Core and outbreak workflows
+modules/local/              Nextflow process modules
+bin/                        Custom Python analysis/reporting utilities
+scripts/                    Reproducible maintenance/database helpers
+assets/references/          Bundled reference files
+assets/databases/           Database setup/provenance documentation
+assets/report_templates/    HTML report template
+.github/workflows/          CI + guarded weekly Codex maintenance
+AGENTS.md                    Persistent engineering/scientific agent rules
+tests/                      Python and Nextflow module tests
+examples/                   Example outputs
+docs/                       Specification, maintenance and build documentation
+reference_gui.html           Browser GUI prototype
 ```
 
-For the complete architecture, parameter reference, and output specification,
-see [`docs/PIPELINE_SPEC.md`](docs/PIPELINE_SPEC.md). For the full build and
-verification history — including exactly how the test data was chosen and
-verified — see [`docs/PROGRESS.md`](docs/PROGRESS.md).
+For detailed architecture and parameters, see `docs/PIPELINE_SPEC.md`. Historical
+implementation notes and prior validation records are retained in
+`docs/PROGRESS.md`; they should not override the current code/README when they
+describe older versions.
