@@ -6,84 +6,111 @@
 <title>CholeraFlow Outbreak Report</title>
 <style>
   :root {
-    --ink: #12233a; --muted: #5b6b7b; --line: #d7dee8; --bg: #f4f6fa;
-    --brand: #1a4f8b; --brand-dark: #12395f; --warn-bg: #fff4e5; --warn-line: #e0a355;
-    --danger-bg: #fdecea; --danger-line: #d1493b; --ok: #2f8f4e; --absent: #c9d0da;
+    --ink: #12233a;
+    --muted: #5c6c7d;
+    --line: #d8e0ec;
+    --bg: #edf3f9;
+    --panel: #ffffff;
+    --panel-alt: #f7fafd;
+    --brand: #0d5ea8;
+    --brand-dark: #0b3f73;
+    --brand-soft: rgba(13, 94, 168, 0.10);
+    --ok: #1e8b5c;
+    --ok-soft: #dff5ea;
+    --warn: #c77a16;
+    --warn-bg: #fff5de;
+    --warn-line: #d9a657;
+    --danger-bg: #fee9e7;
+    --danger-line: #d64a3f;
+    --absent: #dfe7f0;
+    --shadow: 0 14px 30px rgba(15, 42, 74, 0.08);
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
+    margin: 0; background: linear-gradient(180deg, #edf3f9 0%, #eaf1f8 100%);
+    color: var(--ink);
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5; font-size: 15px;
+    line-height: 1.55; font-size: 15px;
   }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px; }
   header.report {
-    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-    color: #fff; padding: 28px 32px; border-radius: 10px; margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--brand-dark), var(--brand), #1b6fc5);
+    color: #fff; padding: 26px 28px 18px; border-radius: 16px;
+    box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.12);
   }
-  header.report h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: .2px; }
-  header.report .sub { opacity: .9; font-size: 14px; }
+  header.report h1 { margin: 0 0 10px; font-size: 28px; letter-spacing: .2px; }
+  header.report .sub { opacity: .92; font-size: 14px; }
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
+    margin-top: 20px;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 12px; padding: 12px 14px; min-height: 84px;
+    backdrop-filter: blur(8px);
+  }
+  .stat-card .label { display: block; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: .82; }
+  .stat-card .value { display: block; margin-top: 8px; font-size: 24px; font-weight: 700; }
   nav.toc {
-    background: #fff; border: 1px solid var(--line); border-radius: 8px;
-    padding: 14px 18px; margin: 16px 0 24px; font-size: 14px;
+    background: rgba(255,255,255,0.86); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; margin: 0 0 22px; font-size: 14px; box-shadow: 0 8px 24px rgba(15,42,74,0.04);
   }
-  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+  nav.toc ol { margin: 8px 0 0; padding-left: 20px; columns: 2; }
   nav.toc a { color: var(--brand); text-decoration: none; }
   nav.toc a:hover { text-decoration: underline; }
   section {
-    background: #fff; border: 1px solid var(--line); border-radius: 8px;
-    padding: 20px 24px; margin-bottom: 20px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 20px; box-shadow: 0 10px 18px rgba(15,42,74,0.03);
   }
   section > h2 {
     margin: 0 0 14px; font-size: 19px; color: var(--brand-dark);
-    border-bottom: 2px solid var(--line); padding-bottom: 8px;
+    border-bottom: 2px solid var(--line); padding-bottom: 8px; display: flex; align-items: center;
   }
   section > h2 .num {
-    display: inline-block; min-width: 26px; color: var(--brand); font-weight: 700;
+    display: inline-block; min-width: 30px; color: var(--brand); font-weight: 700;
   }
-  h3 { font-size: 15px; margin: 18px 0 8px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; color: var(--ink); }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   .scroll { overflow-x: auto; }
-  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
-  th { background: #eef2f8; font-weight: 600; }
-  tr:nth-child(even) td { background: #fafbfd; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: #edf4fb; font-weight: 700; color: var(--brand-dark); }
+  tr:nth-child(even) td { background: var(--panel-alt); }
   .not-performed {
-    background: var(--warn-bg); border: 1px dashed var(--warn-line); color: #8a5a12;
-    padding: 12px 14px; border-radius: 6px; font-style: italic;
+    background: var(--warn-bg); border: 1px dashed var(--warn-line); color: #8b5d18;
+    padding: 12px 14px; border-radius: 8px; font-style: italic;
   }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-  .pill.pass { background: #e5f4ea; color: var(--ok); }
-  .pill.warn { background: var(--warn-bg); color: #9a6212; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.pass { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
   .pill.fail { background: var(--danger-bg); color: var(--danger-line); }
-  /* !important so these win over the zebra-striping rule (tr:nth-child(even) td),
-     which has higher specificity and would otherwise hide white ticks on even rows. */
-  .vir-present { background: #2f8f4e !important; color: #fff; text-align: center; font-weight: 600; }
-  .vir-absent  { background: var(--absent) !important; color: #55607a; text-align: center; }
-  .vir-nt      { background: #fff !important; color: #9aa4b6; text-align: center; font-style: italic; }
+  .vir-present { background: var(--ok); color: #fff; text-align: center; font-weight: 700; }
+  .vir-absent  { background: var(--absent); color: var(--ink); text-align: center; }
+  .vir-nt      { background: #fff; color: #92a0b5; text-align: center; font-style: italic; }
   pre.newick {
-    background: #0f2136; color: #d7e6f5; padding: 14px; border-radius: 6px;
+    background: #0b1d2d; color: #dfeaf8; padding: 16px; border-radius: 10px;
     overflow-x: auto; font-size: 12.5px; white-space: pre-wrap; word-break: break-all;
+    border: 1px solid rgba(255,255,255,0.05);
   }
   .sentences li { margin-bottom: 8px; }
   .sxt-flag {
     background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-line);
-    padding: 8px 12px; border-radius: 6px; font-weight: 600; margin: 10px 0;
+    padding: 10px 12px; border-radius: 8px; font-weight: 600; margin: 0 0 14px;
   }
-  /* Limitations — deliberately prominent, not skimmable, never collapsed. */
   section.limitations {
-    background: var(--warn-bg); border: 3px solid var(--warn-line);
+    background: linear-gradient(180deg, #fffaf0 0%, #fff4df 100%);
+    border: 2px solid var(--warn-line);
   }
-  section.limitations > h2 { color: #8a5a12; border-bottom-color: var(--warn-line); }
-  section.limitations ul { margin: 6px 0 0; padding-left: 20px; }
+  section.limitations > h2 { color: #89541c; border-bottom-color: var(--warn-line); }
+  section.limitations ul { margin: 8px 0 0; padding-left: 20px; }
   section.limitations li { margin-bottom: 8px; font-weight: 500; }
   .caveat {
-    background: #eef3fb; border-left: 4px solid var(--brand); padding: 10px 14px;
-    border-radius: 4px; font-size: 13.5px; margin-top: 12px;
+    background: #edf5ff; border-left: 4px solid var(--brand); padding: 10px 14px;
+    border-radius: 6px; font-size: 13.5px; margin-top: 12px;
   }
   .kv { width: auto; }
-  .kv td:first-child { font-weight: 600; background: #f4f7fb; white-space: nowrap; }
+  .kv td:first-child { font-weight: 700; background: #f4f7fb; white-space: nowrap; }
   footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
-  .muted { color: #6b7688; font-size: 13px; }
+  .muted { color: #6a7788; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -94,6 +121,32 @@
   <div class="sub">
     <em>Vibrio cholerae</em> genomic surveillance &middot;
     Mode: {{ run.mode }} &middot; Generated: {{ run.date }}
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="label">Samples</span>
+      <span class="value">{{ summary.samples }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">QC pass</span>
+      <span class="value">{{ summary.passed_qc }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Confirmed</span>
+      <span class="value">{{ summary.confirmed_species }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Clusters</span>
+      <span class="value">{{ summary.clusters }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">SXT MDR</span>
+      <span class="value">{{ summary.sxt_samples }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Phylogeny</span>
+      <span class="value">{{ summary.phylo_status }}</span>
+    </div>
   </div>
 </header>
 

@@ -283,6 +283,33 @@ def build_global(global_tree):
     return {"status": "ok", "newick": global_tree}
 
 
+def build_summary(qc, characterisation, virulence, amr, outbreak, phylogenetics):
+    sample_total = qc["n_total"] if qc["status"] == "ok" else 0
+    qc_pass = qc["n_pass"] if qc["status"] == "ok" else 0
+
+    confirmed = 0
+    if characterisation["status"] == "ok":
+        confirmed = sum(1 for r in characterisation["rows"] if str(r.get("species_confirmation", "")).strip().lower() == "confirmed")
+
+    virulence_markers = 0
+    if virulence["status"] == "ok":
+        virulence_markers = sum(1 for s in virulence["samples"] if any(v in ("present", "absent") for v in virulence["grid"][s].values()))
+
+    sxt_samples = len(amr["sxt_samples"]) if amr["status"] == "ok" else 0
+    clusters = outbreak["summary"].get("n_clusters", 0) if outbreak["status"] == "ok" else 0
+    phylo_status = "not_run" if phylogenetics["status"] == "not_performed" else "available"
+
+    return {
+        "samples": sample_total,
+        "passed_qc": qc_pass,
+        "confirmed_species": confirmed,
+        "virulence_markers": virulence_markers,
+        "sxt_samples": sxt_samples,
+        "clusters": clusters,
+        "phylo_status": phylo_status,
+    }
+
+
 def build_outbreak(cluster_rows, cluster_summary, pairs):
     if cluster_rows is None and cluster_summary is None:
         return {"status": "not_performed",
@@ -463,6 +490,7 @@ def build_context(args):
         "phylogenetics": phylo,
         "global": global_ctx,
         "outbreak": outbreak,
+        "summary": build_summary(qc, characterisation, virulence_s, amr_s, outbreak, phylo),
         "sentences": build_sentences(qc, characterisation, virulence_s, amr_s, outbreak),
         "limitations": LIMITATIONS,
         "next_steps": build_next_steps(amr_s, outbreak, global_ctx),

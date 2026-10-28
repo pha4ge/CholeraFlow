@@ -132,6 +132,13 @@ class TestRender(unittest.TestCase):
             for heading in SECTION_HEADINGS:
                 self.assertIn(heading, html, "Missing section heading: %s" % heading)
 
+    def test_summary_cards_render(self):
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            html = gr.render(ctx, TEMPLATE, os.path.join(d, "r.html"))
+            for label in ("Samples", "QC pass", "Confirmed", "Clusters", "SXT MDR"):
+                self.assertIn(label, html, "Missing summary card label: %s" % label)
+
     def test_section_order(self):
         # Order by the unambiguous section id anchors (id="s1".."s11"), which
         # only appear on the <section> elements, in document order.
