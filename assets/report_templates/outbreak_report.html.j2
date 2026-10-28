@@ -1,3 +1,4 @@
+{% from 'visuals.html.j2' import chart_grid, chart_card, tree_panel %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,6 +100,21 @@
     <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
     {% endfor %}
   </table>
+  <h3>Cohort metadata overview</h3>
+  {% if metadata_rows %}{{ chart_grid(charts.metadata) }}
+  <details class="source-details"><summary>Recorded metadata ({{ metadata_rows|length }} rows)</summary><div class="scroll"><table aria-label="Recorded sample metadata">
+    <tr>{% for field in metadata_rows[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+    {% for row in metadata_rows %}<tr>{% for field in metadata_rows[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+  </table></div></details>
+  {% else %}<div class="not-performed">Sample metadata was not supplied. Geographic, specimen and collection-date graphs are unavailable.</div>{% endif %}
+  <details class="sample-explorer source-details"><summary>Per-sample record explorer ({{ sample_details|length }} identifiers)</summary>
+    <p class="muted">All supplied source fields are retained below. Records are grouped only by exact identifiers; tool-specific suffixes remain visible.</p>
+    <label class="sample-filter-label" hidden>Find sample <input class="sample-filter" type="search" placeholder="Sample identifier" aria-label="Filter sample record explorer"></label>
+    <span class="sample-filter-count muted" aria-live="polite"></span>
+    {% for item in sample_details %}<details class="sample-record" data-sample="{{ item.sample }}"><summary>{{ item.sample }} <span class="muted">· {{ item.sources|length }} source record(s)</span></summary>
+      {% for record in item.sources %}<h4>{{ record.source }}</h4><dl class="record-fields">{% for field, value in record.fields.items() %}<div><dt>{{ field }}</dt><dd>{{ value if value else 'Not recorded' }}</dd></div>{% endfor %}</dl>{% endfor %}
+    </details>{% endfor %}
+  </details>
 </section>
 
 {# ── 2. QC summary ───────────────────────────────────────────────────────── #}
@@ -121,6 +137,8 @@
       <figcaption class="qc-legend">{% for label, count, state in qc_groups %}<span><i class="qc-dot {{ state }}" aria-hidden="true"></i>{{ label }} <strong>{{ count }}</strong></span>{% endfor %}</figcaption>
     </figure>
     {% endif %}
+    {{ chart_grid(charts.qc) }}
+    <h3>Assembly QC table</h3>
     <div class="scroll">
     <table>
       <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
@@ -146,11 +164,19 @@
       </table>
     {% endif %}
   {% endif %}
+<div class="sequence-panel">
+  <h3>Mapping-sequence QC details</h3>
+  {% if sequence_qc %}<div class="scroll"><table aria-label="Mapping-sequence QC">
+    <tr><th>Sample</th><th>Status</th><th>Sequences</th><th>Total aligned bp</th><th>N/gap bp</th><th>N/gap %</th><th>Reported reason</th></tr>
+    {% for row in sequence_qc %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.n_sequences }}</td><td>{{ row.total_bp }}</td><td>{{ row.gap_bp }}</td><td>{{ row.n_percentage }}</td><td>{{ row.reason }}</td></tr>{% endfor %}
+  </table></div>{% else %}<div class="not-performed">Mapping-sequence QC was not available for this report.</div>{% endif %}
+</div>
 </section>
 
 {# ── 3. Cholera characterisation ─────────────────────────────────────────── #}
 <section id="s3">
   <h2><span class="num">3.</span> Cholera characterisation</h2>
+  {{ chart_grid(charts.typing) }}
   {% if characterisation.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ characterisation.reason }}</div>
   {% else %}
@@ -176,6 +202,7 @@
 {# ── 4. Virulence summary ────────────────────────────────────────────────── #}
 <section id="s4">
   <h2><span class="num">4.</span> Virulence summary</h2>
+  {{ chart_grid(charts.virulence) }}
   {% if virulence.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ virulence.reason }}</div>
   {% else %}
@@ -206,6 +233,7 @@
 {# ── 5. AMR summary ──────────────────────────────────────────────────────── #}
 <section id="s5">
   <h2><span class="num">5.</span> AMR summary</h2>
+  {{ chart_grid(charts.amr) }}
   {% if amr.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ amr.reason }}</div>
   {% else %}
@@ -241,20 +269,16 @@
 {# ── 6. Phylogenetic summary ─────────────────────────────────────────────── #}
 <section id="s6">
   <h2><span class="num">6.</span> Phylogenetic summary</h2>
-  {% if phylogenetics.status == 'not_performed' %}
+  {% if phylogenetics.status == 'not_performed' and not cgmlst.heatmap %}
     <div class="not-performed">Analysis not performed — {{ phylogenetics.reason }}</div>
   {% else %}
-    {% if phylogenetics.newick %}
-      <h3>Maximum-likelihood tree (Newick)</h3>
-      <pre class="newick">{{ phylogenetics.newick }}</pre>
-    {% else %}
-      <p class="muted">Tree file not available.</p>
-    {% endif %}
+    {{ tree_panel(phylogenetics.tree_view, phylogenetics.newick, 'cohort-tree') }}
+    {{ chart_grid(charts.distances) }}
 
     {% if phylogenetics.heatmap %}
       <h3>SNP distance matrix</h3>
       <p class="muted">Darker cells indicate greater pairwise SNP distance (max
-        {{ phylogenetics.heatmap.max }} SNPs).</p>
+        {{ phylogenetics.heatmap.max }} SNPs in this view). Showing {{ phylogenetics.heatmap.shown_samples }} of {{ phylogenetics.heatmap.total_samples }} samples; the complete source matrix is published in phylogenetics/.</p>
       <div class="scroll">
       <table class="matrix-table" aria-label="Pairwise SNP distance matrix">
         <tr><th scope="col">Sample</th>{% for s in phylogenetics.heatmap.samples %}<th scope="col">{{ s }}</th>{% endfor %}</tr>
@@ -269,6 +293,16 @@
       </table>
       </div>
     {% endif %}
+
+    {% if cgmlst.heatmap %}
+      <h3>cgMLST distance heatmap</h3>
+      <p class="muted">Showing {{ cgmlst.heatmap.shown_samples }} of {{ cgmlst.heatmap.total_samples }} samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
+      <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
+        <tr><th scope="col">Sample</th>{% for sample in cgmlst.heatmap.samples %}<th scope="col">{{ sample }}</th>{% endfor %}</tr>
+        {% for row in cgmlst.heatmap.rows %}<tr><th scope="row">{{ row.sample }}</th>{% for cell in row.cells %}<td style="background:{{ cell.bg }};color:{{ cell.fg }};text-align:center">{{ cell.text }}</td>{% endfor %}</tr>{% endfor %}
+      </table></div>
+    {% endif %}
+    {% if tree_diagnostics %}<details class="source-details"><summary>Original IQ-TREE inference diagnostics</summary><pre class="diagnostics">{{ tree_diagnostics }}</pre></details>{% endif %}
 
     {% if phylogenetics.clusters %}
       <h3>Cluster assignments</h3>
@@ -292,14 +326,14 @@
   {% if global.status == 'not_performed' %}
     <div class="not-performed">{{ global.message }}</div>
   {% else %}
-    <h3>Global context tree (Newick)</h3>
-    <pre class="newick">{{ global.newick }}</pre>
+    {{ tree_panel(global.tree_view, global.newick, 'global-tree') }}
   {% endif %}
 </section>
 
 {# ── 8. Outbreak interpretation ──────────────────────────────────────────── #}
 <section id="s8">
   <h2><span class="num">8.</span> Outbreak interpretation</h2>
+  {{ chart_grid(charts.clusters) }}
   {% if outbreak.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ outbreak.reason }}</div>
   {% else %}
@@ -315,6 +349,11 @@
       {% endfor %}
     </table>
     </div>
+
+    {% if outbreak.pairs %}<details class="source-details"><summary>Reported within-threshold pairs ({{ outbreak.pairs|length }})</summary><div class="scroll"><table aria-label="Reported within-threshold pairs">
+      <tr>{% for field in outbreak.pairs[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+      {% for row in outbreak.pairs %}<tr>{% for field in outbreak.pairs[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+    </table></div></details>{% endif %}
 
     <h3>Interpretation</h3>
     <ul class="sentences">
@@ -373,6 +412,12 @@
     <p class="muted">Software versions file not available — see pipeline_info/software_versions.yml
       in the results directory once produced.</p>
   {% endif %}
+  <h3>Report input provenance</h3>
+  <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
+  <div class="scroll"><table aria-label="Report input provenance">
+    <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
+    {% for item in input_inventory %}<tr><td>{{ item.source }}</td><td>{{ item.file }}</td><td>{{ item.status }}</td><td>{{ item.bytes if item.bytes is not none else '—' }}</td><td class="checksum">{{ item.sha256 or '—' }}</td></tr>{% endfor %}
+  </table></div>
   <p class="muted">Report generated {{ methods.date }} by CholeraFlow {{ run.version }}.</p>
 </section>
 

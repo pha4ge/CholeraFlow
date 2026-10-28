@@ -79,3 +79,50 @@ share and archive it according to the same rules as its underlying analysis.
 
 [The example report](../examples/reports/outbreak_report.html) is explicitly
 labelled as a synthetic demonstration built from software test fixtures.
+
+## Extended graphs and tree view
+
+The report includes 19 chart panels when all corresponding inputs are supplied:
+
+| Area | Graphs |
+| --- | --- |
+| Assembly and mapping QC (8) | Assembly size, GC content, N50, contig count, largest contig, size vs GC, N50 vs contig count, aligned N/gap percentage |
+| Reported characterisation (3) | Species confirmation, serogroup and biotype label counts |
+| Sample metadata (3) | Recorded country, specimen type and collection month |
+| Comparisons (2) | Pairwise SNP and cgMLST distance distributions with min/median/max and pair counts |
+| Existing analysis summaries (3) | Component sizes, reported AMR-class marker counts and reported marker-detection counts |
+
+The report also includes the genome-QC distribution bar, SNP/cgMLST distance
+heatmaps and graphical cohort/global trees when available. Numeric QC graphs
+include min/median/max statistics, units, valid-value counts and omitted-value
+counts. Missing results never become zero-valued observations. Metadata charts
+describe sampling records, not disease incidence. Marker charts summarize
+existing output calls and display assessed denominators; they do not introduce
+new biological calls or predict phenotype.
+
+Trees are drawn directly from the supplied Newick, preserving labels, topology,
+leaf order, internal labels and branch lengths. Complete nonzero branch lengths
+produce a distance-scaled view and scale bar in supplied units. Missing or all-zero
+lengths produce an explicitly labelled topology-only view. No inference,
+rerooting or pruning is performed. The original Newick is available in a closed
+disclosure; reading the tree never requires copying it into another tool. Tip
+search highlights labels, zoom enlarges the graphic, and **Download SVG** exports
+the vector image. Global trees use the same controls.
+
+Each chart has expandable source data and an SVG download. Numeric/category bar
+plots show up to 60 entries and scatter plots up to 2,000 points, with complete
+source values retained in their data tables. Heatmaps show up to 80 samples and
+state how many are displayed; complete matrices remain in the published TSVs.
+The tree renderer rejects more than 1,000 tips, 4,000 nodes, depth 200 or
+1,000,000 characters of Newick text with an explicit message; it never silently
+samples the tree.
+
+The sample record explorer retains all fields from each supplied source and
+groups records only by exact identifier. Mapping-sequence QC and original
+IQ-TREE diagnostics are passed into the report when available. The Methods
+section records source filenames, sizes and SHA-256 checksums. These identify
+input bytes; they do not establish scientific validity.
+
+For development-only interaction checks, make `jsdom` available in a temporary
+Node.js 22+ environment and run `node tests/report_dom_checks.cjs`. No Node.js or
+JavaScript package is required to generate or open the report.

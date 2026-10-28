@@ -113,6 +113,31 @@ section.limitations li { margin-bottom: 10px; }
 footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: center; }
 .muted { color: var(--muted); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; margin: 20px 0; align-items: start; }
+.chart-card, .tree-panel { margin: 0; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.chart-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.chart-heading h3 { margin: 0; font-size: 14px; }
+.chart-heading .button { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
+.chart-viewport { overflow: auto; max-height: 420px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.report-chart { display: block; width: 100%; min-width: 560px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.chart-meta { color: var(--muted); font-size: 10px; margin: 6px 0; }
+.mini-stats { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px; background: var(--panel-alt); border-radius: 6px; }
+.mini-stats dt { font-size: 10px; color: var(--muted); }.mini-stats dd { margin: 0; font-size: 15px; font-weight: 700; }
+details > summary { cursor: pointer; color: var(--brand-dark); font-size: 12px; font-weight: 600; padding: 9px 0; }
+details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3px; }
+.source-details, .chart-data { border-top: 1px solid var(--line); margin-top: 14px; }
+.sample-record { padding: 0 12px; margin: 8px 0; border: 1px solid var(--line); border-radius: 7px; }
+.sample-record h4 { font-size: 12px; margin: 14px 0 6px; }
+.record-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; margin: 0 0 14px; background: var(--line); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.record-fields > div { padding: 9px 12px; background: var(--panel-alt); min-width: 0; }.record-fields dt { font-size: 10px; color: var(--muted); }.record-fields dd { margin: 2px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+.sample-filter-label, .tree-controls label { font-size: 12px; color: var(--muted); }
+.sample-filter, .tree-find { padding: 6px 9px; border: 1px solid #c9d7e0; border-radius: 6px; margin: 5px 8px; }
+.tree-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.tree-controls label { display: flex; align-items: center; }.tree-match-count { font-size: 11px; color: var(--muted); }
+.tree-viewport { overflow: auto; max-height: 680px; border: 1px solid var(--line); border-radius: 7px; background: #fbfdfe; }
+.tree-svg { display: block; width: 100%; min-width: 800px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tree-tip.match { fill: #a52e36; font-weight: 750; text-decoration: underline; }
+.diagnostics { max-height: 500px; overflow: auto; padding: 16px; background: var(--panel-alt); border-radius: 7px; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (min-width: 1600px) { nav.toc { width: max(250px, calc((100vw - 1640px) / 2 + 250px)); padding-left: max(20px, calc((100vw - 1640px) / 2 + 20px)); } }
 @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .wrap { padding: 28px 24px 24px 270px; } }
 @media (max-width: 800px) {
@@ -142,6 +167,11 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
   .matrix-table th { position: static; } pre.newick { color: #111; background: #f2f2f2; }
   tr[hidden] { display: table-row !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .charts-grid { grid-template-columns: 1fr; }.chart-card, .tree-panel { break-inside: avoid; box-shadow: none; }
+  .chart-viewport, .tree-viewport { overflow: visible; max-height: none; }
+  .report-chart, .tree-svg { min-width: 0; width: 100% !important; max-height: 230mm; }
+  .tree-controls, .js-svg-export, .sample-filter-label, .sample-filter-count { display: none !important; }
+  .sample-record[hidden] { display: block !important; }
 }</style>
 </head>
 <body>
@@ -235,6 +265,99 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
     <tr><td>Max missing (QC)</td><td>50</td></tr>
     <tr><td>Min parsimony coverage</td><td>0.7</td></tr>
   </table>
+  <h3>Cohort metadata overview</h3>
+<div class="charts-grid"><figure class="chart-card" id="chart-countries">
+  <div class="chart-heading"><h3 id="title-countries">Samples by recorded country</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples by recorded country as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples by recorded country graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-countries desc-countries">
+    <desc id="desc-countries">Samples by recorded country.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>Haiti: 1 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">Haiti</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>Kenya: 1 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">Kenya</text>
+      <rect x="240" y="63" width="360.0" height="18" rx="3" fill="#496db5"/>
+      <text x="608.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>Malawi: 1 samples</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">Malawi</text>
+      <rect x="240" y="88" width="360.0" height="18" rx="3" fill="#a96e29"/>
+      <text x="608.0" y="102" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">1 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 sample records · 3 categories · 0 unavailable/invalid values omitted</div>
+  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Samples by recorded country source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>Haiti</td><td>1.0</td></tr><tr><td>Kenya</td><td>1.0</td></tr><tr><td>Malawi</td><td>1.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-specimens">
+  <div class="chart-heading"><h3 id="title-specimens">Samples by recorded specimen</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples by recorded specimen as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples by recorded specimen graphic">
+  <svg class="report-chart" viewBox="0 0 720 132" role="img" aria-labelledby="title-specimens desc-specimens">
+    <desc id="desc-specimens">Samples by recorded specimen.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="92" stroke="#b5c8d4"/>
+      <g><title>rectal_swab: 1 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">rectal_swab</text>
+      <rect x="240" y="38" width="180.0" height="18" rx="3" fill="#087d83"/>
+      <text x="428.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>stool: 2 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">stool</text>
+      <rect x="240" y="63" width="360.0" height="18" rx="3" fill="#496db5"/>
+      <text x="608.0" y="77" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="117" fill="#536779" font-size="10">0</text>
+      <text x="600" y="117" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 sample records · 2 categories · 0 unavailable/invalid values omitted</div>
+  </figcaption>
+  <details class="chart-data"><summary>View chart data (2 rows)</summary><div class="scroll"><table aria-label="Samples by recorded specimen source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>rectal_swab</td><td>1.0</td></tr><tr><td>stool</td><td>2.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-collection-months">
+  <div class="chart-heading"><h3 id="title-collection-months">Samples by collection month</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples by collection month as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples by collection month graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-collection-months desc-collection-months">
+    <desc id="desc-collection-months">Samples by collection month. Recorded sampling dates, not disease incidence or transmission rates. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>2022-10: 1 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">2022-10</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>2022-12: 1 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">2022-12</text>
+      <rect x="240" y="63" width="360.0" height="18" rx="3" fill="#496db5"/>
+      <text x="608.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>2023-01: 1 samples</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">2023-01</text>
+      <rect x="240" y="88" width="360.0" height="18" rx="3" fill="#a96e29"/>
+      <text x="608.0" y="102" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">1 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 sample records · 3 months / categories · 0 unavailable/invalid values omitted</div>
+<p class="muted">Recorded sampling dates, not disease incidence or transmission rates.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Samples by collection month source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>2022-10</td><td>1.0</td></tr><tr><td>2022-12</td><td>1.0</td></tr><tr><td>2023-01</td><td>1.0</td></tr>  </table></div></details>
+</figure></div>
+  <details class="source-details"><summary>Recorded metadata (3 rows)</summary><div class="scroll"><table aria-label="Recorded sample metadata">
+    <tr><th>sample_id</th><th>country</th><th>collection_date</th><th>specimen_type</th></tr>
+<tr><td>VC_HAITI_001</td><td>Haiti</td><td>2022-10-14</td><td>stool</td></tr><tr><td>VC_KENYA_003</td><td>Kenya</td><td>2023-01-17</td><td>stool</td></tr><tr><td>VC_MALAWI_002</td><td>Malawi</td><td>2022-12-03</td><td>rectal_swab</td></tr>  </table></div></details>
+  <details class="sample-explorer source-details"><summary>Per-sample record explorer (3 identifiers)</summary>
+    <p class="muted">All supplied source fields are retained below. Records are grouped only by exact identifiers; tool-specific suffixes remain visible.</p>
+    <label class="sample-filter-label" hidden>Find sample <input class="sample-filter" type="search" placeholder="Sample identifier" aria-label="Filter sample record explorer"></label>
+    <span class="sample-filter-count muted" aria-live="polite"></span>
+<details class="sample-record" data-sample="VC_HAITI_001"><summary>VC_HAITI_001 <span class="muted">· 7 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.05</dd></div><div><dt>gc_percent</dt><dd>47.6</dd></div><div><dt>largest_contig_kb</dt><dd>822.6</dd></div><div><dt>n50</dt><dd>248199</dd></div><div><dt>contig_count</dt><dd>51</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>400000</dd></div><div><dt>n_percentage</dt><dd>10</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.98</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>ctxA;ctxB;hlyA</dd></div><div><dt>ctx_A</dt><dd>True</dd></div><div><dt>ctx_B</dt><dd>True</dd></div><div><dt>tcp_genes</dt><dd>tcpA</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>acquired_resistance</dd></div><div><dt>tetracycline</dt><dd>yes</dd></div><div><dt>tet_genes</dt><dd>tet(A)</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>yes</dd></div><div><dt>sul_genes</dt><dd>sul2</dd></div><div><dt>trimethoprim</dt><dd>yes</dd></div><div><dt>dfr_genes</dt><dd>dfrA1</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>yes</dd></div><div><dt>sxt_markers</dt><dd>sul2;dfrA1;strB</dd></div><div><dt>class_summary</dt><dd>SXT-MDR</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_HAITI_001</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl>    </details><details class="sample-record" data-sample="VC_KENYA_003"><summary>VC_KENYA_003 <span class="muted">· 7 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.02</dd></div><div><dt>gc_percent</dt><dd>47.5</dd></div><div><dt>largest_contig_kb</dt><dd>640.1</dd></div><div><dt>n50</dt><dd>180000</dd></div><div><dt>contig_count</dt><dd>60</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>200000</dd></div><div><dt>n_percentage</dt><dd>5</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.97</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>hlyA</dd></div><div><dt>ctx_A</dt><dd>False</dd></div><div><dt>ctx_B</dt><dd>False</dd></div><div><dt>tcp_genes</dt><dd>Not recorded</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>tetracycline</dt><dd>no</dd></div><div><dt>tet_genes</dt><dd>Not recorded</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>no</dd></div><div><dt>sul_genes</dt><dd>Not recorded</dd></div><div><dt>trimethoprim</dt><dd>no</dd></div><div><dt>dfr_genes</dt><dd>Not recorded</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>no</dd></div><div><dt>sxt_markers</dt><dd>Not recorded</dd></div><div><dt>class_summary</dt><dd>none</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_KENYA_003</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl>    </details><details class="sample-record" data-sample="VC_MALAWI_002"><summary>VC_MALAWI_002 <span class="muted">· 4 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>overall_status</dt><dd>fail</dd></div><div><dt>genome_size_mb</dt><dd>3.10</dd></div><div><dt>gc_percent</dt><dd>45.0</dd></div><div><dt>largest_contig_kb</dt><dd>120.0</dd></div><div><dt>n50</dt><dd>9000</dd></div><div><dt>contig_count</dt><dd>400</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>status</dt><dd>not_run</dd></div><div><dt>n_sequences</dt><dd>Not recorded</dd></div><div><dt>total_bp</dt><dd>Not recorded</dd></div><div><dt>gap_bp</dt><dd>Not recorded</dd></div><div><dt>n_percentage</dt><dd>Not recorded</dd></div><div><dt>reason</dt><dd>Synthetic unavailable fixture</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>cluster_id</dt><dd>2</dd></div><div><dt>snp_category</dt><dd>related_cluster</dd></div><div><dt>cgmlst_category</dt><dd>not_available</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_MALAWI_002</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl>    </details>  </details>
 </section>
 
 <section id="s2">
@@ -246,6 +369,208 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
 <span class="qc-segment pass" style="width:66.667%" title="Pass: 2"></span><span class="qc-segment fail" style="width:33.333%" title="Fail: 1"></span>      </div>
       <figcaption class="qc-legend"><span><i class="qc-dot pass" aria-hidden="true"></i>Pass <strong>2</strong></span><span><i class="qc-dot warn" aria-hidden="true"></i>Warning <strong>0</strong></span><span><i class="qc-dot fail" aria-hidden="true"></i>Fail <strong>1</strong></span><span><i class="qc-dot other" aria-hidden="true"></i>Other / unavailable <strong>0</strong></span></figcaption>
     </figure>
+    <div class="charts-grid"><figure class="chart-card" id="chart-genome-size">
+  <div class="chart-heading"><h3 id="title-genome-size">Assembly size by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Assembly size by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Assembly size by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-genome-size desc-genome-size">
+    <desc id="desc-genome-size">Assembly size by sample.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 4.05 Mb</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">4.05</text></g>
+      <g><title>VC_KENYA_003: 4.02 Mb</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="357.333" height="18" rx="3" fill="#087d83"/>
+      <text x="605.3330000000001" y="77" fill="#172a3c" font-size="11">4.02</text></g>
+      <g><title>VC_MALAWI_002: 3.1 Mb</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">VC_MALAWI_002</text>
+      <rect x="240" y="88" width="275.556" height="18" rx="3" fill="#087d83"/>
+      <text x="523.556" y="102" fill="#172a3c" font-size="11">3.1</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">4.05 Mb</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>3.1</dd></div><div><dt>Median</dt><dd>4.02</dd></div><div><dt>Maximum</dt><dd>4.05</dd></div><div><dt>Unit</dt><dd>Mb</dd></div></dl>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Assembly size by sample source data">
+    <tr><th>Sample / category</th><th>Mb</th></tr>
+<tr><td>VC_HAITI_001</td><td>4.05</td></tr><tr><td>VC_KENYA_003</td><td>4.02</td></tr><tr><td>VC_MALAWI_002</td><td>3.1</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-gc-content">
+  <div class="chart-heading"><h3 id="title-gc-content">GC content by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download GC content by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="GC content by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-gc-content desc-gc-content">
+    <desc id="desc-gc-content">GC content by sample.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 47.6 %</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">47.6</text></g>
+      <g><title>VC_KENYA_003: 47.5 %</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="359.244" height="18" rx="3" fill="#087d83"/>
+      <text x="607.244" y="77" fill="#172a3c" font-size="11">47.5</text></g>
+      <g><title>VC_MALAWI_002: 45 %</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">VC_MALAWI_002</text>
+      <rect x="240" y="88" width="340.336" height="18" rx="3" fill="#087d83"/>
+      <text x="588.336" y="102" fill="#172a3c" font-size="11">45</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">47.6 %</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>45</dd></div><div><dt>Median</dt><dd>47.5</dd></div><div><dt>Maximum</dt><dd>47.6</dd></div><div><dt>Unit</dt><dd>%</dd></div></dl>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="GC content by sample source data">
+    <tr><th>Sample / category</th><th>%</th></tr>
+<tr><td>VC_HAITI_001</td><td>47.6</td></tr><tr><td>VC_KENYA_003</td><td>47.5</td></tr><tr><td>VC_MALAWI_002</td><td>45.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-n50">
+  <div class="chart-heading"><h3 id="title-n50">Assembly N50 by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Assembly N50 by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Assembly N50 by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-n50 desc-n50">
+    <desc id="desc-n50">Assembly N50 by sample.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 248.199 kb</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">248.199</text></g>
+      <g><title>VC_KENYA_003: 180 kb</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="261.081" height="18" rx="3" fill="#087d83"/>
+      <text x="509.081" y="77" fill="#172a3c" font-size="11">180</text></g>
+      <g><title>VC_MALAWI_002: 9 kb</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">VC_MALAWI_002</text>
+      <rect x="240" y="88" width="13.054" height="18" rx="3" fill="#087d83"/>
+      <text x="261.054" y="102" fill="#172a3c" font-size="11">9</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">248.199 kb</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>9</dd></div><div><dt>Median</dt><dd>180</dd></div><div><dt>Maximum</dt><dd>248.199</dd></div><div><dt>Unit</dt><dd>kb</dd></div></dl>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Assembly N50 by sample source data">
+    <tr><th>Sample / category</th><th>kb</th></tr>
+<tr><td>VC_HAITI_001</td><td>248.199</td></tr><tr><td>VC_KENYA_003</td><td>180.0</td></tr><tr><td>VC_MALAWI_002</td><td>9.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-contigs">
+  <div class="chart-heading"><h3 id="title-contigs">Contig count by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Contig count by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Contig count by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-contigs desc-contigs">
+    <desc id="desc-contigs">Contig count by sample.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 51 contigs</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="45.9" height="18" rx="3" fill="#087d83"/>
+      <text x="293.9" y="52" fill="#172a3c" font-size="11">51</text></g>
+      <g><title>VC_KENYA_003: 60 contigs</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="54.0" height="18" rx="3" fill="#087d83"/>
+      <text x="302.0" y="77" fill="#172a3c" font-size="11">60</text></g>
+      <g><title>VC_MALAWI_002: 400 contigs</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">VC_MALAWI_002</text>
+      <rect x="240" y="88" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="102" fill="#172a3c" font-size="11">400</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">400 contigs</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>51</dd></div><div><dt>Median</dt><dd>60</dd></div><div><dt>Maximum</dt><dd>400</dd></div><div><dt>Unit</dt><dd>contigs</dd></div></dl>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Contig count by sample source data">
+    <tr><th>Sample / category</th><th>contigs</th></tr>
+<tr><td>VC_HAITI_001</td><td>51.0</td></tr><tr><td>VC_KENYA_003</td><td>60.0</td></tr><tr><td>VC_MALAWI_002</td><td>400.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-largest-contig">
+  <div class="chart-heading"><h3 id="title-largest-contig">Largest contig by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Largest contig by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Largest contig by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 157" role="img" aria-labelledby="title-largest-contig desc-largest-contig">
+    <desc id="desc-largest-contig">Largest contig by sample.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="117" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 822.6 kb</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">822.6</text></g>
+      <g><title>VC_KENYA_003: 640.1 kb</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="280.131" height="18" rx="3" fill="#087d83"/>
+      <text x="528.131" y="77" fill="#172a3c" font-size="11">640.1</text></g>
+      <g><title>VC_MALAWI_002: 120 kb</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">VC_MALAWI_002</text>
+      <rect x="240" y="88" width="52.516" height="18" rx="3" fill="#087d83"/>
+      <text x="300.516" y="102" fill="#172a3c" font-size="11">120</text></g>
+      <text x="240" y="142" fill="#536779" font-size="10">0</text>
+      <text x="600" y="142" text-anchor="end" fill="#536779" font-size="10">822.6 kb</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>120</dd></div><div><dt>Median</dt><dd>640.1</dd></div><div><dt>Maximum</dt><dd>822.6</dd></div><div><dt>Unit</dt><dd>kb</dd></div></dl>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Largest contig by sample source data">
+    <tr><th>Sample / category</th><th>kb</th></tr>
+<tr><td>VC_HAITI_001</td><td>822.6</td></tr><tr><td>VC_KENYA_003</td><td>640.1</td></tr><tr><td>VC_MALAWI_002</td><td>120.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-size-gc">
+  <div class="chart-heading"><h3 id="title-size-gc">Assembly size vs GC content</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Assembly size vs GC content as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Assembly size vs GC content graphic">
+  <svg class="report-chart" viewBox="0 0 720 350" role="img" aria-labelledby="title-size-gc desc-size-gc">
+    <desc id="desc-size-gc">Assembly size vs GC content. Axes start at zero. Each point is one reported sample; no fitted model is applied. Full numeric values are in the expandable chart data table.</desc>
+<line x1="70" y1="285.0" x2="580" y2="285.0" stroke="#e3ebf0"/><line x1="70" y1="223.75" x2="580" y2="223.75" stroke="#e3ebf0"/><line x1="70" y1="162.5" x2="580" y2="162.5" stroke="#e3ebf0"/><line x1="70" y1="101.25" x2="580" y2="101.25" stroke="#e3ebf0"/><line x1="70" y1="40.0" x2="580" y2="40.0" stroke="#e3ebf0"/>      <path d="M70,40 V285 H580" fill="none" stroke="#8ba3b3"/>
+<circle cx="580.0" cy="40.0" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_HAITI_001 · Assembly size (Mb): 4.05 · GC content (%): 47.6</title></circle><circle cx="576.222" cy="40.515" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_KENYA_003 · Assembly size (Mb): 4.02 · GC content (%): 47.5</title></circle><circle cx="460.37" cy="53.382" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_MALAWI_002 · Assembly size (Mb): 3.1 · GC content (%): 45</title></circle>      <text x="325" y="330" text-anchor="middle" fill="#354f61" font-size="12">Assembly size (Mb)</text>
+      <text x="20" y="160" transform="rotate(-90 20 160)" text-anchor="middle" fill="#354f61" font-size="12">GC content (%)</text>
+      <text x="65" y="302" fill="#536779" font-size="10">0</text><text x="580" y="302" text-anchor="end" fill="#536779" font-size="10">4.05</text>
+      <text x="65" y="44" text-anchor="end" fill="#536779" font-size="10">47.6</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<p class="muted">Axes start at zero. Each point is one reported sample; no fitted model is applied.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="Assembly size vs GC content source data">
+    <tr><th>Sample</th><th>Assembly size (Mb)</th><th>GC content (%)</th></tr>
+<tr><td>VC_HAITI_001</td><td>4.05</td><td>47.6</td></tr><tr><td>VC_KENYA_003</td><td>4.02</td><td>47.5</td></tr><tr><td>VC_MALAWI_002</td><td>3.1</td><td>45.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-n50-contigs">
+  <div class="chart-heading"><h3 id="title-n50-contigs">N50 vs contig count</h3><button class="button js-svg-export" type="button" hidden aria-label="Download N50 vs contig count as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="N50 vs contig count graphic">
+  <svg class="report-chart" viewBox="0 0 720 350" role="img" aria-labelledby="title-n50-contigs desc-n50-contigs">
+    <desc id="desc-n50-contigs">N50 vs contig count. Axes start at zero. Each point is one reported sample; no fitted model is applied. Full numeric values are in the expandable chart data table.</desc>
+<line x1="70" y1="285.0" x2="580" y2="285.0" stroke="#e3ebf0"/><line x1="70" y1="223.75" x2="580" y2="223.75" stroke="#e3ebf0"/><line x1="70" y1="162.5" x2="580" y2="162.5" stroke="#e3ebf0"/><line x1="70" y1="101.25" x2="580" y2="101.25" stroke="#e3ebf0"/><line x1="70" y1="40.0" x2="580" y2="40.0" stroke="#e3ebf0"/>      <path d="M70,40 V285 H580" fill="none" stroke="#8ba3b3"/>
+<circle cx="135.025" cy="40.0" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_HAITI_001 · Contig count: 51 · N50 (kb): 248.199</title></circle><circle cx="146.5" cy="107.32" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_KENYA_003 · Contig count: 60 · N50 (kb): 180</title></circle><circle cx="580.0" cy="276.116" r="5" fill="#087d83" fill-opacity="0.72"><title>VC_MALAWI_002 · Contig count: 400 · N50 (kb): 9</title></circle>      <text x="325" y="330" text-anchor="middle" fill="#354f61" font-size="12">Contig count</text>
+      <text x="20" y="160" transform="rotate(-90 20 160)" text-anchor="middle" fill="#354f61" font-size="12">N50 (kb)</text>
+      <text x="65" y="302" fill="#536779" font-size="10">0</text><text x="580" y="302" text-anchor="end" fill="#536779" font-size="10">400</text>
+      <text x="65" y="44" text-anchor="end" fill="#536779" font-size="10">248.199</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid values · 0 unavailable/invalid values omitted</div>
+<p class="muted">Axes start at zero. Each point is one reported sample; no fitted model is applied.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (3 rows)</summary><div class="scroll"><table aria-label="N50 vs contig count source data">
+    <tr><th>Sample</th><th>Contig count</th><th>N50 (kb)</th></tr>
+<tr><td>VC_HAITI_001</td><td>51.0</td><td>248.199</td></tr><tr><td>VC_KENYA_003</td><td>60.0</td><td>180.0</td></tr><tr><td>VC_MALAWI_002</td><td>400.0</td><td>9.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-sequence-missing">
+  <div class="chart-heading"><h3 id="title-sequence-missing">Aligned N/gap content by sample</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Aligned N/gap content by sample as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Aligned N/gap content by sample graphic">
+  <svg class="report-chart" viewBox="0 0 720 132" role="img" aria-labelledby="title-sequence-missing desc-sequence-missing">
+    <desc id="desc-sequence-missing">Aligned N/gap content by sample. Reported mapping-sequence QC; this is not read depth or genome completeness. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="92" stroke="#b5c8d4"/>
+      <g><title>VC_HAITI_001: 10 %</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">VC_HAITI_001</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">10</text></g>
+      <g><title>VC_KENYA_003: 5 %</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">VC_KENYA_003</text>
+      <rect x="240" y="63" width="180.0" height="18" rx="3" fill="#087d83"/>
+      <text x="428.0" y="77" fill="#172a3c" font-size="11">5</text></g>
+      <text x="240" y="117" fill="#536779" font-size="10">0</text>
+      <text x="600" y="117" text-anchor="end" fill="#536779" font-size="10">10 %</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 valid values · 1 unavailable/invalid values omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>5</dd></div><div><dt>Median</dt><dd>7.5</dd></div><div><dt>Maximum</dt><dd>10</dd></div><div><dt>Unit</dt><dd>%</dd></div></dl><p class="muted">Reported mapping-sequence QC; this is not read depth or genome completeness.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (2 rows)</summary><div class="scroll"><table aria-label="Aligned N/gap content by sample source data">
+    <tr><th>Sample / category</th><th>%</th></tr>
+<tr><td>VC_HAITI_001</td><td>10.0</td></tr><tr><td>VC_KENYA_003</td><td>5.0</td></tr>  </table></div></details>
+</figure></div>
+    <h3>Assembly QC table</h3>
     <div class="scroll">
     <table>
       <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
@@ -278,10 +603,76 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
         <tr><th>Sample</th><th>Reason</th></tr>
         <tr><td>VC_MALAWI_002</td><td>Failed QC thresholds (fail)</td></tr>
       </table>
+<div class="sequence-panel">
+  <h3>Mapping-sequence QC details</h3>
+<div class="scroll"><table aria-label="Mapping-sequence QC">
+    <tr><th>Sample</th><th>Status</th><th>Sequences</th><th>Total aligned bp</th><th>N/gap bp</th><th>N/gap %</th><th>Reported reason</th></tr>
+<tr><td>VC_HAITI_001</td><td>pass</td><td>2</td><td>4000000</td><td>400000</td><td>10</td><td>Synthetic fixture</td></tr><tr><td>VC_KENYA_003</td><td>pass</td><td>2</td><td>4000000</td><td>200000</td><td>5</td><td>Synthetic fixture</td></tr><tr><td>VC_MALAWI_002</td><td>not_run</td><td></td><td></td><td></td><td></td><td>Synthetic unavailable fixture</td></tr>  </table></div></div>
 </section>
 
 <section id="s3">
   <h2><span class="num">3.</span> Cholera characterisation</h2>
+  <div class="charts-grid"><figure class="chart-card" id="chart-species-calls">
+  <div class="chart-heading"><h3 id="title-species-calls">Reported species confirmation</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported species confirmation as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported species confirmation graphic">
+  <svg class="report-chart" viewBox="0 0 720 110" role="img" aria-labelledby="title-species-calls desc-species-calls">
+    <desc id="desc-species-calls">Reported species confirmation.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="70" stroke="#b5c8d4"/>
+      <g><title>confirmed: 2 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">confirmed</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="95" fill="#536779" font-size="10">0</text>
+      <text x="600" y="95" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 sample records · 1 categories · 0 unavailable/invalid values omitted</div>
+  </figcaption>
+  <details class="chart-data"><summary>View chart data (1 rows)</summary><div class="scroll"><table aria-label="Reported species confirmation source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>confirmed</td><td>2.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-serogroup-calls">
+  <div class="chart-heading"><h3 id="title-serogroup-calls">Reported serogroup calls</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported serogroup calls as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported serogroup calls graphic">
+  <svg class="report-chart" viewBox="0 0 720 110" role="img" aria-labelledby="title-serogroup-calls desc-serogroup-calls">
+    <desc id="desc-serogroup-calls">Reported serogroup calls.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="70" stroke="#b5c8d4"/>
+      <g><title>O1: 2 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">O1</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="95" fill="#536779" font-size="10">0</text>
+      <text x="600" y="95" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 sample records · 1 categories · 0 unavailable/invalid values omitted</div>
+  </figcaption>
+  <details class="chart-data"><summary>View chart data (1 rows)</summary><div class="scroll"><table aria-label="Reported serogroup calls source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>O1</td><td>2.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-biotype-calls">
+  <div class="chart-heading"><h3 id="title-biotype-calls">Reported biotype calls</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported biotype calls as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported biotype calls graphic">
+  <svg class="report-chart" viewBox="0 0 720 110" role="img" aria-labelledby="title-biotype-calls desc-biotype-calls">
+    <desc id="desc-biotype-calls">Reported biotype calls.  Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="70" stroke="#b5c8d4"/>
+      <g><title>El Tor: 2 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">El Tor</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="95" fill="#536779" font-size="10">0</text>
+      <text x="600" y="95" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 sample records · 1 categories · 0 unavailable/invalid values omitted</div>
+  </figcaption>
+  <details class="chart-data"><summary>View chart data (1 rows)</summary><div class="scroll"><table aria-label="Reported biotype calls source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>El Tor</td><td>2.0</td></tr>  </table></div></details>
+</figure></div>
     <div class="scroll">
     <table>
       <tr><th>Sample</th><th>Species confirmation</th><th>Serogroup</th><th>Biotype</th>
@@ -308,6 +699,47 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
 
 <section id="s4">
   <h2><span class="num">4.</span> Virulence summary</h2>
+  <div class="charts-grid"><figure class="chart-card" id="chart-marker-counts">
+  <div class="chart-heading"><h3 id="title-marker-counts">Samples with reported marker detections</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples with reported marker detections as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples with reported marker detections graphic">
+  <svg class="report-chart" viewBox="0 0 720 232" role="img" aria-labelledby="title-marker-counts desc-marker-counts">
+    <desc id="desc-marker-counts">Samples with reported marker detections. Present calls only; not-tested cells are not negative calls. See the accompanying marker table for every sample. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="192" stroke="#b5c8d4"/>
+      <g><title>ctxA (2 assessed): 1 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">ctxA (2 assessed)</text>
+      <rect x="240" y="38" width="180.0" height="18" rx="3" fill="#087d83"/>
+      <text x="428.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>ctxB (2 assessed): 1 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">ctxB (2 assessed)</text>
+      <rect x="240" y="63" width="180.0" height="18" rx="3" fill="#496db5"/>
+      <text x="428.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>tcpA (2 assessed): 1 samples</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">tcpA (2 assessed)</text>
+      <rect x="240" y="88" width="180.0" height="18" rx="3" fill="#a96e29"/>
+      <text x="428.0" y="102" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>VPI-1 (2 assessed): 2 samples</title>
+      <text x="228" y="127" text-anchor="end" fill="#354f61" font-size="11">VPI-1 (2 assessed)</text>
+      <rect x="240" y="113" width="360.0" height="18" rx="3" fill="#8b63ac"/>
+      <text x="608.0" y="127" fill="#172a3c" font-size="11">2</text></g>
+      <g><title>VPI-2 (2 assessed): 0 samples</title>
+      <text x="228" y="152" text-anchor="end" fill="#354f61" font-size="11">VPI-2 (2 assessed)</text>
+      <rect x="240" y="138" width="0.0" height="18" rx="3" fill="#b24e58"/>
+      <text x="248.0" y="152" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>hlyA (2 assessed): 2 samples</title>
+      <text x="228" y="177" text-anchor="end" fill="#354f61" font-size="11">hlyA (2 assessed)</text>
+      <rect x="240" y="163" width="360.0" height="18" rx="3" fill="#647b8c"/>
+      <text x="608.0" y="177" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="217" fill="#536779" font-size="10">0</text>
+      <text x="600" y="217" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 source sample records · 6 markers · 0 unavailable/invalid markers omitted</div>
+<p class="muted">Present calls only; not-tested cells are not negative calls. See the accompanying marker table for every sample.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (6 rows)</summary><div class="scroll"><table aria-label="Samples with reported marker detections source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>ctxA (2 assessed)</td><td>1.0</td></tr><tr><td>ctxB (2 assessed)</td><td>1.0</td></tr><tr><td>tcpA (2 assessed)</td><td>1.0</td></tr><tr><td>VPI-1 (2 assessed)</td><td>2.0</td></tr><tr><td>VPI-2 (2 assessed)</td><td>0.0</td></tr><tr><td>hlyA (2 assessed)</td><td>2.0</td></tr>  </table></div></details>
+</figure></div>
     <p class="muted">
       <span class="pill" style="background:#2f8f4e;color:#fff">present</span>
       <span class="pill" style="background:var(--absent);color:#55607a">absent</span>
@@ -364,6 +796,55 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
 
 <section id="s5">
   <h2><span class="num">5.</span> AMR summary</h2>
+  <div class="charts-grid"><figure class="chart-card" id="chart-amr-class-counts">
+  <div class="chart-heading"><h3 id="title-amr-class-counts">Samples with reported AMR markers by drug class</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples with reported AMR markers by drug class as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples with reported AMR markers by drug class graphic">
+  <svg class="report-chart" viewBox="0 0 720 282" role="img" aria-labelledby="title-amr-class-counts desc-amr-class-counts">
+    <desc id="desc-amr-class-counts">Samples with reported AMR markers by drug class. Counts summarize existing marker calls, not phenotypic susceptibility. One sample may appear in several classes. Consult sample statuses and source tables. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="242" stroke="#b5c8d4"/>
+      <g><title>Tetracycline (2 assessed): 1 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">Tetracycline (2 assessed)</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>Fluoroquinolones (2 assessed): 0 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">Fluoroquinolones (2 assessed)</text>
+      <rect x="240" y="63" width="0.0" height="18" rx="3" fill="#496db5"/>
+      <text x="248.0" y="77" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>Beta-lactams (2 assessed): 0 samples</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">Beta-lactams (2 assessed)</text>
+      <rect x="240" y="88" width="0.0" height="18" rx="3" fill="#a96e29"/>
+      <text x="248.0" y="102" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>Azithromycin (macrolide) (2 assessed): 0 samples</title>
+      <text x="228" y="127" text-anchor="end" fill="#354f61" font-size="11">Azithromycin (macrolide) (2 assessed)</text>
+      <rect x="240" y="113" width="0.0" height="18" rx="3" fill="#8b63ac"/>
+      <text x="248.0" y="127" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>Sulfonamide (2 assessed): 1 samples</title>
+      <text x="228" y="152" text-anchor="end" fill="#354f61" font-size="11">Sulfonamide (2 assessed)</text>
+      <rect x="240" y="138" width="360.0" height="18" rx="3" fill="#b24e58"/>
+      <text x="608.0" y="152" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>Trimethoprim (2 assessed): 1 samples</title>
+      <text x="228" y="177" text-anchor="end" fill="#354f61" font-size="11">Trimethoprim (2 assessed)</text>
+      <rect x="240" y="163" width="360.0" height="18" rx="3" fill="#647b8c"/>
+      <text x="608.0" y="177" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>Aminoglycoside (2 assessed): 0 samples</title>
+      <text x="228" y="202" text-anchor="end" fill="#354f61" font-size="11">Aminoglycoside (2 assessed)</text>
+      <rect x="240" y="188" width="0.0" height="18" rx="3" fill="#087d83"/>
+      <text x="248.0" y="202" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>Phenicol (2 assessed): 0 samples</title>
+      <text x="228" y="227" text-anchor="end" fill="#354f61" font-size="11">Phenicol (2 assessed)</text>
+      <rect x="240" y="213" width="0.0" height="18" rx="3" fill="#496db5"/>
+      <text x="248.0" y="227" fill="#172a3c" font-size="11">0</text></g>
+      <text x="240" y="267" fill="#536779" font-size="10">0</text>
+      <text x="600" y="267" text-anchor="end" fill="#536779" font-size="10">1 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 source sample records · 8 classes · 0 unavailable/invalid classes omitted</div>
+<p class="muted">Counts summarize existing marker calls, not phenotypic susceptibility. One sample may appear in several classes. Consult sample statuses and source tables.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (8 rows)</summary><div class="scroll"><table aria-label="Samples with reported AMR markers by drug class source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>Tetracycline (2 assessed)</td><td>1.0</td></tr><tr><td>Fluoroquinolones (2 assessed)</td><td>0.0</td></tr><tr><td>Beta-lactams (2 assessed)</td><td>0.0</td></tr><tr><td>Azithromycin (macrolide) (2 assessed)</td><td>0.0</td></tr><tr><td>Sulfonamide (2 assessed)</td><td>1.0</td></tr><tr><td>Trimethoprim (2 assessed)</td><td>1.0</td></tr><tr><td>Aminoglycoside (2 assessed)</td><td>0.0</td></tr><tr><td>Phenicol (2 assessed)</td><td>0.0</td></tr>  </table></div></details>
+</figure></div>
       <div class="sxt-flag">⚠ SXT multi-drug resistance element detected in
         1 sample(s): VC_HAITI_001.
         Review treatment guidelines and confirm with phenotypic testing.</div>
@@ -401,12 +882,96 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
 
 <section id="s6">
   <h2><span class="num">6.</span> Phylogenetic summary</h2>
-      <h3>Maximum-likelihood tree (Newick)</h3>
-      <pre class="newick">(VC_HAITI_001:0.001,VC_KENYA_003:0.001,VC_MALAWI_002:0.02);</pre>
+    <figure class="tree-panel" id="cohort-tree">
+  <div class="chart-heading"><h3 id="cohort-tree-title">Tree view</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  <div class="tree-controls" hidden>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="250" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
+    <span class="tree-match-count" aria-live="polite"></span>
+  </div>
+  <p class="muted">3 tips · Branch lengths as supplied. Input order and topology are preserved; this display does not infer or change rooting.</p>
+  <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
+  <svg class="tree-svg" viewBox="0 0 976 164" role="img" aria-labelledby="cohort-tree-title cohort-tree-description">
+    <desc id="cohort-tree-description">A tree rendered directly from the supplied Newick file. Branch lengths as supplied. Internal labels are shown as supplied and are not reinterpreted.</desc>
+<line x1="32.0" y1="32.0" x2="32.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="32.0" x2="70.0" y2="32.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="60.0" x2="70.0" y2="60.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="88.0" x2="792.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><circle cx="70.0" cy="32.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_HAITI_001" x="78.0" y="36.0" fill="#172a3c" font-size="12"><title>VC_HAITI_001 · Supplied branch length: 0.001</title>VC_HAITI_001</text>
+<circle cx="70.0" cy="60.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_KENYA_003" x="78.0" y="64.0" fill="#172a3c" font-size="12"><title>VC_KENYA_003 · Supplied branch length: 0.001</title>VC_KENYA_003</text>
+<circle cx="792.0" cy="88.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_MALAWI_002" x="800.0" y="92.0" fill="#172a3c" font-size="12"><title>VC_MALAWI_002 · Supplied branch length: 0.02</title>VC_MALAWI_002</text>
+<line x1="32.0" y1="138" x2="792.0" y2="138" stroke="#355a6a" stroke-width="2"/><text x="32.0" y="155" fill="#536779" font-size="10">0.02 supplied branch-length units</text>  </svg>
+  </div>
+<figcaption class="muted">Leaf order and root orientation follow the supplied Newick; no rooting or relationship inference was performed.</figcaption><details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">(VC_HAITI_001:0.001,VC_KENYA_003:0.001,VC_MALAWI_002:0.02);</pre></details></figure>
+    <div class="charts-grid"><figure class="chart-card" id="chart-snp-distribution">
+  <div class="chart-heading"><h3 id="title-snp-distribution">Pairwise SNP distance distribution</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Pairwise SNP distance distribution as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Pairwise SNP distance distribution graphic">
+  <svg class="report-chart" viewBox="0 0 720 282" role="img" aria-labelledby="title-snp-distribution desc-snp-distribution">
+    <desc id="desc-snp-distribution">Pairwise SNP distance distribution. One count per unordered sample pair; Reference is excluded. Unavailable or asymmetric pairs are omitted, not assigned zero. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="242" stroke="#b5c8d4"/>
+      <g><title>2–4: 1 pairs</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">2–4</text>
+      <rect x="240" y="38" width="180.0" height="18" rx="3" fill="#087d83"/>
+      <text x="428.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <g><title>5–7: 0 pairs</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">5–7</text>
+      <rect x="240" y="63" width="0.0" height="18" rx="3" fill="#496db5"/>
+      <text x="248.0" y="77" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>8–10: 0 pairs</title>
+      <text x="228" y="102" text-anchor="end" fill="#354f61" font-size="11">8–10</text>
+      <rect x="240" y="88" width="0.0" height="18" rx="3" fill="#a96e29"/>
+      <text x="248.0" y="102" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>11–13: 0 pairs</title>
+      <text x="228" y="127" text-anchor="end" fill="#354f61" font-size="11">11–13</text>
+      <rect x="240" y="113" width="0.0" height="18" rx="3" fill="#8b63ac"/>
+      <text x="248.0" y="127" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>14–16: 0 pairs</title>
+      <text x="228" y="152" text-anchor="end" fill="#354f61" font-size="11">14–16</text>
+      <rect x="240" y="138" width="0.0" height="18" rx="3" fill="#b24e58"/>
+      <text x="248.0" y="152" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>17–19: 0 pairs</title>
+      <text x="228" y="177" text-anchor="end" fill="#354f61" font-size="11">17–19</text>
+      <rect x="240" y="163" width="0.0" height="18" rx="3" fill="#647b8c"/>
+      <text x="248.0" y="177" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>20–22: 0 pairs</title>
+      <text x="228" y="202" text-anchor="end" fill="#354f61" font-size="11">20–22</text>
+      <rect x="240" y="188" width="0.0" height="18" rx="3" fill="#087d83"/>
+      <text x="248.0" y="202" fill="#172a3c" font-size="11">0</text></g>
+      <g><title>23–23: 2 pairs</title>
+      <text x="228" y="227" text-anchor="end" fill="#354f61" font-size="11">23–23</text>
+      <rect x="240" y="213" width="360.0" height="18" rx="3" fill="#496db5"/>
+      <text x="608.0" y="227" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="267" fill="#536779" font-size="10">0</text>
+      <text x="600" y="267" text-anchor="end" fill="#536779" font-size="10">2 pairs</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 valid pairs · 8 bins · 0 unavailable/invalid pairs omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>2</dd></div><div><dt>Median</dt><dd>23</dd></div><div><dt>Maximum</dt><dd>23</dd></div><div><dt>Valid pairs</dt><dd>3</dd></div></dl><p class="muted">One count per unordered sample pair; Reference is excluded. Unavailable or asymmetric pairs are omitted, not assigned zero.</p><p class="muted">Horizontal labels: SNPs. Bar lengths: number of pairs.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (8 rows)</summary><div class="scroll"><table aria-label="Pairwise SNP distance distribution source data">
+    <tr><th>Sample / category</th><th>pairs</th></tr>
+<tr><td>2–4</td><td>1.0</td></tr><tr><td>5–7</td><td>0.0</td></tr><tr><td>8–10</td><td>0.0</td></tr><tr><td>11–13</td><td>0.0</td></tr><tr><td>14–16</td><td>0.0</td></tr><tr><td>17–19</td><td>0.0</td></tr><tr><td>20–22</td><td>0.0</td></tr><tr><td>23–23</td><td>2.0</td></tr>  </table></div></details>
+</figure><figure class="chart-card" id="chart-cgmlst-distribution">
+  <div class="chart-heading"><h3 id="title-cgmlst-distribution">Pairwise cgMLST distance distribution</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Pairwise cgMLST distance distribution as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Pairwise cgMLST distance distribution graphic">
+  <svg class="report-chart" viewBox="0 0 720 110" role="img" aria-labelledby="title-cgmlst-distribution desc-cgmlst-distribution">
+    <desc id="desc-cgmlst-distribution">Pairwise cgMLST distance distribution. One count per unordered sample pair; Reference is excluded. Unavailable or asymmetric pairs are omitted, not assigned zero. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="70" stroke="#b5c8d4"/>
+      <g><title>4: 1 pairs</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">4</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="95" fill="#536779" font-size="10">0</text>
+      <text x="600" y="95" text-anchor="end" fill="#536779" font-size="10">1 pairs</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">1 valid pairs · 1 bins · 2 unavailable/invalid pairs omitted</div>
+<dl class="mini-stats"><div><dt>Minimum</dt><dd>4</dd></div><div><dt>Median</dt><dd>4</dd></div><div><dt>Maximum</dt><dd>4</dd></div><div><dt>Valid pairs</dt><dd>1</dd></div></dl><p class="muted">One count per unordered sample pair; Reference is excluded. Unavailable or asymmetric pairs are omitted, not assigned zero.</p><p class="muted">Horizontal labels: allele differences. Bar lengths: number of pairs.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (1 rows)</summary><div class="scroll"><table aria-label="Pairwise cgMLST distance distribution source data">
+    <tr><th>Sample / category</th><th>pairs</th></tr>
+<tr><td>4</td><td>1.0</td></tr>  </table></div></details>
+</figure></div>
 
       <h3>SNP distance matrix</h3>
       <p class="muted">Darker cells indicate greater pairwise SNP distance (max
-        23 SNPs).</p>
+        23 SNPs in this view). Showing 3 of 3 samples; the complete source matrix is published in phylogenetics/.</p>
       <div class="scroll">
       <table class="matrix-table" aria-label="Pairwise SNP distance matrix">
         <tr><th scope="col">Sample</th><th scope="col">VC_HAITI_001</th><th scope="col">VC_KENYA_003</th><th scope="col">VC_MALAWI_002</th></tr>
@@ -431,6 +996,12 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
       </table>
       </div>
 
+      <h3>cgMLST distance heatmap</h3>
+      <p class="muted">Showing 3 of 3 samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
+      <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
+        <tr><th scope="col">Sample</th><th scope="col">VC_HAITI_001</th><th scope="col">VC_KENYA_003</th><th scope="col">VC_MALAWI_002</th></tr>
+<tr><th scope="row">VC_HAITI_001</th><td style="background:hsl(207, 68%, 96%);color:#12233a;text-align:center">0</td><td style="background:hsl(207, 68%, 42%);color:#ffffff;text-align:center">4</td><td style="background:#ffffff;color:#8a94a6;text-align:center">NA</td></tr><tr><th scope="row">VC_KENYA_003</th><td style="background:hsl(207, 68%, 42%);color:#ffffff;text-align:center">4</td><td style="background:hsl(207, 68%, 96%);color:#12233a;text-align:center">0</td><td style="background:#ffffff;color:#8a94a6;text-align:center">NA</td></tr><tr><th scope="row">VC_MALAWI_002</th><td style="background:#ffffff;color:#8a94a6;text-align:center">NA</td><td style="background:#ffffff;color:#8a94a6;text-align:center">NA</td><td style="background:hsl(207, 68%, 96%);color:#12233a;text-align:center">0</td></tr>      </table></div>
+
       <h3>Cluster assignments</h3>
       <div class="scroll">
       <table>
@@ -453,6 +1024,31 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
 
 <section id="s8">
   <h2><span class="num">8.</span> Outbreak interpretation</h2>
+  <div class="charts-grid"><figure class="chart-card" id="chart-cluster-sizes">
+  <div class="chart-heading"><h3 id="title-cluster-sizes">Samples per reported SNP component</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Samples per reported SNP component as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Samples per reported SNP component graphic">
+  <svg class="report-chart" viewBox="0 0 720 132" role="img" aria-labelledby="title-cluster-sizes desc-cluster-sizes">
+    <desc id="desc-cluster-sizes">Samples per reported SNP component. Component IDs and membership are supplied by the clustering output; a component may include pairs beyond the linkage threshold. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="92" stroke="#b5c8d4"/>
+      <g><title>1: 2 samples</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">1</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <g><title>2: 1 samples</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">2</text>
+      <rect x="240" y="63" width="180.0" height="18" rx="3" fill="#496db5"/>
+      <text x="428.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="117" fill="#536779" font-size="10">0</text>
+      <text x="600" y="117" text-anchor="end" fill="#536779" font-size="10">2 samples</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 assigned samples · 2 components · 0 unavailable/invalid values omitted</div>
+<p class="muted">Component IDs and membership are supplied by the clustering output; a component may include pairs beyond the linkage threshold.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (2 rows)</summary><div class="scroll"><table aria-label="Samples per reported SNP component source data">
+    <tr><th>Sample / category</th><th>samples</th></tr>
+<tr><td>1</td><td>2.0</td></tr><tr><td>2</td><td>1.0</td></tr>  </table></div></details>
+</figure></div>
     <h3>Cluster assignments</h3>
     <div class="scroll">
     <table>
@@ -469,6 +1065,7 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
           <td>2022-12-03</td><td>rectal_swab</td></tr>
     </table>
     </div>
+
 
     <h3>Interpretation</h3>
     <ul class="sentences">
@@ -510,6 +1107,11 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
   <h3>Tool versions</h3>
     <p class="muted">Software versions file not available — see pipeline_info/software_versions.yml
       in the results directory once produced.</p>
+  <h3>Report input provenance</h3>
+  <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
+  <div class="scroll"><table aria-label="Report input provenance">
+    <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
+<tr><td>genome_qc</td><td>genome_qc_summary.tsv</td><td>Non-empty file</td><td>276</td><td class="checksum">886e2f8c5185e6c4a72135d54207a3c18101ca80101c37916bc3a6cbb2ec9c44</td></tr><tr><td>seq_qc</td><td>seq_qc_summary.tsv</td><td>Non-empty file</td><td>229</td><td class="checksum">04bab2635d4ebfa98ce8c3d80d9db4751552fc6a610e75ee7c7debccadd9217b</td></tr><tr><td>typing</td><td>typing_summary.tsv</td><td>Non-empty file</td><td>241</td><td class="checksum">a1f9727cd39dd80f59e32ed1c10bad4b062d08281fcc87764b5b8e1fc196b57c</td></tr><tr><td>virulence</td><td>virulencefinder_summary.tsv</td><td>Non-empty file</td><td>158</td><td class="checksum">03891cfca034b49a5b2f5485f3521ea0de3f01f6dc7bcaccfee2769cd6f56227</td></tr><tr><td>amr</td><td>amr_summary.tsv</td><td>Non-empty file</td><td>391</td><td class="checksum">df578c6483dca1c90778313e040f70a225909b2a9294927caaab863d2868581f</td></tr><tr><td>snp_matrix</td><td>snp_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">64de1422bae61a7d8e726a7850a2a0dfb0ccc46ea8a3ffd20613faa1ee8e8046</td></tr><tr><td>cgmlst_matrix</td><td>cgmlst_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">bbd3745f4c64d3af4796f406b46f96807c514d2cab50a51798e12287fa2a2150</td></tr><tr><td>treefile</td><td>iqtree.treefile</td><td>Non-empty file</td><td>60</td><td class="checksum">1ea0f65aba33e7ca35a2ca617ea5d4267671e978d1d8f85a1769f9b7f032e35b</td></tr><tr><td>tree_report</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>cluster_assignments</td><td>cluster_assignments.tsv</td><td>Non-empty file</td><td>293</td><td class="checksum">7707bce582c2815b29bfa74ed9a1ff721b8f8566d16d1138ee4cc60bd54dce28</td></tr><tr><td>cluster_summary</td><td>cluster_summary.json</td><td>Non-empty file</td><td>478</td><td class="checksum">68c24dc61485edb804f3d50f65b84ab2387b7175e7e2b270a819f2d5db0d0efb</td></tr><tr><td>outbreak_pairs</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>metadata</td><td>metadata.csv</td><td>Non-empty file</td><td>164</td><td class="checksum">1417f3af2a47aeb8d8d10be77b5808402b35e5d23596988bdbc7feea5b833248</td></tr><tr><td>global_tree</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>software_versions</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr>  </table></div>
   <p class="muted">Report generated 2026-07-08 by CholeraFlow synthetic demonstration.</p>
 </section>
 
@@ -554,7 +1156,7 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
     if (rows.length < 2 || !rows[0].querySelector("th")) return;
     table.classList.add("data-table");
     const section = table.closest("section");
-    const title = section.querySelector("h2").textContent.trim();
+    const title = table.getAttribute("aria-label") || section.querySelector("h2").textContent.trim();
     const body = document.createElement("tbody");
     const head = document.createElement("thead");
     head.append(rows[0]);
@@ -619,6 +1221,67 @@ footer { color: var(--muted); font-size: 11px; margin: 28px 0 8px; text-align: c
     });
     filter();
   });
+  document.querySelectorAll(".js-svg-export").forEach(button => {
+    const figure = button.closest("figure");
+    const source = figure.querySelector("svg");
+    if (!source) return;
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      const svg = source.cloneNode(true);
+      const namespace = "http://www.w3.org/2000/svg";
+      // XMLSerializer supplies the namespace; setting a second plain xmlns
+      // attribute produces invalid SVG in standards-compliant serializers.
+      const dimensions = svg.getAttribute("viewBox").trim().split(/\s+/);
+      svg.setAttribute("width", dimensions[2]);
+      svg.setAttribute("height", dimensions[3]);
+      svg.style.width = dimensions[2] + "px";
+      const title = document.createElementNS(namespace, "title");
+      title.id = figure.id + "-export-title";
+      title.textContent = figure.querySelector("h3").textContent;
+      svg.setAttribute("aria-labelledby", title.id);
+      svg.prepend(title);
+      const style = document.createElementNS(namespace, "style");
+      style.textContent = document.querySelector("head style").textContent;
+      svg.prepend(style);
+      download(new XMLSerializer().serializeToString(svg), "choleraflow-" + figure.id + ".svg", "image/svg+xml;charset=utf-8");
+    });
+  });
+  document.querySelectorAll(".tree-panel").forEach(panel => {
+    const svg = panel.querySelector("svg");
+    if (!svg) return;
+    panel.querySelector(".tree-controls").hidden = false;
+    panel.querySelector(".tree-zoom").addEventListener("input", event => {
+      svg.style.width = event.target.value + "%";
+    });
+    const input = panel.querySelector(".tree-find");
+    const tips = Array.from(panel.querySelectorAll(".tree-tip"));
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      tips.forEach(tip => {
+        const match = !!query && (tip.getAttribute("data-tip-label") || "").toLocaleLowerCase().includes(query);
+        tip.classList.toggle("match", match);
+        if (match) matches++;
+      });
+      panel.querySelector(".tree-match-count").textContent = query ? matches + " matching tips" : "";
+    });
+  });
+  document.querySelectorAll(".sample-explorer").forEach(explorer => {
+    explorer.querySelector(".sample-filter-label").hidden = false;
+    const input = explorer.querySelector(".sample-filter");
+    const records = Array.from(explorer.querySelectorAll(".sample-record"));
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      records.forEach(record => record.hidden = !record.dataset.sample.toLocaleLowerCase().includes(query));
+      explorer.querySelector(".sample-filter-count").textContent = records.filter(record => !record.hidden).length + " of " + records.length + " identifiers";
+    });
+  });
+  let printDetails = [];
+  window.addEventListener("beforeprint", () => {
+    printDetails = Array.from(document.querySelectorAll("details:not([open])")).filter(item => !item.querySelector("pre"));
+    printDetails.forEach(item => item.open = true);
+  });
+  window.addEventListener("afterprint", () => { printDetails.forEach(item => item.open = false); printDetails = []; });
   const printButton = document.getElementById("print-report");
   printButton.hidden = false;
   printButton.addEventListener("click", () => window.print());

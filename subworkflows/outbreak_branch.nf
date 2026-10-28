@@ -45,6 +45,7 @@ workflow OUTBREAK_BRANCH {
     typing_summary     // value/queue: typing_summary.tsv          (for the report)
     virulence_summary  // value/queue: virulencefinder_summary.tsv (for the report)
     amr_summary        // value/queue: amr_summary.tsv             (for the report)
+    seq_qc_summary     // value/queue: seq_qc_summary.tsv          (for the report)
 
     main:
     ch_treefile        = Channel.empty()
@@ -154,6 +155,8 @@ workflow OUTBREAK_BRANCH {
         ch_cgmlst_matrix.ifEmpty([]),
         ch_global_tree.ifEmpty([]),
         metadata.ifEmpty([]),
+        seq_qc_summary.ifEmpty([]),
+        ch_treereport.ifEmpty([]),
     )
     ch_report = GENERATE_REPORT.out.report
 

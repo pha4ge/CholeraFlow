@@ -1,13 +1,14 @@
 # Validation record — pipeline improvement
 
-Date: **2026-10-28**. Branch: **`ai/pipeline-modernisation`**.
+Date: **2026-10-28**. Current report branch: **`ai/report-upgrade`**,
+including the earlier **`ai/pipeline-modernisation`** changes.
 This record supersedes the earlier packaging-only validation summary.
 
 ## Executed successfully
 
 ```text
 bash scripts/validate.sh
-  Python: 240 passed, 2 skipped
+  Python: 274 passed, 2 skipped, 30 subtests passed
   Python compilation: bin/*.py and scripts/*.py
   Nextflow 24.10.5: config -profile test
   Main workflow: preview with the test configuration
@@ -34,6 +35,12 @@ Additional executed checks:
   offline asset structure and preserved matrix content all pass.
 - Inline JavaScript passes `node --check`. Template assets are staged together
   and fully embedded in reports produced by all three synthetic workflow runs.
+- Extended report tests cover 19 data charts plus a graphical tree, Newick
+  syntax/length/topology preservation, explicit display limits, unavailable
+  values, pair denominators, cgMLST-only display and source SHA-256 records.
+- `tests/report_dom_checks.cjs` passes in the temporary jsdom environment:
+  tree-tip search, zoom, valid SVG XML export, sample filtering, print disclosure
+  restoration, CSV formula escaping and static graphics without JavaScript.
 
 ## Environment actually used
 
@@ -47,8 +54,9 @@ pytest 9.0.2
 ```
 
 The committed CI workflow configures Python **3.11**, Java **21** and Nextflow
-**24.10.5**. CI itself has not run remotely in this session; a local Python 3.13
-pass is not a claim that the Python 3.11 CI job already ran.
+**24.10.5**. GitHub CI passed for the preceding report commit `3fedecd`.
+The results above are the local checks for this extension; consult the current
+PR checks for its Python 3.11 CI result.
 
 The two skipped Python tests require real Bactopia output and a Snippy-produced
 alignment respectively; those inputs were unavailable.
@@ -69,8 +77,9 @@ chewBBACA executables, container images or biological accuracy.
   report-image build or real-cohort end-to-end genomic run was executed.
 - No scientific databases or marker sets were downloaded/changed. The mapping
   reference and bundled companion FASTA bytes remain unchanged.
-- GitHub CLI is not authenticated; the connected GitHub account has confirmed
-  write access. No GitHub secret or repository setting was changed.
+- GitHub CLI is not authenticated; Git push and the connected account have
+  repository access. The user-added `OPENAI_API_KEY` repository secret was
+  confirmed present without inspecting its value. No API request was made.
 - Browser visual inspection was unavailable because the browser security policy
   rejects local-file URLs. DOM and report-content checks are not a claim of
   browser screenshot or print-layout verification.

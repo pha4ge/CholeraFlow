@@ -12,6 +12,6 @@ workflow {
         Channel.value([]),
         Channel.value(file("${projectDir}/fixtures/singletons.fasta")),
         Channel.value([]), Channel.value([]), Channel.value([]),
-        Channel.value([]), Channel.value([])
+        Channel.value([]), Channel.value([]), Channel.value([])
     )
 }

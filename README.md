@@ -148,8 +148,9 @@ These directories appear only when the relevant analysis ran. `not_run` placehol
 The HTML report is self-contained and contains no external CSS, JavaScript,
 or font dependencies.
 
-The dashboard includes analysis availability badges, section navigation,
-searchable and sortable sample tables, CSV exports, and a print/PDF view. See
+The dashboard includes a rendered tree with zoom and tip search, 19 data-chart
+panels when their inputs are available, SNP/cgMLST heatmaps, analysis availability
+badges, searchable sample records, CSV/SVG exports, and a print/PDF view. See
 [report controls](docs/output.md#exploring-the-html-report) and the explicitly
 labelled [synthetic example](examples/reports/outbreak_report.html).
 

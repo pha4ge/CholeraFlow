@@ -1,0 +1,70 @@
+{% macro chart_card(chart) -%}
+<figure class="chart-card" id="chart-{{ chart.id }}">
+  <div class="chart-heading"><h3 id="title-{{ chart.id }}">{{ chart.title }}</h3><button class="button js-svg-export" type="button" hidden aria-label="Download {{ chart.title }} as SVG">SVG</button></div>
+  {% if chart.status == 'ok' %}
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="{{ chart.title }} graphic">
+  <svg class="report-chart" viewBox="0 0 720 {{ chart.height }}" role="img" aria-labelledby="title-{{ chart.id }} desc-{{ chart.id }}">
+    <desc id="desc-{{ chart.id }}">{{ chart.title }}. {{ chart.note }} Full numeric values are in the expandable chart data table.</desc>
+    {% if chart.kind == 'bars' %}
+      <line x1="240" y1="22" x2="240" y2="{{ chart.height - 40 }}" stroke="#b5c8d4"/>
+      {% for row in chart.plotted %}
+      <g><title>{{ row.label }}: {{ row.display }} {{ chart.unit }}</title>
+      <text x="228" y="{{ row.y + 10 }}" text-anchor="end" fill="#354f61" font-size="11">{{ row.label|truncate(32, true) }}</text>
+      <rect x="240" y="{{ row.y - 4 }}" width="{{ row.width }}" height="18" rx="3" fill="{{ row.color }}"/>
+      <text x="{{ 248 + row.width }}" y="{{ row.y + 10 }}" fill="#172a3c" font-size="11">{{ row.display }}</text></g>
+      {% endfor %}
+      <text x="240" y="{{ chart.height - 15 }}" fill="#536779" font-size="10">0</text>
+      <text x="600" y="{{ chart.height - 15 }}" text-anchor="end" fill="#536779" font-size="10">{{ chart.maximum }} {{ chart.unit }}</text>
+    {% else %}
+      {% for tick in [0, 1, 2, 3, 4] %}<line x1="70" y1="{{ 285 - tick * 61.25 }}" x2="580" y2="{{ 285 - tick * 61.25 }}" stroke="#e3ebf0"/>{% endfor %}
+      <path d="M70,40 V285 H580" fill="none" stroke="#8ba3b3"/>
+      {% for point in chart.points %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="5" fill="#087d83" fill-opacity="0.72"><title>{{ point.label }} · {{ chart.x_label }}: {{ point.x_display }} · {{ chart.y_label }}: {{ point.y_display }}</title></circle>{% endfor %}
+      <text x="325" y="330" text-anchor="middle" fill="#354f61" font-size="12">{{ chart.x_label }}</text>
+      <text x="20" y="160" transform="rotate(-90 20 160)" text-anchor="middle" fill="#354f61" font-size="12">{{ chart.y_label }}</text>
+      <text x="65" y="302" fill="#536779" font-size="10">0</text><text x="580" y="302" text-anchor="end" fill="#536779" font-size="10">{{ chart.x_max }}</text>
+      <text x="65" y="44" text-anchor="end" fill="#536779" font-size="10">{{ chart.y_max }}</text>
+    {% endif %}
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">{% if chart.source_count is defined %}{{ chart.source_count }} {{ chart.source_label }} · {{ chart.n }} {{ chart.category_label }}{% else %}{{ chart.n }} valid values{% endif %} · {{ chart.missing }} unavailable/invalid {{ chart.omitted_label|default('values') }} omitted{% if chart.shown < chart.n %} · showing first {{ chart.shown }} of {{ chart.n }}; all values below{% endif %}</div>
+    {% if chart.statistics %}<dl class="mini-stats">{% for label, value in chart.statistics.items() %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
+    {% if chart.note %}<p class="muted">{{ chart.note }}</p>{% endif %}
+    {% if chart.source_unit %}<p class="muted">Horizontal labels: {{ chart.source_unit }}. Bar lengths: number of pairs.</p>{% endif %}
+  </figcaption>
+  <details class="chart-data"><summary>View chart data ({{ chart.n }} rows)</summary><div class="scroll"><table aria-label="{{ chart.title }} source data">
+    <tr><th>{{ 'Sample' if chart.kind == 'scatter' else 'Sample / category' }}</th>{% if chart.kind == 'scatter' %}<th>{{ chart.x_label }}</th><th>{{ chart.y_label }}</th>{% else %}<th>{{ chart.unit }}</th>{% endif %}</tr>
+    {% for row in chart.rows %}<tr><td>{{ row.label }}</td>{% if chart.kind == 'scatter' %}<td>{{ row.x_value }}</td><td>{{ row.y_value }}</td>{% else %}<td>{{ row.value }}</td>{% endif %}</tr>{% endfor %}
+  </table></div></details>
+  {% else %}<div class="not-performed">No valid source values are available for this graph.{% if chart.missing %} {{ chart.missing }} values were unavailable or invalid.{% endif %}</div>{% endif %}
+</figure>
+{%- endmacro %}
+
+{% macro chart_grid(charts) -%}<div class="charts-grid">{% for chart in charts %}{{ chart_card(chart) }}{% endfor %}</div>{%- endmacro %}
+
+{% macro tree_panel(view, newick, panel_id) -%}
+<figure class="tree-panel" id="{{ panel_id }}">
+  <div class="chart-heading"><h3 id="{{ panel_id }}-title">Tree view</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  {% if view.status == 'ok' %}
+  <div class="tree-controls" hidden>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="250" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
+    <span class="tree-match-count" aria-live="polite"></span>
+  </div>
+  <p class="muted">{{ view.tip_count }} tips · {{ view.layout }}. Input order and topology are preserved; this display does not infer or change rooting.</p>
+  <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
+  <svg class="tree-svg" viewBox="0 0 {{ view.width }} {{ view.height }}" role="img" aria-labelledby="{{ panel_id }}-title {{ panel_id }}-description">
+    <desc id="{{ panel_id }}-description">A tree rendered directly from the supplied Newick file. {{ view.layout }}. Internal labels are shown as supplied and are not reinterpreted.</desc>
+    {% for edge in view.branches %}<line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#355a6a" stroke-width="1.5"/>{% endfor %}
+    {% for node in view.nodes %}
+      {% if node.leaf %}<circle cx="{{ node.x }}" cy="{{ node.y }}" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="{{ node.label }}" x="{{ node.x + 8 }}" y="{{ node.y + 4 }}" fill="#172a3c" font-size="12"><title>{{ node.label }} · Supplied branch length: {{ node.branch_length_text if node.branch_length_text is not none else 'Not provided' }}</title>{{ node.label }}</text>
+      {% elif node.label %}<text x="{{ node.x + 3 }}" y="{{ node.y - 5 }}" fill="#536779" font-size="10">{{ node.label }}</text>{% endif %}
+    {% endfor %}
+    {% if view.scale %}<line x1="{{ view.scale.x1 }}" y1="{{ view.scale.y }}" x2="{{ view.scale.x2 }}" y2="{{ view.scale.y }}" stroke="#355a6a" stroke-width="2"/><text x="{{ view.scale.x1 }}" y="{{ view.scale.y + 17 }}" fill="#536779" font-size="10">{{ view.scale.label }}</text>{% endif %}
+  </svg>
+  </div>
+  {% if view.note %}<figcaption class="muted">{{ view.note }}</figcaption>{% endif %}
+  {% else %}<div class="not-performed">Tree view unavailable — {{ view.reason }}</div>{% endif %}
+  {% if newick %}<details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">{{ newick }}</pre></details>{% endif %}
+</figure>
+{%- endmacro %}

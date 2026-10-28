@@ -2,6 +2,7 @@
 
 Date: 2026-10-28  
 Branch: `ai/pipeline-modernisation`
+Extended report branch: `ai/report-upgrade`
 
 ## Outcome
 
@@ -77,6 +78,14 @@ access and an `OPENAI_API_KEY` GitHub Actions secret; the key must never be adde
 to source or chat.
 
 ## Documentation
+
+The extended report now renders Newick trees directly and adds 19 data-chart
+panels, cohort metadata summaries, QC scatter plots, distance distributions,
+component/marker count charts, cgMLST heatmaps, source records and report-input
+checksums. Source fields remain auditable through expandable tables; missing
+values are omitted from numeric plots and counted explicitly. Tree inference,
+clustering thresholds and biological calling logic are unchanged by this report
+extension. Newick is no longer the primary visual representation.
 
 The primary README and database/reference READMEs were rewritten to describe the
 implemented workflow rather than planned behavior. New usage, output,

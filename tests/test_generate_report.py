@@ -65,6 +65,21 @@ CLUSTER_SUMMARY = (
     'calibration based on transmission intensity in your setting."}'
 )
 CGMLST_NOT_RUN = "FILE\tstatus\nnot_run\tcgmlst_was_not_run\n"
+CGMLST_MATRIX = (
+    "\tVC_HAITI_001\tVC_KENYA_003\tVC_MALAWI_002\n"
+    "VC_HAITI_001\t0\t4\tNA\nVC_KENYA_003\t4\t0\tNA\nVC_MALAWI_002\tNA\tNA\t0\n"
+)
+SEQUENCE_QC = (
+    "sample\tstatus\tn_sequences\ttotal_bp\tgap_bp\tn_percentage\treason\n"
+    "VC_HAITI_001\tpass\t2\t4000000\t400000\t10\tSynthetic fixture\n"
+    "VC_KENYA_003\tpass\t2\t4000000\t200000\t5\tSynthetic fixture\n"
+    "VC_MALAWI_002\tnot_run\t\t\t\t\tSynthetic unavailable fixture\n"
+)
+METADATA = (
+    "sample_id,country,collection_date,specimen_type\n"
+    "VC_HAITI_001,Haiti,2022-10-14,stool\nVC_KENYA_003,Kenya,2023-01-17,stool\n"
+    "VC_MALAWI_002,Malawi,2022-12-03,rectal_swab\n"
+)
 
 SECTION_HEADINGS = [
     "Run summary", "QC summary", "Cholera characterisation", "Virulence summary",
@@ -109,10 +124,63 @@ def _full(d):
         treefile=_write(d, "iqtree.treefile", TREEFILE),
         cluster_assignments=_write(d, "cluster_assignments.tsv", CLUSTER_ASSIGNMENTS),
         cluster_summary=_write(d, "cluster_summary.json", CLUSTER_SUMMARY),
+        cgmlst_matrix=_write(d, "cgmlst_distance_matrix.tsv", CGMLST_MATRIX),
+        seq_qc=_write(d, "seq_qc_summary.tsv", SEQUENCE_QC),
+        metadata=_write(d, "metadata.csv", METADATA),
     )
 
 
 class TestRender(unittest.TestCase):
+
+    def test_tree_is_drawn_before_optional_newick_source_and_preserves_labels(self):
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            view = ctx['phylogenetics']['tree_view']
+            self.assertEqual(view['tip_count'], 3)
+            self.assertEqual([node['label'] for node in view['nodes'] if node['leaf']],
+                             ['VC_HAITI_001', 'VC_KENYA_003', 'VC_MALAWI_002'])
+            html = gr.render(ctx, TEMPLATE, os.path.join(d, 'tree.html'))
+            self.assertLess(html.index('class="tree-svg"'), html.index('Original tree data (Newick)'))
+            self.assertIn('Branch lengths as supplied', html)
+            self.assertNotIn('<details class="source-details" open>', html)
+
+    def test_svg_tree_labels_remain_escaped(self):
+        with tempfile.TemporaryDirectory() as d:
+            args = _full(d)
+            label = '<img src=x onerror=alert(1)>'
+            args.treefile = _write(d, 'hostile.tree', "('" + label + "':1,B:2);")
+            html = gr.render(gr.build_context(args), TEMPLATE, os.path.join(d, 'safe-tree.html'))
+            self.assertNotIn(label, html)
+            self.assertIn('&lt;img src=x', html)
+
+    def test_full_inputs_produce_nineteen_data_charts_and_source_details(self):
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            charts = [chart for group in ctx['charts'].values() for chart in group]
+            self.assertEqual(len(charts), 19)
+            self.assertTrue(all(chart['status'] == 'ok' for chart in charts))
+            self.assertEqual(len(ctx['sample_details']), 3)
+            missing = next(chart for chart in ctx['charts']['qc'] if chart['id'] == 'sequence-missing')
+            self.assertEqual(missing['missing'], 1)
+            self.assertEqual(missing['n'], 2)
+            cg = ctx['charts']['distances'][1]
+            self.assertEqual(cg['pair_count'], 1)
+            self.assertEqual(cg['missing'], 2)
+
+    def test_cgmlst_graphs_render_when_snp_and_tree_are_unavailable(self):
+        with tempfile.TemporaryDirectory() as d:
+            args = _args(d, cgmlst_matrix=_write(d, 'cg.tsv', CGMLST_MATRIX))
+            html = gr.render(gr.build_context(args), TEMPLATE, os.path.join(d, 'cg-only.html'))
+            self.assertIn('aria-label="Pairwise cgMLST distance matrix"', html)
+            self.assertNotIn('class="tree-svg"', html)
+
+    def test_input_provenance_hashes_actual_supplied_file(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            inventory = gr.report_input_inventory(_full(d))
+            item = next(row for row in inventory if row['source'] == 'genome_qc')
+            self.assertEqual(item['sha256'], hashlib.sha256(GENOME_QC.encode()).hexdigest())
+            self.assertEqual(item['bytes'], len(GENOME_QC.encode()))
 
     def test_template_bundle_is_inlined_and_has_accessible_landmarks(self):
         with tempfile.TemporaryDirectory() as d:
@@ -271,17 +339,21 @@ class TestRender(unittest.TestCase):
             self.assertIn("Zenodo DOI: 10.5281/zenodo.16909942", html)
 
     def test_offline_no_external_resources(self):
+        class Resources(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.urls = []
+            def handle_starttag(self, tag, attrs):
+                if tag in ('script', 'link', 'img', 'iframe', 'source', 'video', 'audio', 'object', 'embed', 'use', 'image'):
+                    self.urls.extend(value for key, value in attrs if key in ('src', 'href', 'xlink:href', 'data', 'poster') and value)
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             html = gr.render(ctx, TEMPLATE, os.path.join(d, "r.html"))
-            for needle in ["http://", "https://", "//cdn", "<link", "src=\"http"]:
-                # allow the Zenodo DOI text reference, which is not a resource fetch
-                if needle == "https://":
-                    continue
-                self.assertNotIn(needle, html.replace("10.5281/zenodo.16909942", ""))
-            # Interactive controls are inline and never fetch remote resources.
-            self.assertNotIn('<script src=', html)
-            self.assertNotIn("stylesheet", html)
+            resources = Resources()
+            resources.feed(html)
+            # SVG namespace URIs and diagnostic text are not network requests.
+            self.assertEqual(resources.urls, [])
+            self.assertNotIn('@import', html)
 
     def test_caveat_verbatim_in_report(self):
         with tempfile.TemporaryDirectory() as d:

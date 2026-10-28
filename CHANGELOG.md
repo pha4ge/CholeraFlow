@@ -22,6 +22,10 @@
 
 ### Documentation, reproducibility and maintenance
 
+- Add graphical Newick trees with preserved branch lengths/topology, tip search,
+  zoom and valid SVG exports. Extend the report with 19 chart panels, source-data
+  tables, exact-ID sample records, cgMLST heatmaps, sequence-QC details, IQ-TREE
+  diagnostics and report-input SHA-256 provenance. Keep missing values explicit.
 - Modernize the final offline report with a responsive dashboard, availability
   badges, section navigation, filterable/sortable tables, CSV export, keyboard
   access and print/PDF styles. Keep unavailable AMR cells distinct from negative

@@ -31,7 +31,7 @@
     if (rows.length < 2 || !rows[0].querySelector("th")) return;
     table.classList.add("data-table");
     const section = table.closest("section");
-    const title = section.querySelector("h2").textContent.trim();
+    const title = table.getAttribute("aria-label") || section.querySelector("h2").textContent.trim();
     const body = document.createElement("tbody");
     const head = document.createElement("thead");
     head.append(rows[0]);
@@ -96,6 +96,67 @@
     });
     filter();
   });
+  document.querySelectorAll(".js-svg-export").forEach(button => {
+    const figure = button.closest("figure");
+    const source = figure.querySelector("svg");
+    if (!source) return;
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      const svg = source.cloneNode(true);
+      const namespace = "http://www.w3.org/2000/svg";
+      // XMLSerializer supplies the namespace; setting a second plain xmlns
+      // attribute produces invalid SVG in standards-compliant serializers.
+      const dimensions = svg.getAttribute("viewBox").trim().split(/\s+/);
+      svg.setAttribute("width", dimensions[2]);
+      svg.setAttribute("height", dimensions[3]);
+      svg.style.width = dimensions[2] + "px";
+      const title = document.createElementNS(namespace, "title");
+      title.id = figure.id + "-export-title";
+      title.textContent = figure.querySelector("h3").textContent;
+      svg.setAttribute("aria-labelledby", title.id);
+      svg.prepend(title);
+      const style = document.createElementNS(namespace, "style");
+      style.textContent = document.querySelector("head style").textContent;
+      svg.prepend(style);
+      download(new XMLSerializer().serializeToString(svg), "choleraflow-" + figure.id + ".svg", "image/svg+xml;charset=utf-8");
+    });
+  });
+  document.querySelectorAll(".tree-panel").forEach(panel => {
+    const svg = panel.querySelector("svg");
+    if (!svg) return;
+    panel.querySelector(".tree-controls").hidden = false;
+    panel.querySelector(".tree-zoom").addEventListener("input", event => {
+      svg.style.width = event.target.value + "%";
+    });
+    const input = panel.querySelector(".tree-find");
+    const tips = Array.from(panel.querySelectorAll(".tree-tip"));
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      tips.forEach(tip => {
+        const match = !!query && (tip.getAttribute("data-tip-label") || "").toLocaleLowerCase().includes(query);
+        tip.classList.toggle("match", match);
+        if (match) matches++;
+      });
+      panel.querySelector(".tree-match-count").textContent = query ? matches + " matching tips" : "";
+    });
+  });
+  document.querySelectorAll(".sample-explorer").forEach(explorer => {
+    explorer.querySelector(".sample-filter-label").hidden = false;
+    const input = explorer.querySelector(".sample-filter");
+    const records = Array.from(explorer.querySelectorAll(".sample-record"));
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      records.forEach(record => record.hidden = !record.dataset.sample.toLocaleLowerCase().includes(query));
+      explorer.querySelector(".sample-filter-count").textContent = records.filter(record => !record.hidden).length + " of " + records.length + " identifiers";
+    });
+  });
+  let printDetails = [];
+  window.addEventListener("beforeprint", () => {
+    printDetails = Array.from(document.querySelectorAll("details:not([open])")).filter(item => !item.querySelector("pre"));
+    printDetails.forEach(item => item.open = true);
+  });
+  window.addEventListener("afterprint", () => { printDetails.forEach(item => item.open = false); printDetails = []; });
   const printButton = document.getElementById("print-report");
   printButton.hidden = false;
   printButton.addEventListener("click", () => window.print());

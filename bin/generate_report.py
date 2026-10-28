@@ -18,9 +18,13 @@ the template.
 import argparse
 import csv
 import datetime
+import hashlib
 import json
 import os
 import sys
+
+from report_charts import build_charts
+from report_tree import build_tree_view
 
 # Fixed Limitations text — PIPELINE_SPEC.md Section 6 Step 13. Mandatory, verbatim.
 LIMITATIONS = [
@@ -246,7 +250,7 @@ def build_phylogenetics(newick, matrix, cluster_rows):
     status = "ok" if (newick or matrix) else "not_performed"
     heatmap = None
     if matrix:
-        samples = matrix["samples"]
+        samples = matrix["samples"][:80]
         numeric = []
         for a in samples:
             for b in samples:
@@ -261,11 +265,13 @@ def build_phylogenetics(newick, matrix, cluster_rows):
         for a in samples:
             cells = [_heat_cell(matrix["dist"].get((a, b), ""), vmax) for b in samples]
             table.append({"sample": a, "cells": cells})
-        heatmap = {"samples": samples, "rows": table, "max": vmax}
+        heatmap = {"samples": samples, "rows": table, "max": vmax,
+                   "total_samples": len(matrix['samples']), "shown_samples": len(samples)}
     return {
         "status": status,
         "reason": "Phylogenetic analysis not performed (no tree or SNP matrix)." if status == "not_performed" else None,
         "newick": newick,
+        "tree_view": build_tree_view(newick),
         "heatmap": heatmap,
         "clusters": cluster_rows or [],
     }
@@ -280,7 +286,7 @@ def build_global(global_tree):
                         "provide the global core alignment from Zenodo DOI: "
                         "10.5281/zenodo.16909942"),
         }
-    return {"status": "ok", "newick": global_tree}
+    return {"status": "ok", "newick": global_tree, "tree_view": build_tree_view(global_tree)}
 
 
 def build_summary(qc, characterisation, virulence, amr, outbreak, phylogenetics):
@@ -439,6 +445,29 @@ def build_methods(software_versions, params, run_date):
     }
 
 
+def report_input_inventory(args):
+    """Record report input identity without inventing tool/database versions."""
+    inventory = []
+    for name in ('genome_qc', 'seq_qc', 'typing', 'virulence', 'amr', 'snp_matrix',
+                 'cgmlst_matrix', 'treefile', 'tree_report', 'cluster_assignments',
+                 'cluster_summary', 'outbreak_pairs', 'metadata', 'global_tree', 'software_versions'):
+        path = getattr(args, name, None)
+        item = {'source': name, 'file': os.path.basename(path) if path else 'Not supplied',
+                'bytes': None, 'sha256': None, 'status': 'Not supplied'}
+        if path:
+            try:
+                digest = hashlib.sha256()
+                with open(path, 'rb') as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                        digest.update(chunk)
+                item.update(bytes=os.path.getsize(path), sha256=digest.hexdigest(),
+                            status='Non-empty file' if os.path.getsize(path) else 'Empty file')
+            except OSError:
+                item['status'] = 'Unavailable file'
+        inventory.append(item)
+    return inventory
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_context(args):
@@ -454,6 +483,8 @@ def build_context(args):
     global_tree = load_text(args.global_tree) if args.global_tree else None
     software_versions = load_json(args.software_versions) if args.software_versions and args.software_versions.endswith(".json") else None
     metadata = load_metadata(args.metadata)
+    sequence_qc = load_tsv(getattr(args, 'seq_qc', None))
+    cgmlst_matrix = load_matrix(args.cgmlst_matrix)
 
     qc = build_qc(genome_qc)
     characterisation = build_characterisation(typing)
@@ -473,6 +504,17 @@ def build_context(args):
         "Max missing (QC)": args.max_missing,
         "Min parsimony coverage": args.min_parsimony_coverage,
     }
+
+    # Exact identifier matching only; preserve tool-specific source identifiers.
+    sample_records = {}
+    for source, rows in [('Genome QC', genome_qc), ('Mapping-sequence QC', sequence_qc),
+                         ('Characterisation', typing), ('Virulence', virulence),
+                         ('AMR', amr), ('Cluster assignment', cluster_rows),
+                         ('Metadata', list(metadata.values()))]:
+        for row in rows or []:
+            sample = row.get('sample') or row.get('sample_id')
+            if sample and sample not in NOT_RUN_TOKENS:
+                sample_records.setdefault(sample, []).append({'source': source, 'fields': row})
 
     ctx = {
         "run": {
@@ -495,6 +537,15 @@ def build_context(args):
         "limitations": LIMITATIONS,
         "next_steps": build_next_steps(amr_s, outbreak, global_ctx),
         "methods": build_methods(software_versions, params, args.run_date),
+        "sequence_qc": sequence_qc,
+        "metadata_rows": list(metadata.values()),
+        "cgmlst": build_phylogenetics(None, cgmlst_matrix, None),
+        "charts": build_charts(genome_qc, sequence_qc, typing, amr_s, virulence_s,
+                               outbreak, metadata, matrix, cgmlst_matrix),
+        "tree_diagnostics": load_text(getattr(args, 'tree_report', None)),
+        "sample_details": [{'sample': sample, 'sources': sample_records[sample]}
+                           for sample in sorted(sample_records)],
+        "input_inventory": report_input_inventory(args),
     }
     if getattr(args, 'reference', None):
         ctx['methods']['reference'] = {
@@ -541,6 +592,8 @@ def main():
     p.add_argument("--min-parsimony-coverage", default=0.70)
     # Inputs (all optional — absence renders "Analysis not performed")
     p.add_argument("--genome-qc", default=None)
+    p.add_argument("--seq-qc", default=None, help="Reported mapping-sequence QC summary TSV")
+    p.add_argument("--tree-report", default=None, help="Original IQ-TREE diagnostic report")
     p.add_argument("--typing", default=None)
     p.add_argument("--virulence", default=None)
     p.add_argument("--amr", default=None)

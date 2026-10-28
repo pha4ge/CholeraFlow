@@ -33,6 +33,8 @@ process GENERATE_REPORT {
     path cgmlst_matrix        // cgmlst_distance_matrix.tsv   (optional [])
     path global_tree          // global_context treefile      (optional [])
     path metadata             // metadata CSV                 (optional [])
+    path seq_qc               // seq_qc_summary.tsv            (optional [])
+    path tree_report          // original IQ-TREE diagnostics  (optional [])
 
     output:
     path 'outbreak_report.html', emit: report
@@ -50,6 +52,8 @@ process GENERATE_REPORT {
     def cgmlst_arg     = cgmlst_matrix       ? "--cgmlst-matrix ${cgmlst_matrix}"               : ""
     def global_arg     = global_tree         ? "--global-tree ${global_tree}"                   : ""
     def meta_arg       = metadata            ? "--metadata ${metadata}"                         : ""
+    def seq_arg        = seq_qc              ? "--seq-qc ${seq_qc}"                             : ""
+    def diagnostics_arg = tree_report        ? "--tree-report ${tree_report}"                   : ""
     """
     export PATH="${moduleDir.parent.parent}/bin:\$PATH"
     
@@ -72,6 +76,6 @@ process GENERATE_REPORT {
         --min-parsimony-coverage ${params.min_parsimony_coverage} \\
         ${genome_qc_arg} ${typing_arg} ${virulence_arg} ${amr_arg} \\
         ${snp_arg} ${tree_arg} ${clust_arg} ${csum_arg} ${pairs_arg} \\
-        ${cgmlst_arg} ${global_arg} ${meta_arg}
+        ${cgmlst_arg} ${global_arg} ${meta_arg} ${seq_arg} ${diagnostics_arg}
     """
 }
