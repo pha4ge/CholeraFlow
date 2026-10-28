@@ -1,16 +1,32 @@
 # CholeraFlow
 
-CholeraFlow is a Nextflow DSL2 pipeline for Vibrio cholerae genomic surveillance. It provides a Bactopia-backed backbone for genome assembly and QC, followed by downstream characterisation, AMR screening, mapping, phylogenetic comparison, optional cgMLST analysis, outbreak clustering, and a self-contained HTML report for public-health review.
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Active-success" alt="Status: Active" />
+  <img src="https://img.shields.io/badge/Nextflow-24.10.5-23aa62" alt="Nextflow 24.10.5" />
+  <img src="https://img.shields.io/badge/Java-21%20LTS-blue" alt="Java 21 LTS" />
+  <img src="https://img.shields.io/badge/Python-3.11-blue" alt="Python 3.11" />
+  <img src="https://img.shields.io/badge/Jinja2-3.1.6-orange" alt="Jinja2 3.1.6" />
+</p>
 
-The pipeline is designed for reproducible, auditable outbreak investigations. Its output emphasizes clearly separated analyses, explicit `not_run` states, and transparent limitations so that genomic results are not over-interpreted without epidemiological context.
+CholeraFlow is a Nextflow DSL2 pipeline for *Vibrio cholerae* genomic surveillance. It builds a Bactopia-backed backbone for assembly and QC, then runs downstream species/virulence characterisation, AMR screening, reference mapping, phylogenetic comparison, optional cgMLST, outbreak clustering, and a self-contained high-quality HTML report for public-health review.
 
-Runtime baseline: Java 21 LTS · Nextflow 24.10.5 · Python 3.11 · Jinja2 3.1.6.
+The browser GUI in `reference_gui.html` is a prototype; the supported execution path is the command line and the Nextflow workflow beginning at `main.nf`.
 
-![CholeraFlow workflow](flow.png)
+<p align="center">
+  <img src="flow.png" width="1000" alt="CholeraFlow workflow" />
+</p>
+
+## Runtime baseline
+
+- Java 21 LTS
+- Nextflow 24.10.5
+- Python 3.11
+- Jinja2 3.1.6
+- Bactopia 4.0.0 integration target
 
 ## Pipeline overview
 
-The design is deliberately arranged in three stages:
+The workflow is organized in three stages:
 
 1. Input and backbone QC
    - sample-sheet validation
@@ -27,14 +43,12 @@ The design is deliberately arranged in three stages:
 
 3. Outbreak interpretation and reporting
    - SNP clustering and connected-component summaries
-   - outbreak and related-cluster interpretation
-   - final offline HTML report with limitations and next steps
-
-The browser UI in `reference_gui.html` is a prototype; the supported operational path is the command line.
+   - cluster interpretation and outbreak review
+   - final offline HTML report with explicit limitations and next steps
 
 ## Scientific constraints
 
-CholeraFlow is intended for public-health surveillance, not for autonomous epidemic inference. The following rules are built into the project’s intended behaviour:
+CholeraFlow is designed for surveillance workflows and public-health interpretation, not autonomous epidemic inference. The project enforces the following invariants:
 
 - N16961 remains the configured mapping reference unless a reviewed task explicitly changes it.
 - EnteroBase Vibrio cgMLST v1 is the configured scheme: `VIBwgMLST.cgMLSTv1`, 1,128 core loci.
@@ -48,7 +62,7 @@ CholeraFlow is intended for public-health surveillance, not for autonomous epide
 
 ## Quick start
 
-Install the required toolchain:
+Use a compatible environment with Bactopia available on `PATH` (or provide `--bactopia_bin`).
 
 ```bash
 git clone https://github.com/pha4ge/CholeraFlow.git
@@ -56,40 +70,37 @@ cd CholeraFlow
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements-dev.txt
+conda activate bactopia
+./tests/testdata/download_test_data.sh
+NXF_VER=24.10.5 nextflow run main.nf \
+  -profile docker \
+  --use_case outbreak \
+  --input tests/testdata/local_samplesheet.csv \
+  --metadata tests/testdata/choleraseq_metadata.csv \
+  --outdir results
 ```
 
-Prepare a samplesheet and optional metadata table. Relative paths resolve relative to the samplesheet location.
-
-```csv
-sample,fastq_1,fastq_2,fasta
-ISOLATE_001,reads/001_R1.fastq.gz,reads/001_R2.fastq.gz,
-ISOLATE_002,reads/002.fastq.gz,,
-ISOLATE_003,,,assemblies/003.fna.gz
-```
-
-Run the pipeline:
+If Bactopia is installed but not on `PATH`, provide it explicitly:
 
 ```bash
-NXF_VER=24.10.5 nextflow run main.nf -profile docker \
-  --input /data/samplesheet.csv \
-  --metadata /data/metadata.csv \
-  --outdir results \
-  --bactopia_bin /path/to/bactopia \
-  --ref_genbank /references/verified_N16961.gbk \
-  --resfinder_db assets/databases/resfinder_db \
-  --virulencefinder_db assets/databases/virulencefinder_db \
-  --cgmlst_schema assets/databases/cgmlst_vibrio/schema
+--bactopia_bin /absolute/path/to/bactopia
 ```
 
-Useful notes:
+When the run completes, open `results/reports/outbreak_report.html`.
 
-- `NXF_VER=24.10.5 nextflow run main.nf --help` prints the current overview and CLI options.
-- If Bactopia is already on your `PATH`, omit `--bactopia_bin`.
-- Add `-resume` after a successful run to reuse cached tasks.
-- A reference-based phylogeny requires at least four read samples passing sequence QC.
-- Assembly-only input can be characterised and may enter cgMLST, but it does not constitute a full read-mapping phylogeny.
+### CLI help
 
-## Input validation and metadata rules
+```bash
+NXF_VER=24.10.5 nextflow run main.nf --help
+```
+
+### Resume support
+
+```bash
+NXF_VER=24.10.5 nextflow run main.nf -resume -profile docker --outdir results
+```
+
+## Input and metadata rules
 
 - One input type per row: paired-end reads, single-end reads, or assembly.
 - Assembly inputs must be gzip-compressed.
@@ -98,7 +109,7 @@ Useful notes:
 - Local inputs must be non-empty regular files.
 - HTTP(S)/FTP URLs are passed through to Bactopia and are not downloaded or validated by the local preprocessing layer.
 
-Metadata is optional. When provided, it should include the epidemiological fields needed for surveillance interpretation, including sample identifiers and attributes such as `collection_date`, `country`, `admin1`, `specimen_type`, `sequencing_platform`, and `submitting_institution`. Duplicate IDs and invalid coordinates fail validation; missing matches raise warnings rather than silently constructing values.
+Metadata is optional. When provided, it should include sample identifiers and epidemiological fields such as `collection_date`, `country`, `admin1`, `specimen_type`, `sequencing_platform`, and `submitting_institution`. Duplicate IDs and invalid coordinates fail validation; missing sample matches warn rather than silently constructing values.
 
 ## Database setup
 
@@ -113,7 +124,7 @@ This project tracks database revisions and checksums in a local manifest for tra
 
 ## Outputs and provenance
 
-After a successful outbreak run, open the generated HTML report at `results/reports/outbreak_report.html`.
+After a successful outbreak run, open the generated report at `results/reports/outbreak_report.html`.
 
 The output layout is structured like this:
 
@@ -134,7 +145,7 @@ These directories appear only when the relevant analysis ran. `not_run` placehol
 
 ## Report structure
 
-The HTML report is intentionally self-contained and contains no external CSS, JavaScript, or font dependencies. It always renders the following sections in order:
+The HTML report is intentionally self-contained and contains no external CSS, JavaScript, or font dependencies. It renders the following sections in order:
 
 1. Run summary
 2. QC summary
@@ -159,11 +170,11 @@ python3 -m pip install -r requirements-dev.txt
 bash scripts/validate.sh
 ```
 
-This validation path covers Python regressions and the supported Nextflow baseline. For full scientific validation, run the workflow against local data only after the relevant reference and database assets are correctly configured.
+This validation path covers Python regressions, Python compilation, and the supported Nextflow baseline. For full scientific validation, run the workflow against local data only after relevant references and database assets are configured correctly.
 
 ## Automated maintenance agent
 
-The repository includes a scheduled OpenAI Codex maintenance workflow that runs every two hours on the default branch and proposes a small, validated maintenance update when the repo has a valid `OPENAI_API_KEY` secret.
+The repository includes a scheduled OpenAI Codex maintenance workflow that runs every two hours on the default branch and proposes a small, validated maintenance update when a valid `OPENAI_API_KEY` secret is configured.
 
 The automation:
 
