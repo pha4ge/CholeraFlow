@@ -175,6 +175,122 @@ def _unavailable(reason):
         "tip_count": 0, "layout": None, "layout_mode": None, "scale": None,
         "root_length": None, "root_length_text": None,
         "note": None,
+        "circular": {
+            "status": "not_available", "reason": reason,
+            "width": 0, "height": 0, "center_x": 0, "center_y": 0,
+            "max_radius": 0, "start_angle": None, "end_angle": None,
+            "branches": [], "nodes": [], "tip_count": 0,
+            "layout": None, "layout_mode": None, "scale": None,
+        },
+    }
+
+
+def _build_circular(nodes, child_ids, distances, longest_path, scale, layout, reason):
+    """Lay out the same supplied nodes around a bounded 330-degree sector.
+
+    Angles increase clockwise in SVG coordinates, following the existing leaf
+    order.  Internal angles use the first and last child's midpoint, matching
+    the rectangular layout.  Radial distances reuse its normalised cumulative
+    lengths, including a supplied root stem; no rooting or ordering changes.
+    """
+    width = height = 1200
+    center_x = center_y = 600.0
+    max_radius = 420.0
+    start_angle, end_angle = 15.0, 345.0
+    tip_count = sum(node["leaf"] for node in nodes)
+    angles = [None] * len(nodes)
+    tip_index = 0
+    for node in nodes:
+        if node["leaf"]:
+            # A single supplied tip is placed on the right-hand radial axis.
+            angles[node["id"]] = (
+                start_angle + tip_index * (end_angle - start_angle) / (tip_count - 1)
+                if tip_count > 1 else 0.0
+            )
+            tip_index += 1
+    for node_id in reversed(range(len(nodes))):
+        if child_ids[node_id]:
+            children = child_ids[node_id]
+            angles[node_id] = (angles[children[0]] + angles[children[-1]]) / 2
+
+    def point(radius, angle):
+        radians = math.radians(angle)
+        return (center_x + radius * math.cos(radians),
+                center_y + radius * math.sin(radians))
+
+    circular_nodes = []
+    for node in nodes:
+        node_id = node["id"]
+        angle = angles[node_id]
+        radius = distances[node_id] / longest_path * max_radius
+        x, y = point(radius, angle)
+        label_x, label_y = point(radius + 12.0, angle)
+        left_side = 90.0 < angle < 270.0
+        # Keep text upright on both sides of the circle.  These are ordinary
+        # numeric attributes; label text remains a separate, untrusted string.
+        label_rotation = angle - 180.0 if left_side else angle
+        if label_rotation > 180.0:
+            label_rotation -= 360.0
+        circular_nodes.append({
+            **node, "x": x, "y": y, "radius": radius, "angle": angle,
+            "label_x": label_x, "label_y": label_y,
+            "text_anchor": "end" if left_side else "start",
+            "label_rotation": label_rotation,
+        })
+
+    branches = []
+    for node in circular_nodes:
+        node_id, parent = node["id"], node["parent"]
+        if parent is not None:
+            x1, y1 = point(circular_nodes[parent]["radius"], node["angle"])
+            branches.append({
+                "kind": "radial", "x1": x1, "y1": y1,
+                "x2": node["x"], "y2": node["y"],
+                "parent": parent, "child": node_id,
+                "branch_length": node["branch_length"],
+            })
+        if child_ids[node_id]:
+            children = child_ids[node_id]
+            first_angle, last_angle = angles[children[0]], angles[children[-1]]
+            x1, y1 = point(node["radius"], first_angle)
+            x2, y2 = point(node["radius"], last_angle)
+            large_arc = int(last_angle - first_angle > 180.0)
+            # Only constant SVG commands and bounded numeric geometry enter
+            # path data.  Supplied labels are never interpolated into markup.
+            path = (f"M {x1:.6f} {y1:.6f} "
+                    f"A {node['radius']:.6f} {node['radius']:.6f} "
+                    f"0 {large_arc} 1 {x2:.6f} {y2:.6f}")
+            branches.append({
+                "kind": "arc", "path": path,
+                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                "radius": node["radius"],
+                "start_angle": first_angle, "end_angle": last_angle,
+                "parent": node_id, "child": None, "branch_length": None,
+            })
+    if scale is not None and nodes[0]["branch_length"] is not None:
+        root = circular_nodes[0]
+        branches.append({
+            "kind": "radial", "x1": center_x, "y1": center_y,
+            "x2": root["x"], "y2": root["y"],
+            "parent": None, "child": 0,
+            "branch_length": root["branch_length"],
+        })
+
+    circular_scale = None
+    if scale is not None:
+        circular_scale = {
+            **scale, "x1": 32.0, "x2": 32.0 + max_radius / longest_path,
+            "y": height - 30.0,
+        }
+    return {
+        "status": "ok", "reason": reason,
+        "width": width, "height": height,
+        "center_x": center_x, "center_y": center_y,
+        "max_radius": max_radius,
+        "start_angle": start_angle, "end_angle": end_angle,
+        "branches": branches, "nodes": circular_nodes, "tip_count": tip_count,
+        "layout": layout, "layout_mode": "branch_lengths" if scale else "topology",
+        "scale": circular_scale,
     }
 
 
@@ -190,6 +306,8 @@ def build_tree_view(newick):
     ``nodes`` include IDs, parent IDs and supplied length text as well as the
     rendering coordinates; no topology, support or label is discarded.  The
     display limits reject oversized input rather than sampling or pruning it.
+    ``circular`` contains an alternative radial drawing of those same nodes,
+    IDs, sibling order and cumulative distances, with plain SVG arc path data.
     """
     if newick is None:
         return _unavailable("No Newick tree was supplied.")
@@ -315,4 +433,7 @@ def build_tree_view(newick):
         "scale": scale, "root_length": root.length, "root_length_text": root.length_text,
         "note": ("Leaf order and root orientation follow the supplied Newick; "
                  "no rooting or relationship inference was performed."),
+        "circular": _build_circular(
+            nodes, child_ids, distances, longest_path, scale, layout, reason,
+        ),
     }
