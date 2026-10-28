@@ -20,7 +20,7 @@ process GENERATE_REPORT {
     container params.report_container
 
     input:
-    path template
+    path template_bundle, stageAs: 'report_templates'
     path genome_qc            // genome_qc_summary.tsv        (optional [])
     path typing               // typing_summary.tsv           (optional [])
     path virulence            // virulencefinder_summary.tsv  (optional [])
@@ -60,7 +60,7 @@ process GENERATE_REPORT {
     python3 -c "import jinja2; assert jinja2.__version__ == '3.1.6'" 2>/dev/null || python3 -m pip install --quiet --no-input --user jinja2==3.1.6
 
     generate_report.py \\
-        --template ${template} \\
+        --template '${template_bundle}/outbreak_report.html.j2' \\
         --output   outbreak_report.html \\
         --pipeline-version ${workflow.manifest.version ?: '0.2.0'} \\
         --run-date "\$(date +%Y-%m-%d)" \\

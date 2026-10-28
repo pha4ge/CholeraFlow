@@ -42,6 +42,12 @@ instructions, and its long-read architecture was not copied into CholeraFlow.
 
 - Report templates always enable HTML escaping; regression coverage proves that
   metadata and Newick text cannot inject active HTML.
+- The final HTML report now has a responsive dashboard, availability badges,
+  section navigation, searchable and sortable tables, visible-row CSV exports,
+  keyboard focus indicators, accessible landmarks, and print/PDF styling.
+  All assets are embedded, network access is restricted by a content security
+  policy, and spreadsheet formula-like export values are escaped. Filtering
+  affects the display only; printed reports include all rows.
 - Shell processes use strict error handling, and paths supplied to helper scripts
   receive stronger validation.
 - Runtime secrets are not stored in the repository. Database downloads remain
@@ -91,6 +97,14 @@ documentation provide an auditable operator path.
   whitespace checks.
 
 See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for exact results and limitations.
+
+## Performance scope
+
+Input and output checks now fail before incomplete data reaches later stages,
+and interactive table search caches row text. No real-cohort runtime or memory
+benchmark was performed, so this report makes no quantified speedup claim.
+The supported scientific runtime versions were retained for reproducibility;
+this work does not claim every third-party tool is the latest upstream release.
 
 ## Deliberate limitations and next release gates
 

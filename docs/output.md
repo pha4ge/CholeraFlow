@@ -57,3 +57,25 @@ accessions and retain the actual database snapshots and nested Bactopia logs.
 The HTML report is a screening/communication aid. Genomic clusters require
 clinical, geographic and epidemiological investigation; resistance markers
 require appropriate confirmatory susceptibility testing.
+
+## Exploring the HTML report
+
+The final report uses a responsive dashboard with summary cards, analysis
+availability badges and a section navigation sidebar. Each populated sample
+table can be filtered, sorted by its column headings, and exported as CSV.
+Exports contain the currently visible rows in their displayed order; filtering
+changes the view only and never recalculates report summaries or clusters.
+Spreadsheet formula-like values are escaped in CSV exports.
+
+Use **Print / Save PDF** for an archival view. Printing includes every table row,
+even when an interactive filter is active. Very wide matrices are best reviewed
+in the original HTML and source TSV. Without JavaScript, the full report remains
+readable with its original row ordering.
+
+All CSS and JavaScript are embedded. No fonts, libraries, analytics, or report
+data are fetched over the network. Metadata and tree strings are HTML-escaped.
+The generated report can contain sensitive sample identifiers and metadata;
+share and archive it according to the same rules as its underlying analysis.
+
+[The example report](../examples/reports/outbreak_report.html) is explicitly
+labelled as a synthetic demonstration built from software test fixtures.

@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from html.parser import HTMLParser
 
 BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin")
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
@@ -112,6 +113,50 @@ def _full(d):
 
 
 class TestRender(unittest.TestCase):
+
+    def test_template_bundle_is_inlined_and_has_accessible_landmarks(self):
+        with tempfile.TemporaryDirectory() as d:
+            html = gr.render(gr.build_context(_full(d)), TEMPLATE, os.path.join(d, 'standalone.html'))
+            self.assertIn('<main id="main-content"', html)
+            self.assertIn('aria-label="Report sections"', html)
+            self.assertIn('Skip to report content', html)
+            self.assertIn('connect-src \'none\'', html)
+            self.assertIn('@media print', html)
+            self.assertIn('Export CSV', html)
+            self.assertNotIn('{% include', html)
+            self.assertNotIn('report.css.j2', html)
+            self.assertNotIn('report.js.j2', html)
+
+    def test_mixed_amr_unavailable_cells_do_not_become_negative_results(self):
+        class Cells(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.values = []
+                self.in_cell = False
+            def handle_starttag(self, tag, attrs):
+                if tag == 'td':
+                    self.in_cell = True
+                    self.values.append('')
+            def handle_endtag(self, tag):
+                if tag == 'td':
+                    self.in_cell = False
+            def handle_data(self, data):
+                if self.in_cell:
+                    self.values[-1] += data
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            unavailable = dict(ctx['amr']['rows'][0], sample='UNAVAILABLE', status='not_run', sxt_mdr='not_run')
+            for col, genes_col, label in ctx['amr']['classes']:
+                unavailable[col] = 'not_run'
+                unavailable[genes_col] = ''
+            ctx['amr']['rows'].append(unavailable)
+            html = gr.render(ctx, TEMPLATE, os.path.join(d, 'mixed.html'))
+            parser = Cells()
+            parser.feed(html.split('<section id="s5">')[1].split('</section>')[0])
+            start = parser.values.index('UNAVAILABLE')
+            cells = [value.strip() for value in parser.values[start:]]
+            self.assertEqual(cells[1], 'not_run')
+            self.assertEqual(cells[2:], ['not run'] * (len(ctx['amr']['classes']) + 1))
 
     def test_metadata_and_newick_cannot_inject_active_html(self):
         with tempfile.TemporaryDirectory() as d:
@@ -234,8 +279,8 @@ class TestRender(unittest.TestCase):
                 if needle == "https://":
                     continue
                 self.assertNotIn(needle, html.replace("10.5281/zenodo.16909942", ""))
-            # No <script> or external <link rel=stylesheet>
-            self.assertNotIn("<script", html)
+            # Interactive controls are inline and never fetch remote resources.
+            self.assertNotIn('<script src=', html)
             self.assertNotIn("stylesheet", html)
 
     def test_caveat_verbatim_in_report(self):

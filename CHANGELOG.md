@@ -22,6 +22,10 @@
 
 ### Documentation, reproducibility and maintenance
 
+- Modernize the final offline report with a responsive dashboard, availability
+  badges, section navigation, filterable/sortable tables, CSV export, keyboard
+  access and print/PDF styles. Keep unavailable AMR cells distinct from negative
+  results, embed all assets, and escape metadata and spreadsheet formulas.
 - Rewrite root/database/reference READMEs and implementation/operating guides;
   document the compressed companion FASTA and remaining scientific limitations.
 - Add reference/input/manifest hashes, effective run parameters and execution

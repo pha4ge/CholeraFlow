@@ -7,7 +7,7 @@ This record supersedes the earlier packaging-only validation summary.
 
 ```text
 bash scripts/validate.sh
-  Python: 236 passed, 2 skipped
+  Python: 240 passed, 2 skipped
   Python compilation: bin/*.py and scripts/*.py
   Nextflow 24.10.5: config -profile test
   Main workflow: preview with the test configuration
@@ -29,6 +29,11 @@ Additional executed checks:
   nested policy changes and accept a normal documentation patch/no-op.
 - Local Markdown links in the rewritten documentation resolve.
 - `git diff --check` passes.
+- Report DOM checks (Node.js 22 / a temporary jsdom installation): filtering,
+  no-match recovery, numeric sorting, CSV formula escaping, print control,
+  offline asset structure and preserved matrix content all pass.
+- Inline JavaScript passes `node --check`. Template assets are staged together
+  and fully embedded in reports produced by all three synthetic workflow runs.
 
 ## Environment actually used
 
@@ -64,8 +69,11 @@ chewBBACA executables, container images or biological accuracy.
   report-image build or real-cohort end-to-end genomic run was executed.
 - No scientific databases or marker sets were downloaded/changed. The mapping
   reference and bundled companion FASTA bytes remain unchanged.
-- GitHub CLI is not authenticated. No branch was pushed or PR opened remotely,
-  and no GitHub secret or repository setting was changed.
+- GitHub CLI is not authenticated; the connected GitHub account has confirmed
+  write access. No GitHub secret or repository setting was changed.
+- Browser visual inspection was unavailable because the browser security policy
+  rejects local-file URLs. DOM and report-content checks are not a claim of
+  browser screenshot or print-layout verification.
 - The Codex Action/API step was not executed. The two-hour schedule becomes
   active only after the workflow reaches the default branch and the repository
   has the required Actions settings and `OPENAI_API_KEY` secret.

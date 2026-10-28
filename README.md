@@ -145,7 +145,15 @@ These directories appear only when the relevant analysis ran. `not_run` placehol
 
 ## Report structure
 
-The HTML report is intentionally self-contained and contains no external CSS, JavaScript, or font dependencies. It renders the following sections in order:
+The HTML report is self-contained and contains no external CSS, JavaScript,
+or font dependencies.
+
+The dashboard includes analysis availability badges, section navigation,
+searchable and sortable sample tables, CSV exports, and a print/PDF view. See
+[report controls](docs/output.md#exploring-the-html-report) and the explicitly
+labelled [synthetic example](examples/reports/outbreak_report.html).
+
+The report contains these sections in order:
 
 1. Run summary
 2. QC summary

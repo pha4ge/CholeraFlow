@@ -139,7 +139,7 @@ workflow OUTBREAK_BRANCH {
     // ifEmpty([]) makes each input emit [] when its upstream step was skipped, so
     // GENERATE_REPORT always runs exactly once and renders "Analysis not performed"
     // for absent sections.
-    report_template = file("${moduleDir}/../assets/report_templates/outbreak_report.html.j2")
+    report_template = file("${moduleDir}/../assets/report_templates")
     GENERATE_REPORT(
         report_template,
         genome_qc_summary.ifEmpty([]),

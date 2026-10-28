@@ -1,0 +1,114 @@
+/* Progressive enhancement: all results remain readable without JavaScript. */
+(() => {
+  "use strict";
+  const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: "base"});
+  const cellText = cell => (cell.querySelector(".sr-only") || cell).textContent.trim();
+  const make = (tag, text, className) => {
+    const element = document.createElement(tag);
+    if (text !== undefined) element.textContent = text;
+    if (className) element.className = className;
+    return element;
+  };
+  const download = (text, filename, type) => {
+    const url = URL.createObjectURL(new Blob([text], {type}));
+    const link = make("a");
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  // Quoting alone does not stop spreadsheet formula execution on CSV import.
+  const csvCell = value => {
+    let text = String(value).trim();
+    if (/^[=+\-@\t\r\n]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  };
+
+  document.querySelectorAll("section .scroll table:not(.matrix-table)").forEach((table, index) => {
+    const rows = Array.from(table.rows);
+    if (rows.length < 2 || !rows[0].querySelector("th")) return;
+    table.classList.add("data-table");
+    const section = table.closest("section");
+    const title = section.querySelector("h2").textContent.trim();
+    const body = document.createElement("tbody");
+    const head = document.createElement("thead");
+    head.append(rows[0]);
+    rows.slice(1).forEach(row => body.append(row));
+    table.replaceChildren(head, body);
+    table.setAttribute("aria-label", title);
+    const scroll = table.closest(".scroll");
+    scroll.tabIndex = 0;
+    scroll.setAttribute("role", "region");
+    scroll.setAttribute("aria-label", title + " table; scroll horizontally for more columns");
+    const controls = make("div", undefined, "table-tools");
+    const label = make("label", "Filter rows");
+    const input = make("input");
+    input.type = "search";
+    input.id = "table-filter-" + index;
+    input.placeholder = "Sample or any value…";
+    input.setAttribute("aria-label", "Filter " + title + " table");
+    label.htmlFor = input.id;
+    label.append(input);
+    const count = make("span", undefined, "table-count");
+    count.setAttribute("aria-live", "polite");
+    count.setAttribute("aria-atomic", "true");
+    const noMatches = make("p", "No rows match this filter. Clear the search to show all results.", "no-matches");
+    noMatches.hidden = true;
+    const dataRows = rows.slice(1);
+    const searchText = new Map(dataRows.map(row => [row, Array.from(row.cells).map(cellText).join(" ").toLocaleLowerCase()]));
+    const filter = () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      let visible = 0;
+      dataRows.forEach(row => {
+        row.hidden = !searchText.get(row).includes(query);
+        if (!row.hidden) visible++;
+      });
+      count.textContent = visible + " of " + dataRows.length + " rows";
+      noMatches.hidden = visible !== 0;
+    };
+    input.addEventListener("input", filter);
+    const exportButton = make("button", "Export CSV", "button");
+    exportButton.type = "button";
+    exportButton.setAttribute("aria-label", "Export visible rows from " + title);
+    exportButton.addEventListener("click", () => {
+      const visibleRows = [head.rows[0], ...Array.from(body.rows).filter(row => !row.hidden)];
+      const csv = visibleRows.map(row => Array.from(row.cells).map(cell => csvCell(cellText(cell))).join(",")).join("\r\n");
+      download("\uFEFF" + csv + "\r\n", "choleraflow-" + section.id + "-table-" + (index + 1) + ".csv", "text/csv;charset=utf-8");
+    });
+    controls.append(label, count, exportButton);
+    scroll.before(controls);
+    scroll.after(noMatches);
+    Array.from(head.rows[0].cells).forEach((cell, column) => {
+      cell.scope = "col";
+      cell.setAttribute("aria-sort", "none");
+      const button = make("button", cell.textContent, "sort-button");
+      button.type = "button";
+      button.addEventListener("click", () => {
+        const descending = cell.getAttribute("aria-sort") === "ascending";
+        Array.from(head.rows[0].cells).forEach(header => header.setAttribute("aria-sort", "none"));
+        cell.setAttribute("aria-sort", descending ? "descending" : "ascending");
+        const sorted = Array.from(body.rows).sort((a, b) => collator.compare(cellText(a.cells[column]), cellText(b.cells[column])) * (descending ? -1 : 1));
+        sorted.forEach(row => body.append(row));
+      });
+      cell.replaceChildren(button);
+    });
+    filter();
+  });
+  const printButton = document.getElementById("print-report");
+  printButton.hidden = false;
+  printButton.addEventListener("click", () => window.print());
+  const links = Array.from(document.querySelectorAll("nav.toc a"));
+  if ("IntersectionObserver" in window) {
+    const visible = new Set();
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => entry.isIntersecting ? visible.add(entry.target.id) : visible.delete(entry.target.id));
+      const active = links.find(link => visible.has(link.hash.slice(1)));
+      if (!active) return;
+      links.forEach(link => link.removeAttribute("aria-current"));
+      active.setAttribute("aria-current", "location");
+    }, {rootMargin: "-5% 0px -45% 0px"});
+    document.querySelectorAll("main > section").forEach(section => observer.observe(section));
+  }
+})();

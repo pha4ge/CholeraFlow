@@ -3,124 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>CholeraFlow Outbreak Report</title>
 <style>
-  :root {
-    --ink: #12233a;
-    --muted: #5c6c7d;
-    --line: #d8e0ec;
-    --bg: #edf3f9;
-    --panel: #ffffff;
-    --panel-alt: #f7fafd;
-    --brand: #0d5ea8;
-    --brand-dark: #0b3f73;
-    --brand-soft: rgba(13, 94, 168, 0.10);
-    --ok: #1e8b5c;
-    --ok-soft: #dff5ea;
-    --warn: #c77a16;
-    --warn-bg: #fff5de;
-    --warn-line: #d9a657;
-    --danger-bg: #fee9e7;
-    --danger-line: #d64a3f;
-    --absent: #dfe7f0;
-    --shadow: 0 14px 30px rgba(15, 42, 74, 0.08);
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: linear-gradient(180deg, #edf3f9 0%, #eaf1f8 100%);
-    color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.55; font-size: 15px;
-  }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px; }
-  header.report {
-    background: linear-gradient(135deg, var(--brand-dark), var(--brand), #1b6fc5);
-    color: #fff; padding: 26px 28px 18px; border-radius: 16px;
-    box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.12);
-  }
-  header.report h1 { margin: 0 0 10px; font-size: 28px; letter-spacing: .2px; }
-  header.report .sub { opacity: .92; font-size: 14px; }
-  .stats-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
-    margin-top: 20px;
-  }
-  .stat-card {
-    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 12px; padding: 12px 14px; min-height: 84px;
-    backdrop-filter: blur(8px);
-  }
-  .stat-card .label { display: block; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: .82; }
-  .stat-card .value { display: block; margin-top: 8px; font-size: 24px; font-weight: 700; }
-  nav.toc {
-    background: rgba(255,255,255,0.86); border: 1px solid var(--line); border-radius: 12px;
-    padding: 14px 18px; margin: 0 0 22px; font-size: 14px; box-shadow: 0 8px 24px rgba(15,42,74,0.04);
-  }
-  nav.toc ol { margin: 8px 0 0; padding-left: 20px; columns: 2; }
-  nav.toc a { color: var(--brand); text-decoration: none; }
-  nav.toc a:hover { text-decoration: underline; }
-  section {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 20px 22px; margin-bottom: 20px; box-shadow: 0 10px 18px rgba(15,42,74,0.03);
-  }
-  section > h2 {
-    margin: 0 0 14px; font-size: 19px; color: var(--brand-dark);
-    border-bottom: 2px solid var(--line); padding-bottom: 8px; display: flex; align-items: center;
-  }
-  section > h2 .num {
-    display: inline-block; min-width: 30px; color: var(--brand); font-weight: 700;
-  }
-  h3 { font-size: 15px; margin: 18px 0 8px; color: var(--ink); }
-  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-  .scroll { overflow-x: auto; }
-  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
-  th { background: #edf4fb; font-weight: 700; color: var(--brand-dark); }
-  tr:nth-child(even) td { background: var(--panel-alt); }
-  .not-performed {
-    background: var(--warn-bg); border: 1px dashed var(--warn-line); color: #8b5d18;
-    padding: 12px 14px; border-radius: 8px; font-style: italic;
-  }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .pill.pass { background: var(--ok-soft); color: var(--ok); }
-  .pill.warn { background: var(--warn-bg); color: var(--warn); }
-  .pill.fail { background: var(--danger-bg); color: var(--danger-line); }
-  .vir-present { background: var(--ok); color: #fff; text-align: center; font-weight: 700; }
-  .vir-absent  { background: var(--absent); color: var(--ink); text-align: center; }
-  .vir-nt      { background: #fff; color: #92a0b5; text-align: center; font-style: italic; }
-  pre.newick {
-    background: #0b1d2d; color: #dfeaf8; padding: 16px; border-radius: 10px;
-    overflow-x: auto; font-size: 12.5px; white-space: pre-wrap; word-break: break-all;
-    border: 1px solid rgba(255,255,255,0.05);
-  }
-  .sentences li { margin-bottom: 8px; }
-  .sxt-flag {
-    background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-line);
-    padding: 10px 12px; border-radius: 8px; font-weight: 600; margin: 0 0 14px;
-  }
-  section.limitations {
-    background: linear-gradient(180deg, #fffaf0 0%, #fff4df 100%);
-    border: 2px solid var(--warn-line);
-  }
-  section.limitations > h2 { color: #89541c; border-bottom-color: var(--warn-line); }
-  section.limitations ul { margin: 8px 0 0; padding-left: 20px; }
-  section.limitations li { margin-bottom: 8px; font-weight: 500; }
-  .caveat {
-    background: #edf5ff; border-left: 4px solid var(--brand); padding: 10px 14px;
-    border-radius: 6px; font-size: 13.5px; margin-top: 12px;
-  }
-  .kv { width: auto; }
-  .kv td:first-child { font-weight: 700; background: #f4f7fb; white-space: nowrap; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
-  .muted { color: #6a7788; font-size: 13px; }
+{% include 'report.css.j2' %}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to report content</a>
 <div class="wrap">
 
 <header class="report">
-  <h1>CholeraFlow — Outbreak Investigation Report</h1>
+  <div class="report-topline">
+  <div>
+  <p class="eyebrow">CholeraFlow / Analysis report</p>
+  <h1>Outbreak Investigation Report</h1>
   <div class="sub">
     <em>Vibrio cholerae</em> genomic surveillance &middot;
     Mode: {{ run.mode }} &middot; Generated: {{ run.date }}
+  </div>
+  </div>
+  <div class="report-actions">
+    <button id="print-report" class="button" type="button" hidden>Print / Save PDF</button>
+    <span class="offline-tag">Self-contained · Offline</span>
+  </div>
   </div>
   <div class="stats-grid">
     <div class="stat-card">
@@ -148,10 +55,17 @@
       <span class="value">{{ summary.phylo_status }}</span>
     </div>
   </div>
+  <div class="overview" aria-label="Analysis availability">
+    {% for label, module in [('Genome QC', qc), ('Characterisation', characterisation), ('Virulence', virulence), ('AMR', amr), ('Phylogenetics', phylogenetics), ('Global context', global), ('Outbreak', outbreak)] %}
+    <span class="overview-item {{ 'unavailable' if module.status == 'not_performed' else '' }}"><b>{{ label }}</b> · <span class="state">{{ 'Not performed' if module.status == 'not_performed' else 'Results available' }}</span></span>
+    {% endfor %}
+  </div>
 </header>
 
-<nav class="toc">
-  <strong>Contents</strong>
+<nav class="toc" aria-label="Report sections">
+  <div class="nav-brand"><span class="brand-mark" aria-hidden="true">◈</span>CholeraFlow</div>
+  <div class="nav-caption">Genomic surveillance report</div>
+  <strong class="nav-heading">Report contents</strong>
   <ol>
     <li><a href="#s1">Run summary</a></li>
     <li><a href="#s2">QC summary</a></li>
@@ -165,8 +79,13 @@
     <li><a href="#s10">Next steps</a></li>
     <li><a href="#s11">Methods</a></li>
   </ol>
+  <div class="nav-footer">Version {{ run.version }}<br>Generated {{ run.date }}<br>All report data stays in this file.</div>
 </nav>
 
+<main id="main-content" tabindex="-1">
+{% if demo|default(false) %}
+<div class="caveat" style="margin:0 0 22px"><strong>Synthetic demonstration.</strong> All sample values below are software test fixtures. They are not validated surveillance results and must not be used for public health decisions.</div>
+{% endif %}
 {# ── 1. Run summary ──────────────────────────────────────────────────────── #}
 <section id="s1">
   <h2><span class="num">1.</span> Run summary</h2>
@@ -188,8 +107,20 @@
   {% if qc.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ qc.reason }}</div>
   {% else %}
-    <p class="muted">{{ qc.n_pass }} of {{ qc.n_total }} samples passed QC and proceeded to
-       analysis; {{ qc.n_excluded }} excluded.</p>
+    <p class="muted">{{ qc.n_pass }} of {{ qc.n_total }} samples passed genome QC (including warnings);
+       {{ qc.n_excluded }} failed. Phylogenetic inclusion also depends on mapping and sequence QC.</p>
+    {% if qc.n_total > 0 %}
+    {% set pass_count = qc.rows|selectattr('overall_status', 'equalto', 'pass')|list|length %}
+    {% set warn_count = qc.rows|selectattr('overall_status', 'equalto', 'warn')|list|length %}
+    {% set fail_count = qc.rows|selectattr('overall_status', 'equalto', 'fail')|list|length %}
+    {% set qc_groups = [('Pass', pass_count, 'pass'), ('Warning', warn_count, 'warn'), ('Fail', fail_count, 'fail'), ('Other / unavailable', qc.n_total - pass_count - warn_count - fail_count, 'other')] %}
+    <figure class="qc-distribution" aria-label="Genome QC status distribution">
+      <div class="qc-bar" aria-hidden="true">
+        {% for label, count, state in qc_groups %}{% if count %}<span class="qc-segment {{ state }}" style="width:{{ (100 * count / qc.n_total)|round(3) }}%" title="{{ label }}: {{ count }}"></span>{% endif %}{% endfor %}
+      </div>
+      <figcaption class="qc-legend">{% for label, count, state in qc_groups %}<span><i class="qc-dot {{ state }}" aria-hidden="true"></i>{{ label }} <strong>{{ count }}</strong></span>{% endfor %}</figcaption>
+    </figure>
+    {% endif %}
     <div class="scroll">
     <table>
       <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
@@ -207,7 +138,7 @@
     </div>
     {% if qc.excluded %}
       <h3>Excluded samples</h3>
-      <table>
+      <table aria-label="Excluded genome QC samples">
         <tr><th>Sample</th><th>Reason</th></tr>
         {% for r in qc.excluded %}
         <tr><td>{{ r.sample }}</td><td>Failed QC thresholds ({{ r.overall_status }})</td></tr>
@@ -262,7 +193,7 @@
         {% for m in virulence.markers %}
           {% set state = virulence.grid[s][m] %}
           <td class="{{ 'vir-present' if state=='present' else ('vir-absent' if state=='absent' else 'vir-nt') }}">
-            {{ '✔' if state=='present' else ('—' if state=='absent' else 'n/t') }}
+            <span aria-hidden="true">{{ '✔' if state=='present' else ('—' if state=='absent' else 'n/t') }}</span><span class="sr-only">{{ state|replace('_', ' ') }}</span>
           </td>
         {% endfor %}
       </tr>
@@ -295,10 +226,11 @@
           <td>
             {%- if r[col]|lower in ['yes','true','present'] -%}
               <strong>{{ r[genes_col] if r[genes_col] else 'present' }}</strong>
+            {%- elif r[col]|lower in ['not_run', 'not_performed', 'no_schema', ''] -%}<span class="muted">not run</span>
             {%- else -%}<span class="muted">—</span>{%- endif -%}
           </td>
         {% endfor %}
-        <td>{% if r.sxt_mdr|lower in ['yes','true'] %}<span class="pill fail">yes</span>{% else %}no{% endif %}</td>
+        <td>{% if r.sxt_mdr|lower in ['yes','true'] %}<span class="pill fail">yes</span>{% elif r.sxt_mdr|lower in ['not_run', 'not_performed', 'no_schema', ''] %}<span class="muted">not run</span>{% else %}no{% endif %}</td>
       </tr>
       {% endfor %}
     </table>
@@ -324,11 +256,11 @@
       <p class="muted">Darker cells indicate greater pairwise SNP distance (max
         {{ phylogenetics.heatmap.max }} SNPs).</p>
       <div class="scroll">
-      <table>
-        <tr><th></th>{% for s in phylogenetics.heatmap.samples %}<th>{{ s }}</th>{% endfor %}</tr>
+      <table class="matrix-table" aria-label="Pairwise SNP distance matrix">
+        <tr><th scope="col">Sample</th>{% for s in phylogenetics.heatmap.samples %}<th scope="col">{{ s }}</th>{% endfor %}</tr>
         {% for row in phylogenetics.heatmap.rows %}
         <tr>
-          <th>{{ row.sample }}</th>
+          <th scope="row">{{ row.sample }}</th>
           {% for c in row.cells %}
           <td style="background:{{ c.bg }};color:{{ c.fg }};text-align:center">{{ c.text }}</td>
           {% endfor %}
@@ -444,11 +376,15 @@
   <p class="muted">Report generated {{ methods.date }} by CholeraFlow {{ run.version }}.</p>
 </section>
 
+</main>
 <footer>
   CholeraFlow {{ run.version }} &middot; This report is a screening aid and requires
   integration with epidemiological and clinical data.
 </footer>
 
 </div>
+<script>
+{% include 'report.js.j2' %}
+</script>
 </body>
 </html>
