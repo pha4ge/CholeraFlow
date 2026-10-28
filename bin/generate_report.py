@@ -33,9 +33,9 @@ LIMITATIONS = [
 
 # Reference genome provenance for the Methods section.
 REFERENCE_GENOME = {
-    "name": "Vibrio cholerae N16961",
-    "fasta_accession": "GCF_000006745.1 (chromosomes NC_002505.1 + NC_002506.1)",
-    "genbank_accession": "GCF_003063785 (SnpEff annotation)",
+    "name": "Reference not recorded; supply --reference",
+    "fasta_accession": "Not recorded",
+    "genbank_accession": "Not recorded",
 }
 
 NOT_RUN_TOKENS = ("not_run", "no_schema", "not_performed")
@@ -219,7 +219,7 @@ AMR_CLASSES = [
 
 
 def build_amr(amr):
-    if amr is None:
+    if not amr or all(r.get('status') == 'not_run' for r in amr):
         return {"status": "not_performed",
                 "reason": "AMR screening not performed."}
     sxt_samples = [r.get("sample", "") for r in amr if _truthy(r.get("sxt_mdr"))]
@@ -313,7 +313,7 @@ def build_sentences(qc, characterisation, virulence, amr, outbreak):
     # QC inclusion
     if qc["status"] == "ok":
         sentences.append(
-            "{X} of {Y} samples passed QC and were included in phylogenetic analysis.".format(
+            "{X} of {Y} samples passed genome QC. Phylogenetic inclusion also depends on mapping and sequence QC.".format(
                 X=qc["n_pass"], Y=qc["n_total"]))
 
     # Species confirmation
@@ -347,8 +347,9 @@ def build_sentences(qc, characterisation, virulence, amr, outbreak):
             if cid in ("NA", "unassigned") or len(members) < 2:
                 continue
             sentences.append(
-                "{N} samples form cluster {C}, within {T} SNPs of each other, consistent with "
-                "a common outbreak source (epidemiological confirmation required).".format(
+                "{N} samples form cluster {C}, connected by pairwise links of at most {T} SNPs. "
+                "Some pairs may exceed this threshold because clustering uses connected components; "
+                "epidemiological confirmation is required.".format(
                     N=len(members), C=cid, T=thr))
 
     # AMR resistance markers per drug class
@@ -467,6 +468,12 @@ def build_context(args):
         "next_steps": build_next_steps(amr_s, outbreak, global_ctx),
         "methods": build_methods(software_versions, params, args.run_date),
     }
+    if getattr(args, 'reference', None):
+        ctx['methods']['reference'] = {
+            'name': 'Mapping reference as configured (identity must be verified)',
+            'fasta_accession': 'See pipeline_info/run_provenance.json for checksums',
+            'genbank_accession': args.reference,
+        }
     return ctx
 
 
@@ -478,7 +485,9 @@ def render(ctx, template_path, output_path):
     tmpl_dir = os.path.dirname(os.path.abspath(template_path))
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(tmpl_dir),
-        autoescape=jinja2.select_autoescape(["html"]),
+        # Templates end in .html.j2; extension-based selection would disable
+        # escaping and let metadata inject active HTML into the offline report.
+        autoescape=True,
         trim_blocks=True, lstrip_blocks=True,
     )
     template = env.get_template(os.path.basename(template_path))
@@ -516,6 +525,7 @@ def main():
     p.add_argument("--global-tree", default=None)
     p.add_argument("--metadata", default=None)
     p.add_argument("--software-versions", default=None)
+    p.add_argument("--reference", default=None, help="Actual reference path/identity recorded for this run")
     args = p.parse_args()
 
     ctx = build_context(args)

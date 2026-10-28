@@ -17,7 +17,7 @@ process GENERATE_REPORT {
     label 'process_single'
 
     conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.6'
-    container 'python:3.11-slim'
+    container params.report_container
 
     input:
     path template
@@ -57,7 +57,7 @@ process GENERATE_REPORT {
     export PYTHONUSERBASE=\$(mktemp -d)
 
     # Install Jinja2 only if the image doesn't already provide it
-    python3 -c "import jinja2" 2>/dev/null || pip install --quiet --no-input --user jinja2==3.1.6
+    python3 -c "import jinja2; assert jinja2.__version__ == '3.1.6'" 2>/dev/null || python3 -m pip install --quiet --no-input --user jinja2==3.1.6
 
     generate_report.py \\
         --template ${template} \\
@@ -65,6 +65,7 @@ process GENERATE_REPORT {
         --pipeline-version ${workflow.manifest.version ?: '0.2.0'} \\
         --run-date "\$(date +%Y-%m-%d)" \\
         --mode ${params.use_case} \\
+        --reference '${params.ref_genbank}' \\
         --snp-threshold ${params.snp_outbreak_threshold} \\
         --cgmlst-threshold ${params.cgmlst_outbreak_alleles} \\
         --max-missing ${params.max_missing_percentage} \\

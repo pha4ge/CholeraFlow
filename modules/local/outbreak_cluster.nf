@@ -36,12 +36,13 @@ process OUTBREAK_CLUSTER {
 
     script:
     def meta_arg = metadata ? "--metadata ${metadata}" : ""
+    def cg_arg = cgmlst_matrix ? "--cgmlst-matrix '${cgmlst_matrix}'" : ""
     """
     export PATH="${moduleDir.parent.parent}/bin:\${PATH}"
 
     outbreak_cluster.py \\
         --snp-matrix               ${snp_matrix} \\
-        --cgmlst-matrix            ${cgmlst_matrix} \\
+        ${cg_arg} \\
         ${meta_arg} \\
         --snp-outbreak-threshold   ${params.snp_outbreak_threshold} \\
         --snp-cluster-threshold    ${params.snp_cluster_threshold} \\

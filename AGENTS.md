@@ -60,8 +60,12 @@ NXF_VER=24.10.5 nextflow config -profile test
 ```
 Run module/containers tests when Docker and the required databases are available.
 
-## Weekly Codex maintenance
-`.github/workflows/weekly-codex-maintenance.yml` may propose maintenance once a
-week. It must create a branch and pull request only; it must never merge its own
-work. The agent follows `.github/codex/weekly-maintenance.md`. Human review is
-required, especially for scientific logic and database changes.
+## Scheduled Codex maintenance
+`.github/workflows/codex-maintenance.yml` may propose a small maintenance change
+every two hours. It must create a branch and draft pull request only; it must
+never merge its own work. The agent follows `.github/codex/maintenance.md`.
+An independent job enforces `scripts/check_maintenance_patch.py` and reruns
+validation before a separate publisher receives GitHub write access. The agent
+must not edit its own policy, validator, workflow, scientific algorithms,
+thresholds, references, schemes, databases, or dependencies. Human review is
+required. Scheduled maintenance pauses while an agent PR is open.

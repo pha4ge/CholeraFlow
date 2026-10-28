@@ -15,7 +15,7 @@ alignment is variable; because parsimony-informative sites are a strict subset
 of variable sites this requirement is automatically satisfied.
 
 Outputs (written to --output-dir):
-  pis_alignment.fasta    PIS alignment — input for IQ-TREE2 (+ASC) and snp-dists
+  pis_alignment.fasta    PIS alignment — input for IQ-TREE2 (+ASC) only
   variant_codons.fasta   Same alignment (gene-context version requires ref GenBank,
                          which is integrated when annotation is available in Step 11)
   snp_coordinates.tsv    Per-site statistics: column index, character states,
@@ -155,6 +155,8 @@ def main():
     p.add_argument('--output-dir',             required=True,  help='Directory for output files')
     p.add_argument('--min_parsimony_coverage', type=float, default=0.7,
                    help='Minimum fraction of sequences genotyped at a site (default: 0.7)')
+    p.add_argument('--allow-empty', action='store_true',
+                   help='Write empty PIS outputs when none pass; the workflow skips tree inference')
     args = p.parse_args()
 
     outdir = Path(args.output_dir)
@@ -182,7 +184,7 @@ def main():
           file=sys.stderr)
     print(f'[varcodons] Output: {n_kept} sites retained', file=sys.stderr)
 
-    if n_kept == 0:
+    if n_kept == 0 and not args.allow_empty:
         sys.exit(
             'ERROR: No parsimony-informative sites passed the coverage threshold '
             f'(min_parsimony_coverage={args.min_parsimony_coverage}). '

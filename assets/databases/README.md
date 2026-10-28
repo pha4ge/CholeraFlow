@@ -1,71 +1,57 @@
-# CholeraFlow reference databases
+# CholeraFlow databases
 
-CholeraFlow does **not** commit large third-party databases to Git. Use the
-repository helper so the source and exact installed revision are recorded:
+Large databases remain local. Do not commit downloaded trees, allele schemas,
+archives or local provenance manifests. Run setup from the repository root:
 
 ```bash
 python3 scripts/setup_databases.py --all
-```
-
-This downloads:
-
-| Database | Canonical local path | Source |
-|---|---|---|
-| ResFinder | `assets/databases/resfinder_db/` | CGE `resfinder_db` Bitbucket repository |
-| VirulenceFinder | `assets/databases/virulencefinder_db/` | CGE `virulencefinder_db` Bitbucket repository |
-| EnteroBase Vibrio cgMLST v1 raw loci | `assets/databases/cgmlst_vibrio/raw_loci/` | `VIBwgMLST.cgMLSTv1` |
-
-The current EnteroBase Vibrio cgMLST v1 scheme contains **1,128 core loci**.
-The setup helper refuses a different locus count unless
-`--allow-locus-count-change` is explicitly supplied after scientific review.
-
-## Prepare the cgMLST schema for chewBBACA
-
-Download the raw loci first, activate the same chewBBACA environment/version
-used by CholeraFlow, then run:
-
-```bash
-python3 scripts/setup_databases.py --cgmlst
 python3 scripts/setup_databases.py --prepare-cgmlst --cpu 4
 ```
 
-A validated *V. cholerae* Prodigal training file may be supplied with
-`--prodigal-training-file FILE`. chewBBACA allows preparation without one but
-recommends a training file for reproducible CDS prediction.
+| Resource | Local location | Used by |
+| --- | --- | --- |
+| ResFinder | `assets/databases/resfinder_db/` | Local acquired-gene screen |
+| VirulenceFinder | `assets/databases/virulencefinder_db/` | Local virulence screen |
+| EnteroBase raw loci | `assets/databases/cgmlst_vibrio/raw_loci/` | chewBBACA schema preparation |
+| Prepared schema | `assets/databases/cgmlst_vibrio/schema/` | Allele calling |
+| Curated marker FASTAs | `assets/databases/typing_refs/` | Custom marker typing |
+| Download provenance | `assets/databases/database_manifest.json` | Run audit records |
 
-Use the resulting schema with:
+Downloaded databases are not automatically selected just because they exist.
+Pass their locations explicitly:
 
 ```bash
+--resfinder_db assets/databases/resfinder_db \
+--virulencefinder_db assets/databases/virulencefinder_db \
 --cgmlst_schema assets/databases/cgmlst_vibrio/schema
 ```
 
-## Legacy MLST
+## Rebuild a validated database set
 
-CholeraFlow's legacy MLST call is produced inside **Bactopia**. CholeraFlow does
-not maintain a second standalone MLST database directory. The authoritative
-public *Vibrio cholerae* typing resource is PubMLST:
+Choose reviewed exact commits and retain them with the analysis record:
 
-- `https://pubmlst.org/organisms/vibrio-cholerae`
-- downloadable allele/profile definitions: `https://pubmlst.org/data`
+```bash
+python3 scripts/setup_databases.py --resfinder --resfinder-ref <exact-commit>
+python3 scripts/setup_databases.py --virulencefinder --virulencefinder-ref <exact-commit>
+```
 
-Keep the Bactopia software/environment and the MLST database provenance reported
-for each analysis run. Do not silently mix a separately downloaded PubMLST
-snapshot with the Bactopia-managed call unless that integration is explicitly
-implemented and tested.
+The helper records resolved Git commits and EnteroBase archive/file checksums.
+Existing Git checkouts are not updated automatically; `--update-existing` is an
+explicit update request. `--force-redownload` likewise explicitly refreshes the
+EnteroBase download. Retain the prior manifest/snapshots before changing a
+validated installation. A remote branch name or container tag alone is not an
+immutable database revision.
 
-## Serogroup / cholera typing references
+The supported scheme is EnteroBase **`VIBwgMLST.cgMLSTv1`, 1,128 core loci**.
+The downloader refuses a different locus count. `--allow-locus-count-change` is
+for an explicitly reviewed scientific change, not an installation workaround.
+See the [cgMLST guide](cgmlst_vibrio/README.md).
 
-The current CholeraFlow serogroup/biotype/toxin step is a **custom marker-based
-module** using curated FASTA files under `assets/databases/typing_refs/`. It does
-not directly consume a third-party "serotype database". See that directory's
-README for the exact markers and validation requirements. CGE's CholeraeFinder
-repository (`https://bitbucket.org/genomicepidemiology/choleraefinder`) is an
-external reference implementation, but it is not wired into the current
-CholeraFlow module and must not be presented as an installed CholeraFlow DB.
+The helper does not download/validate custom typing references; see
+[marker curation](typing_refs/README.md). Legacy seven-locus MLST is managed by
+Bactopia, not a duplicate CholeraFlow `mlst_db/` directory. Preserve Bactopia's
+MLST and AMRFinderPlus database versions in its nested run records.
 
-## Provenance
-
-`scripts/setup_databases.py` writes `assets/databases/database_manifest.json`
-with exact Git commits, the EnteroBase scheme name, locus count, and a combined
-SHA-256 checksum of the downloaded cgMLST locus archive set. Keep that manifest
-with analysis outputs for reproducibility.
+Missing databases produce `not_run`/`no_schema`, not absence of markers, resistance
+or epidemiological relationships. Run provenance copies the configured manifest;
+if using a different local manifest, set `--database_manifest PATH`.

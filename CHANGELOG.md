@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased — pipeline improvement, 2026-10-28
+
+### Correctness and execution
+
+- Use all recombination-masked polymorphic sites for SNP distances, retaining
+  singleton variants. **Distances and cluster membership can differ from prior
+  PIS-only runs; reassess scientific comparisons. Thresholds are unchanged.**
+- Preserve distances/clustering when no PIS sites exist, skipping tree inference.
+- Honor local AMR, VirulenceFinder and mapping/phylogeny switches, and permit
+  SNP clustering when cgMLST is disabled.
+- Reject malformed distance matrices, ambiguous inputs, duplicate metadata,
+  invalid coordinates and unimplemented feature requests explicitly.
+- Keep missing AMR sources distinct from negative results; preserve sample
+  rows when AMRFinderPlus is unavailable and reject incomplete assembly outputs.
+- Make validation inspect host CSV-referenced files, restore utility executable
+  permissions, gate snippy-core on sequence-QC aggregation, propagate ordinary
+  snippy-core failures, and bound IQ-TREE2 threads with a fixed seed.
+- Correct claims about phylogenetic inclusion and connected-component distances
+  in reports; record the actual configured reference instead of assuming one.
+
+### Documentation, reproducibility and maintenance
+
+- Rewrite root/database/reference READMEs and implementation/operating guides;
+  document the compressed companion FASTA and remaining scientific limitations.
+- Add reference/input/manifest hashes, effective run parameters and execution
+  diagnostics; provide a prebuilt-report-image recipe for offline deployment.
+- Add Python regressions, synthetic Nextflow integration checks, and CI on
+  Python 3.11 / Java 21 / Nextflow 24.10.5.
+- Implement two-hour OpenAI Codex maintenance with restricted patches, independent
+  validation, separate PR publication, a pending-PR guard and no automatic merge.
+- Review the supplied BACASS 2.6.0 archive as a template without replacing the
+  scientific backbone, reference content, QC cutoffs or 1,128-locus cgMLST scheme.
+
 ## 0.2.0 — 2026-08-25
 
 This maintenance release focuses on reproducibility, database provenance,

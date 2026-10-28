@@ -1,46 +1,90 @@
-# Weekly OpenAI Codex maintenance
+# OpenAI Codex maintenance every two hours
 
-CholeraFlow includes a guarded GitHub Actions workflow at:
+The repository includes
+[`.github/workflows/codex-maintenance.yml`](../.github/workflows/codex-maintenance.yml),
+using the official [Codex GitHub Action](https://learn.chatgpt.com/docs/github-action).
+It proposes maintenance through draft pull requests; it never merges changes.
 
-```text
-.github/workflows/weekly-codex-maintenance.yml
-```
+## Activate
 
-It runs weekly and can also be started manually. The workflow uses OpenAI's
-official `openai/codex-action@v1` and is intentionally designed to **propose a
-pull request, never merge into `main`**.
+1. Review and merge the workflow and companion files into the default branch of
+   `pha4ge/CholeraFlow`. The workflow deliberately does not run from other branches
+   or forks; update that repository guard explicitly when maintaining a fork.
+2. Add repository Actions secret `OPENAI_API_KEY` containing a project API key
+   permitted to use Codex. Enter it in GitHub settings or with `gh secret set`;
+   never place it in source files, prompts, test output or chat.
+3. Enable GitHub Actions and allow Actions to create pull requests under
+   Settings → Actions → General. Keep protected-branch/human review requirements.
+4. Optionally set repository variable `CODEX_MODEL` to an available model ID.
+   If omitted, the Codex Action selects its default; confirm availability in the
+   OpenAI project rather than assuming a hardcoded model will remain available.
+5. Start a manual workflow run on the default branch and review the logs/checks
+   and resulting draft PR before relying on unattended runs.
 
-## One-time GitHub setup
+A local file is not an active remote schedule. Without the API secret the
+workflow exits preflight with a setup message. Without repository authentication
+this local development session cannot publish files or configure the secret.
 
-1. Push this repository to GitHub.
-2. Open **Settings → Secrets and variables → Actions**.
-3. Add a repository secret named `OPENAI_API_KEY` containing an OpenAI API key
-   that is allowed to use Codex.
-4. In **Settings → Actions → General → Workflow permissions**, allow GitHub
-   Actions to create pull requests if your repository/org policy disables it.
-5. Keep branch protection/review requirements enabled on `main`.
+## Schedule and cost
 
-No API key is stored in the repository. The Codex job has read-only GitHub
-content permission and uses the official `:workspace` Codex permission profile
-for repository edits. It edits an isolated checkout, runs tests, and exports a
-patch. A separate publishing job receives GitHub write permission and creates a
-new `ai/weekly-maintenance-*` branch plus pull request. This separation reduces
-the privileges available to the coding agent.
+Cron: `17 */2 * * *`, at 00:17, 02:17, …, 22:17 UTC, also the local time in Accra.
+GitHub may delay scheduled jobs, and scheduled workflows run from the default
+branch only. This is a two-hour maintenance opportunity, not a promise that code
+changes every two hours. No justified change means no PR.
 
-## Schedule
+API usage is charged to the configured OpenAI project and GitHub runner usage
+also applies. Configure project budgets/alerts appropriate to up to 12 daily
+opportunities. Each proposal job has a 30-minute limit; verification has a
+15-minute limit. Set `CODEX_MAINTENANCE_PAUSED=true` to pause all proposals, or
+disable the workflow. Rotate the project key according to your operating policy.
 
-The default cron is Monday at 06:00 UTC. Change only the cron expression in the
-workflow if a different maintenance window is preferred.
+## Execution and privilege separation
 
-## What it is allowed to do
+1. **Preflight:** read-only GitHub access; require the API secret and check for an
+   open `ai/maintenance-*` PR. Skip if one is already awaiting review.
+2. **Propose:** check out the exact default-branch SHA without persisted GitHub
+   credentials, run the lightweight baseline, then invoke Codex with workspace
+   sandboxing and `drop-sudo`. The API key is scoped to the Codex Action step.
+   Afterwards only Git diff export and artifact upload occur; no proposed code
+   is executed in this job after the agent.
+3. **Verify:** use a fresh runner with no OpenAI key or repository write token.
+   Run the trusted base version of the patch validator before applying changes,
+   then rerun Python/Nextflow/synthetic workflow validation independently.
+4. **Publish:** another runner receives GitHub write permissions, rechecks the
+   scope and base SHA, applies the verified patch, and creates a unique branch
+   and draft PR. It does not execute proposed repository code or merge the PR.
 
-The persistent policy is in `AGENTS.md` and
-`.github/codex/weekly-maintenance.md`. Scientific methodology changes are
-explicitly excluded from autonomous maintenance and must be reviewed by a
-human.
+If the default branch changes during validation, publication is deferred to a
+new scheduled run. Empty patches do not publish. Any baseline/check/scope failure
+blocks publication. GitHub-token-created PRs may not trigger ordinary PR workflows;
+the separate verification job supplies the checks before publication. A maintainer
+can rerun CI when promoting the draft for review.
 
-## Guardrail files
+## Allowed work and hard limits
 
-The weekly agent is prevented from editing its own governing files: `AGENTS.md`,
-`.github/codex/weekly-maintenance.md`, and all files under `.github/workflows/`.
-Changes to those files require a separate human-directed maintenance task.
+The prompt is [maintenance.md](../.github/codex/maintenance.md), governed by
+[AGENTS.md](../AGENTS.md). The independent
+[patch validator](../scripts/check_maintenance_patch.py) allows only:
+
+- Root README files and Markdown under `docs/`, excluding nested agent policies.
+- `bin/validate_inputs.py` and `bin/generate_report.py` for input/presentation fixes.
+- Top-level `tests/test_*.py` regression coverage.
+
+It rejects changes to scientific utilities, `.github/`, policies, the validator,
+modules/config, references/assets/databases, dependencies and other paths. It
+also rejects deletions, renames, binary changes, permission changes, symlinks and
+executable additions. A patch may change at most 12 files, 400 added/deleted lines
+and 200 KB. These are workflow-enforced limits, not only prompt requests.
+
+The agent must not alter scientific conclusions through report code, weaken
+tests or invent results. Scope checks do not replace human review of code meaning.
+Scientific tool/database upgrades require a separately reviewed task and full
+validation, not a two-hour automatic dependency refresh.
+
+## Troubleshooting
+
+Check preflight for missing key, paused variable or pending PR. Check propose for
+API/model permissions and baseline failures. Check verify for rejected paths,
+patch conflicts or regressions. Check publish for changed base SHA or disabled PR
+creation. Review artifacts within their seven-day retention window. No credentials
+or patient/genome datasets belong in those artifacts.

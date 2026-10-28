@@ -113,6 +113,18 @@ def _full(d):
 
 class TestRender(unittest.TestCase):
 
+    def test_metadata_and_newick_cannot_inject_active_html(self):
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            payload = '<script>alert("metadata")</script>'
+            ctx['outbreak']['rows'][0]['country'] = payload
+            ctx['phylogenetics']['newick'] = '<img src=x onerror=alert(1)>'
+            html = gr.render(ctx, TEMPLATE, os.path.join(d, 'escaped.html'))
+            self.assertNotIn(payload, html)
+            self.assertNotIn('<img src=x', html)
+            self.assertIn('&lt;script&gt;', html)
+            self.assertIn('&lt;img src=x', html)
+
     def test_all_11_sections_present(self):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
@@ -143,11 +155,13 @@ class TestRender(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             s = " ".join(ctx["sentences"])
-            self.assertIn("2 of 3 samples passed QC", s)          # 2 pass, 1 fail
+            self.assertIn("2 of 3 samples passed genome QC", s)          # 2 pass, 1 fail
             self.assertIn("2 of 2 samples were confirmed as Vibrio cholerae", s)
             self.assertIn("classified as O1 El Tor", s)
             self.assertIn("carry the ctx operon", s)
-            self.assertIn("form cluster 1, within 5 SNPs", s)
+            self.assertIn("form cluster 1, connected by pairwise links of at most 5 SNPs", s)
+            self.assertIn("Some pairs may exceed this threshold", s)
+            self.assertNotIn("were included in phylogenetic analysis", s)
             self.assertIn("SXT integrative conjugative element detected in 1 samples", s)
             self.assertIn("require integration with epidemiological", s)
 

@@ -2,15 +2,15 @@ process INPUT_VALIDATE {
     tag "validation"
     label 'process_single'
 
-    // Python stdlib only — no container needed for validation
-    conda 'conda-forge::python=3.11'
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/python:3.11' :
-        'quay.io/biocontainers/python:3.11' }"
+    // Inspect the original host paths referenced by the CSV. Mounting only the
+    // CSV inside a container hides sibling read files and breaks relative paths.
+    executor 'local'
+    container null
+    conda null
 
     input:
-    path  samplesheet
-    path  metadata      // may be [] (no file) when --metadata not provided
+    path  samplesheet, stageAs: 'samplesheet.csv'
+    path  metadata, stageAs: 'metadata/metadata.csv'  // avoid basename collisions
 
     output:
     path 'validated_samplesheet.csv',  emit: samplesheet
@@ -18,12 +18,12 @@ process INPUT_VALIDATE {
     path 'validation_report.txt',      emit: report
 
     script:
-    def meta_arg = metadata ? "--metadata ${metadata}" : ""
+    def meta_arg = metadata ? "--metadata '${metadata}'" : ""
     """
     export PATH="${moduleDir.parent.parent}/bin:\${PATH}"
 
-    validate_inputs.py \\
-        --samplesheet ${samplesheet} \\
+    python3 '${projectDir}/bin/validate_inputs.py' \\
+        --samplesheet '${samplesheet}' \\
         ${meta_arg} \\
         --outdir .
     """
