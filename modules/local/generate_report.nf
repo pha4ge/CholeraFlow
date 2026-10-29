@@ -7,20 +7,20 @@
 // renders each section either with real data or an explicit "Analysis not
 // performed" message, so a partial pipeline still yields a complete report.
 //
-// Container: python:3.11-slim + Jinja2. Jinja2 is installed at runtime only if
-// the image does not already provide it — for fully offline (LMIC) deployments,
-// bake jinja2 into a custom image so no network access is needed at run time.
+// Container: python:3.11-slim + Jinja2 3.1.6. The Docker path installs Jinja2 at
+// runtime only if it is missing. For fully offline deployments, pre-build/cache
+// a report image containing Jinja2 3.1.6 (see docs/OFFLINE_DEPLOYMENT.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
 process GENERATE_REPORT {
     tag "generate_report"
     label 'process_single'
 
-    conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.4'
-    container 'python:3.11-slim'
+    conda 'conda-forge::python=3.11 conda-forge::jinja2=3.1.6'
+    container params.report_container
 
     input:
-    path template
+    path template_bundle, stageAs: 'report_templates'
     path genome_qc            // genome_qc_summary.tsv        (optional [])
     path typing               // typing_summary.tsv           (optional [])
     path virulence            // virulencefinder_summary.tsv  (optional [])
@@ -33,6 +33,8 @@ process GENERATE_REPORT {
     path cgmlst_matrix        // cgmlst_distance_matrix.tsv   (optional [])
     path global_tree          // global_context treefile      (optional [])
     path metadata             // metadata CSV                 (optional [])
+    path seq_qc               // seq_qc_summary.tsv            (optional [])
+    path tree_report          // original IQ-TREE diagnostics  (optional [])
 
     output:
     path 'outbreak_report.html', emit: report
@@ -50,6 +52,8 @@ process GENERATE_REPORT {
     def cgmlst_arg     = cgmlst_matrix       ? "--cgmlst-matrix ${cgmlst_matrix}"               : ""
     def global_arg     = global_tree         ? "--global-tree ${global_tree}"                   : ""
     def meta_arg       = metadata            ? "--metadata ${metadata}"                         : ""
+    def seq_arg        = seq_qc              ? "--seq-qc ${seq_qc}"                             : ""
+    def diagnostics_arg = tree_report        ? "--tree-report ${tree_report}"                   : ""
     """
     export PATH="${moduleDir.parent.parent}/bin:\$PATH"
     
@@ -57,20 +61,21 @@ process GENERATE_REPORT {
     export PYTHONUSERBASE=\$(mktemp -d)
 
     # Install Jinja2 only if the image doesn't already provide it
-    python3 -c "import jinja2" 2>/dev/null || pip install --quiet --no-input --user jinja2==3.1.4
+    python3 -c "import jinja2; assert jinja2.__version__ == '3.1.6'" 2>/dev/null || python3 -m pip install --quiet --no-input --user jinja2==3.1.6
 
     generate_report.py \\
-        --template ${template} \\
+        --template '${template_bundle}/outbreak_report.html.j2' \\
         --output   outbreak_report.html \\
-        --pipeline-version ${workflow.manifest.version ?: '0.1.0'} \\
+        --pipeline-version ${workflow.manifest.version ?: '0.2.0'} \\
         --run-date "\$(date +%Y-%m-%d)" \\
         --mode ${params.use_case} \\
+        --reference '${params.ref_genbank}' \\
         --snp-threshold ${params.snp_outbreak_threshold} \\
         --cgmlst-threshold ${params.cgmlst_outbreak_alleles} \\
         --max-missing ${params.max_missing_percentage} \\
         --min-parsimony-coverage ${params.min_parsimony_coverage} \\
         ${genome_qc_arg} ${typing_arg} ${virulence_arg} ${amr_arg} \\
         ${snp_arg} ${tree_arg} ${clust_arg} ${csum_arg} ${pairs_arg} \\
-        ${cgmlst_arg} ${global_arg} ${meta_arg}
+        ${cgmlst_arg} ${global_arg} ${meta_arg} ${seq_arg} ${diagnostics_arg}
     """
 }

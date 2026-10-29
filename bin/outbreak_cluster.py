@@ -55,9 +55,20 @@ def _parse_val(val):
     return int(v)
 
 
-def parse_matrix(path):
+def _strip_snippy_suffix(name):
+    """Return the biological sample ID for snippy-core labels.
+
+    snippy-core names per-sample inputs from their directory basename, which in
+    CholeraFlow is commonly ``<sample>_snippy``.  Downstream metadata and cgMLST
+    use the original sample ID, so only a terminal ``_snippy`` suffix is removed.
+    """
+    return name[:-7] if name.endswith('_snippy') else name
+
+
+def parse_matrix(path, name_normalizer=None):
     """Parse a symmetric distance matrix with a blank top-left cell.
 
+    ``name_normalizer`` can canonicalize labels before they are used as keys.
     Returns (samples, dist) where dist[(a, b)] is an int or None. Returns
     (None, {}) when the file is a not_run placeholder or is empty.
     """
@@ -73,15 +84,35 @@ def parse_matrix(path):
     if data_rows and data_rows[0] and data_rows[0][0] == 'not_run':
         return None, {}
 
-    samples = header[1:]  # first header cell is blank for a distance matrix
+    normalizer = name_normalizer or (lambda x: x)
+    samples = [normalizer(x) for x in header[1:]]
+    if not samples or any(not s for s in samples):
+        raise ValueError("Distance matrix must contain nonempty sample names")
+    if len(samples) != len(set(samples)):
+        raise ValueError("Distance-matrix sample names collide after normalization")
+
     dist = {}
     row_samples = []
     for row in data_rows:
-        rname = row[0]
+        if len(row) != len(samples) + 1:
+            raise ValueError("Distance matrix must be square: incorrect row length")
+        rname = normalizer(row[0])
         row_samples.append(rname)
         for j, cell in enumerate(row[1:]):
-            if j < len(samples):
-                dist[(rname, samples[j])] = _parse_val(cell)
+            value = _parse_val(cell)
+            if value is not None and value < 0:
+                raise ValueError("Distance matrix cannot contain negative distances")
+            dist[(rname, samples[j])] = value
+    if len(row_samples) != len(set(row_samples)):
+        raise ValueError("Distance-matrix row names collide after normalization")
+    if set(row_samples) != set(samples):
+        raise ValueError("Distance-matrix row and column sample names must match")
+    for a in samples:
+        if dist[(a, a)] not in (0, None):
+            raise ValueError("Distance-matrix diagonal must be zero or NA")
+        for b in samples:
+            if dist[(a, b)] != dist[(b, a)]:
+                raise ValueError("Distance matrix must be symmetric, including NA cells")
     return row_samples, dist
 
 
@@ -161,12 +192,14 @@ def run(snp_path, cgmlst_path, metadata_path, thresholds, outdir):
     snp_cl = thresholds['snp_cluster']
     cg_ob = thresholds['cgmlst_outbreak']
     cg_cl = thresholds['cgmlst_cluster']
+    if not (0 <= snp_ob <= snp_cl and 0 <= cg_ob <= cg_cl):
+        raise ValueError("Thresholds must be nonnegative; outbreak threshold must not exceed cluster threshold")
 
-    snp_samples, snp_dist = parse_matrix(snp_path)
+    snp_samples, snp_dist = parse_matrix(snp_path, name_normalizer=_strip_snippy_suffix)
     if snp_samples is None:
         snp_samples, snp_dist = [], {}
 
-    cg_samples, cg_dist = parse_matrix(cgmlst_path)
+    cg_samples, cg_dist = parse_matrix(cgmlst_path) if cgmlst_path else (None, {})
     cgmlst_available = cg_samples is not None
     cg_set = set(cg_samples) if cgmlst_available else set()
 
@@ -290,7 +323,7 @@ def _write_outputs(outdir, assignments, pairs, summary):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--snp-matrix', required=True, help='snp_distance_matrix.tsv (Step 10a)')
-    p.add_argument('--cgmlst-matrix', required=True, help='cgmlst_distance_matrix.tsv (Step 10b)')
+    p.add_argument('--cgmlst-matrix', default=None, help='cgmlst_distance_matrix.tsv (optional Step 10b)')
     p.add_argument('--metadata', default=None, help='Metadata CSV (optional)')
     p.add_argument('--snp-outbreak-threshold', type=int, required=True)
     p.add_argument('--snp-cluster-threshold', type=int, required=True)

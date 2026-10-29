@@ -18,9 +18,13 @@ the template.
 import argparse
 import csv
 import datetime
+import hashlib
 import json
 import os
 import sys
+
+from report_charts import build_charts
+from report_tree import build_tree_view
 
 # Fixed Limitations text — PIPELINE_SPEC.md Section 6 Step 13. Mandatory, verbatim.
 LIMITATIONS = [
@@ -33,9 +37,9 @@ LIMITATIONS = [
 
 # Reference genome provenance for the Methods section.
 REFERENCE_GENOME = {
-    "name": "Vibrio cholerae N16961",
-    "fasta_accession": "GCF_000006745.1 (chromosomes NC_002505.1 + NC_002506.1)",
-    "genbank_accession": "GCF_003063785 (SnpEff annotation)",
+    "name": "Reference not recorded; supply --reference",
+    "fasta_accession": "Not recorded",
+    "genbank_accession": "Not recorded",
 }
 
 NOT_RUN_TOKENS = ("not_run", "no_schema", "not_performed")
@@ -153,6 +157,17 @@ def build_characterisation(typing):
     if typing is None:
         return {"status": "not_performed",
                 "reason": "Cholera characterisation (species/serogroup/biotype) not performed."}
+
+    # The typing module emits one row per sample even when its marker database is
+    # unavailable. Treat an all-not_run table as analysis not performed rather
+    # than reporting "0 of N confirmed", which can be misread as a biological
+    # species-screening failure.
+    if typing and all(
+        str(r.get("species_confirmation", "")).strip().lower() in NOT_RUN_TOKENS
+        for r in typing
+    ):
+        return {"status": "not_performed",
+                "reason": "Cholera characterisation database was not configured."}
     return {"status": "ok", "rows": typing}
 
 
@@ -208,7 +223,7 @@ AMR_CLASSES = [
 
 
 def build_amr(amr):
-    if amr is None:
+    if not amr or all(r.get('status') == 'not_run' for r in amr):
         return {"status": "not_performed",
                 "reason": "AMR screening not performed."}
     sxt_samples = [r.get("sample", "") for r in amr if _truthy(r.get("sxt_mdr"))]
@@ -235,7 +250,7 @@ def build_phylogenetics(newick, matrix, cluster_rows):
     status = "ok" if (newick or matrix) else "not_performed"
     heatmap = None
     if matrix:
-        samples = matrix["samples"]
+        samples = matrix["samples"][:80]
         numeric = []
         for a in samples:
             for b in samples:
@@ -250,11 +265,13 @@ def build_phylogenetics(newick, matrix, cluster_rows):
         for a in samples:
             cells = [_heat_cell(matrix["dist"].get((a, b), ""), vmax) for b in samples]
             table.append({"sample": a, "cells": cells})
-        heatmap = {"samples": samples, "rows": table, "max": vmax}
+        heatmap = {"samples": samples, "rows": table, "max": vmax,
+                   "total_samples": len(matrix['samples']), "shown_samples": len(samples)}
     return {
         "status": status,
         "reason": "Phylogenetic analysis not performed (no tree or SNP matrix)." if status == "not_performed" else None,
         "newick": newick,
+        "tree_view": build_tree_view(newick),
         "heatmap": heatmap,
         "clusters": cluster_rows or [],
     }
@@ -269,7 +286,34 @@ def build_global(global_tree):
                         "provide the global core alignment from Zenodo DOI: "
                         "10.5281/zenodo.16909942"),
         }
-    return {"status": "ok", "newick": global_tree}
+    return {"status": "ok", "newick": global_tree, "tree_view": build_tree_view(global_tree)}
+
+
+def build_summary(qc, characterisation, virulence, amr, outbreak, phylogenetics):
+    sample_total = qc["n_total"] if qc["status"] == "ok" else 0
+    qc_pass = qc["n_pass"] if qc["status"] == "ok" else 0
+
+    confirmed = 0
+    if characterisation["status"] == "ok":
+        confirmed = sum(1 for r in characterisation["rows"] if str(r.get("species_confirmation", "")).strip().lower() == "confirmed")
+
+    virulence_markers = 0
+    if virulence["status"] == "ok":
+        virulence_markers = sum(1 for s in virulence["samples"] if any(v in ("present", "absent") for v in virulence["grid"][s].values()))
+
+    sxt_samples = len(amr["sxt_samples"]) if amr["status"] == "ok" else 0
+    clusters = outbreak["summary"].get("n_clusters", 0) if outbreak["status"] == "ok" else 0
+    phylo_status = "not_run" if phylogenetics["status"] == "not_performed" else "available"
+
+    return {
+        "samples": sample_total,
+        "passed_qc": qc_pass,
+        "confirmed_species": confirmed,
+        "virulence_markers": virulence_markers,
+        "sxt_samples": sxt_samples,
+        "clusters": clusters,
+        "phylo_status": phylo_status,
+    }
 
 
 def build_outbreak(cluster_rows, cluster_summary, pairs):
@@ -302,7 +346,7 @@ def build_sentences(qc, characterisation, virulence, amr, outbreak):
     # QC inclusion
     if qc["status"] == "ok":
         sentences.append(
-            "{X} of {Y} samples passed QC and were included in phylogenetic analysis.".format(
+            "{X} of {Y} samples passed genome QC. Phylogenetic inclusion also depends on mapping and sequence QC.".format(
                 X=qc["n_pass"], Y=qc["n_total"]))
 
     # Species confirmation
@@ -336,8 +380,9 @@ def build_sentences(qc, characterisation, virulence, amr, outbreak):
             if cid in ("NA", "unassigned") or len(members) < 2:
                 continue
             sentences.append(
-                "{N} samples form cluster {C}, within {T} SNPs of each other, consistent with "
-                "a common outbreak source (epidemiological confirmation required).".format(
+                "{N} samples form cluster {C}, connected by pairwise links of at most {T} SNPs. "
+                "Some pairs may exceed this threshold because clustering uses connected components; "
+                "epidemiological confirmation is required.".format(
                     N=len(members), C=cid, T=thr))
 
     # AMR resistance markers per drug class
@@ -400,6 +445,29 @@ def build_methods(software_versions, params, run_date):
     }
 
 
+def report_input_inventory(args):
+    """Record report input identity without inventing tool/database versions."""
+    inventory = []
+    for name in ('genome_qc', 'seq_qc', 'typing', 'virulence', 'amr', 'snp_matrix',
+                 'cgmlst_matrix', 'treefile', 'tree_report', 'cluster_assignments',
+                 'cluster_summary', 'outbreak_pairs', 'metadata', 'global_tree', 'software_versions'):
+        path = getattr(args, name, None)
+        item = {'source': name, 'file': os.path.basename(path) if path else 'Not supplied',
+                'bytes': None, 'sha256': None, 'status': 'Not supplied'}
+        if path:
+            try:
+                digest = hashlib.sha256()
+                with open(path, 'rb') as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                        digest.update(chunk)
+                item.update(bytes=os.path.getsize(path), sha256=digest.hexdigest(),
+                            status='Non-empty file' if os.path.getsize(path) else 'Empty file')
+            except OSError:
+                item['status'] = 'Unavailable file'
+        inventory.append(item)
+    return inventory
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_context(args):
@@ -415,6 +483,8 @@ def build_context(args):
     global_tree = load_text(args.global_tree) if args.global_tree else None
     software_versions = load_json(args.software_versions) if args.software_versions and args.software_versions.endswith(".json") else None
     metadata = load_metadata(args.metadata)
+    sequence_qc = load_tsv(getattr(args, 'seq_qc', None))
+    cgmlst_matrix = load_matrix(args.cgmlst_matrix)
 
     qc = build_qc(genome_qc)
     characterisation = build_characterisation(typing)
@@ -435,6 +505,17 @@ def build_context(args):
         "Min parsimony coverage": args.min_parsimony_coverage,
     }
 
+    # Exact identifier matching only; preserve tool-specific source identifiers.
+    sample_records = {}
+    for source, rows in [('Genome QC', genome_qc), ('Mapping-sequence QC', sequence_qc),
+                         ('Characterisation', typing), ('Virulence', virulence),
+                         ('AMR', amr), ('Cluster assignment', cluster_rows),
+                         ('Metadata', list(metadata.values()))]:
+        for row in rows or []:
+            sample = row.get('sample') or row.get('sample_id')
+            if sample and sample not in NOT_RUN_TOKENS:
+                sample_records.setdefault(sample, []).append({'source': source, 'fields': row})
+
     ctx = {
         "run": {
             "version": args.pipeline_version,
@@ -451,11 +532,27 @@ def build_context(args):
         "phylogenetics": phylo,
         "global": global_ctx,
         "outbreak": outbreak,
+        "summary": build_summary(qc, characterisation, virulence_s, amr_s, outbreak, phylo),
         "sentences": build_sentences(qc, characterisation, virulence_s, amr_s, outbreak),
         "limitations": LIMITATIONS,
         "next_steps": build_next_steps(amr_s, outbreak, global_ctx),
         "methods": build_methods(software_versions, params, args.run_date),
+        "sequence_qc": sequence_qc,
+        "metadata_rows": list(metadata.values()),
+        "cgmlst": build_phylogenetics(None, cgmlst_matrix, None),
+        "charts": build_charts(genome_qc, sequence_qc, typing, amr_s, virulence_s,
+                               outbreak, metadata, matrix, cgmlst_matrix),
+        "tree_diagnostics": load_text(getattr(args, 'tree_report', None)),
+        "sample_details": [{'sample': sample, 'sources': sample_records[sample]}
+                           for sample in sorted(sample_records)],
+        "input_inventory": report_input_inventory(args),
     }
+    if getattr(args, 'reference', None):
+        ctx['methods']['reference'] = {
+            'name': 'Mapping reference as configured (identity must be verified)',
+            'fasta_accession': 'See pipeline_info/run_provenance.json for checksums',
+            'genbank_accession': args.reference,
+        }
     return ctx
 
 
@@ -467,7 +564,9 @@ def render(ctx, template_path, output_path):
     tmpl_dir = os.path.dirname(os.path.abspath(template_path))
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(tmpl_dir),
-        autoescape=jinja2.select_autoescape(["html"]),
+        # Templates end in .html.j2; extension-based selection would disable
+        # escaping and let metadata inject active HTML into the offline report.
+        autoescape=True,
         trim_blocks=True, lstrip_blocks=True,
     )
     template = env.get_template(os.path.basename(template_path))
@@ -482,7 +581,7 @@ def main():
     p.add_argument("--template", required=True)
     p.add_argument("--output", required=True)
     # Run summary
-    p.add_argument("--pipeline-version", default="0.1.0")
+    p.add_argument("--pipeline-version", default="0.2.0")
     p.add_argument("--run-date", default=datetime.date.today().isoformat())
     p.add_argument("--mode", default="outbreak")
     p.add_argument("--sample-count", type=int, default=None)
@@ -493,6 +592,8 @@ def main():
     p.add_argument("--min-parsimony-coverage", default=0.70)
     # Inputs (all optional — absence renders "Analysis not performed")
     p.add_argument("--genome-qc", default=None)
+    p.add_argument("--seq-qc", default=None, help="Reported mapping-sequence QC summary TSV")
+    p.add_argument("--tree-report", default=None, help="Original IQ-TREE diagnostic report")
     p.add_argument("--typing", default=None)
     p.add_argument("--virulence", default=None)
     p.add_argument("--amr", default=None)
@@ -505,6 +606,7 @@ def main():
     p.add_argument("--global-tree", default=None)
     p.add_argument("--metadata", default=None)
     p.add_argument("--software-versions", default=None)
+    p.add_argument("--reference", default=None, help="Actual reference path/identity recorded for this run")
     args = p.parse_args()
 
     ctx = build_context(args)

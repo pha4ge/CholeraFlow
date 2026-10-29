@@ -1,104 +1,72 @@
+{% from 'visuals.html.j2' import chart_grid, chart_card, tree_panel %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>CholeraFlow Outbreak Report</title>
 <style>
-  :root {
-    --ink: #12233a; --muted: #5b6b7b; --line: #d7dee8; --bg: #f4f6fa;
-    --brand: #1a4f8b; --brand-dark: #12395f; --warn-bg: #fff4e5; --warn-line: #e0a355;
-    --danger-bg: #fdecea; --danger-line: #d1493b; --ok: #2f8f4e; --absent: #c9d0da;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5; font-size: 15px;
-  }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px; }
-  header.report {
-    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-    color: #fff; padding: 28px 32px; border-radius: 10px; margin-bottom: 8px;
-  }
-  header.report h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: .2px; }
-  header.report .sub { opacity: .9; font-size: 14px; }
-  nav.toc {
-    background: #fff; border: 1px solid var(--line); border-radius: 8px;
-    padding: 14px 18px; margin: 16px 0 24px; font-size: 14px;
-  }
-  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
-  nav.toc a { color: var(--brand); text-decoration: none; }
-  nav.toc a:hover { text-decoration: underline; }
-  section {
-    background: #fff; border: 1px solid var(--line); border-radius: 8px;
-    padding: 20px 24px; margin-bottom: 20px;
-  }
-  section > h2 {
-    margin: 0 0 14px; font-size: 19px; color: var(--brand-dark);
-    border-bottom: 2px solid var(--line); padding-bottom: 8px;
-  }
-  section > h2 .num {
-    display: inline-block; min-width: 26px; color: var(--brand); font-weight: 700;
-  }
-  h3 { font-size: 15px; margin: 18px 0 8px; }
-  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-  .scroll { overflow-x: auto; }
-  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
-  th { background: #eef2f8; font-weight: 600; }
-  tr:nth-child(even) td { background: #fafbfd; }
-  .not-performed {
-    background: var(--warn-bg); border: 1px dashed var(--warn-line); color: #8a5a12;
-    padding: 12px 14px; border-radius: 6px; font-style: italic;
-  }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-  .pill.pass { background: #e5f4ea; color: var(--ok); }
-  .pill.warn { background: var(--warn-bg); color: #9a6212; }
-  .pill.fail { background: var(--danger-bg); color: var(--danger-line); }
-  /* !important so these win over the zebra-striping rule (tr:nth-child(even) td),
-     which has higher specificity and would otherwise hide white ticks on even rows. */
-  .vir-present { background: #2f8f4e !important; color: #fff; text-align: center; font-weight: 600; }
-  .vir-absent  { background: var(--absent) !important; color: #55607a; text-align: center; }
-  .vir-nt      { background: #fff !important; color: #9aa4b6; text-align: center; font-style: italic; }
-  pre.newick {
-    background: #0f2136; color: #d7e6f5; padding: 14px; border-radius: 6px;
-    overflow-x: auto; font-size: 12.5px; white-space: pre-wrap; word-break: break-all;
-  }
-  .sentences li { margin-bottom: 8px; }
-  .sxt-flag {
-    background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-line);
-    padding: 8px 12px; border-radius: 6px; font-weight: 600; margin: 10px 0;
-  }
-  /* Limitations — deliberately prominent, not skimmable, never collapsed. */
-  section.limitations {
-    background: var(--warn-bg); border: 3px solid var(--warn-line);
-  }
-  section.limitations > h2 { color: #8a5a12; border-bottom-color: var(--warn-line); }
-  section.limitations ul { margin: 6px 0 0; padding-left: 20px; }
-  section.limitations li { margin-bottom: 8px; font-weight: 500; }
-  .caveat {
-    background: #eef3fb; border-left: 4px solid var(--brand); padding: 10px 14px;
-    border-radius: 4px; font-size: 13.5px; margin-top: 12px;
-  }
-  .kv { width: auto; }
-  .kv td:first-child { font-weight: 600; background: #f4f7fb; white-space: nowrap; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
-  .muted { color: #6b7688; font-size: 13px; }
+{% include 'report.css.j2' %}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to report content</a>
 <div class="wrap">
 
 <header class="report">
-  <h1>CholeraFlow — Outbreak Investigation Report</h1>
+  <div class="report-topline">
+  <div>
+  <p class="eyebrow">CholeraFlow / Analysis report</p>
+  <h1>Outbreak Investigation Report</h1>
   <div class="sub">
     <em>Vibrio cholerae</em> genomic surveillance &middot;
     Mode: {{ run.mode }} &middot; Generated: {{ run.date }}
   </div>
+  </div>
+  <div class="report-actions">
+    <button id="print-report" class="button" type="button" hidden>Print / Save PDF</button>
+    <span class="offline-tag">Self-contained · Offline</span>
+  </div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="label">Samples</span>
+      <span class="value">{{ summary.samples }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">QC pass</span>
+      <span class="value">{{ summary.passed_qc }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Confirmed</span>
+      <span class="value">{{ summary.confirmed_species }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Clusters</span>
+      <span class="value">{{ summary.clusters }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">SXT MDR</span>
+      <span class="value">{{ summary.sxt_samples }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Phylogeny</span>
+      <span class="value">{{ summary.phylo_status }}</span>
+    </div>
+  </div>
+  <div class="overview" aria-label="Analysis availability">
+    {% for label, module in [('Genome QC', qc), ('Characterisation', characterisation), ('Virulence', virulence), ('AMR', amr), ('Phylogenetics', phylogenetics), ('Global context', global), ('Outbreak', outbreak)] %}
+    <span class="overview-item {{ 'unavailable' if module.status == 'not_performed' else '' }}"><b>{{ label }}</b> · <span class="state">{{ 'Not performed' if module.status == 'not_performed' else 'Results available' }}</span></span>
+    {% endfor %}
+  </div>
 </header>
 
-<nav class="toc">
-  <strong>Contents</strong>
+<nav class="toc" aria-label="Report sections">
+  <div class="nav-brand"><span class="brand-mark" aria-hidden="true">◈</span>CholeraFlow</div>
+  <div class="nav-caption">Genomic surveillance report</div>
+  <strong class="nav-heading">Report contents</strong>
   <ol>
     <li><a href="#s1">Run summary</a></li>
     <li><a href="#s2">QC summary</a></li>
@@ -112,8 +80,13 @@
     <li><a href="#s10">Next steps</a></li>
     <li><a href="#s11">Methods</a></li>
   </ol>
+  <div class="nav-footer">Version {{ run.version }}<br>Generated {{ run.date }}<br>All report data stays in this file.</div>
 </nav>
 
+<main id="main-content" tabindex="-1">
+{% if demo|default(false) %}
+<div class="caveat" style="margin:0 0 22px"><strong>Synthetic demonstration.</strong> All sample values below are software test fixtures. They are not validated surveillance results and must not be used for public health decisions.</div>
+{% endif %}
 {# ── 1. Run summary ──────────────────────────────────────────────────────── #}
 <section id="s1">
   <h2><span class="num">1.</span> Run summary</h2>
@@ -127,6 +100,21 @@
     <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
     {% endfor %}
   </table>
+  <h3>Cohort metadata overview</h3>
+  {% if metadata_rows %}{{ chart_grid(charts.metadata) }}
+  <details class="source-details"><summary>Recorded metadata ({{ metadata_rows|length }} rows)</summary><div class="scroll"><table aria-label="Recorded sample metadata">
+    <tr>{% for field in metadata_rows[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+    {% for row in metadata_rows %}<tr>{% for field in metadata_rows[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+  </table></div></details>
+  {% else %}<div class="not-performed">Sample metadata was not supplied. Geographic, specimen and collection-date graphs are unavailable.</div>{% endif %}
+  <details class="sample-explorer source-details"><summary>Per-sample record explorer ({{ sample_details|length }} identifiers)</summary>
+    <p class="muted">All supplied source fields are retained below. Records are grouped only by exact identifiers; tool-specific suffixes remain visible.</p>
+    <label class="sample-filter-label" hidden>Find sample <input class="sample-filter" type="search" placeholder="Sample identifier" aria-label="Filter sample record explorer"></label>
+    <span class="sample-filter-count muted" aria-live="polite"></span>
+    {% for item in sample_details %}<details class="sample-record" data-sample="{{ item.sample }}"><summary>{{ item.sample }} <span class="muted">· {{ item.sources|length }} source record(s)</span></summary>
+      {% for record in item.sources %}<h4>{{ record.source }}</h4><dl class="record-fields">{% for field, value in record.fields.items() %}<div><dt>{{ field }}</dt><dd>{{ value if value else 'Not recorded' }}</dd></div>{% endfor %}</dl>{% endfor %}
+    </details>{% endfor %}
+  </details>
 </section>
 
 {# ── 2. QC summary ───────────────────────────────────────────────────────── #}
@@ -135,8 +123,22 @@
   {% if qc.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ qc.reason }}</div>
   {% else %}
-    <p class="muted">{{ qc.n_pass }} of {{ qc.n_total }} samples passed QC and proceeded to
-       analysis; {{ qc.n_excluded }} excluded.</p>
+    <p class="muted">{{ qc.n_pass }} of {{ qc.n_total }} samples passed genome QC (including warnings);
+       {{ qc.n_excluded }} failed. Phylogenetic inclusion also depends on mapping and sequence QC.</p>
+    {% if qc.n_total > 0 %}
+    {% set pass_count = qc.rows|selectattr('overall_status', 'equalto', 'pass')|list|length %}
+    {% set warn_count = qc.rows|selectattr('overall_status', 'equalto', 'warn')|list|length %}
+    {% set fail_count = qc.rows|selectattr('overall_status', 'equalto', 'fail')|list|length %}
+    {% set qc_groups = [('Pass', pass_count, 'pass'), ('Warning', warn_count, 'warn'), ('Fail', fail_count, 'fail'), ('Other / unavailable', qc.n_total - pass_count - warn_count - fail_count, 'other')] %}
+    <figure class="qc-distribution" aria-label="Genome QC status distribution">
+      <div class="qc-bar" aria-hidden="true">
+        {% for label, count, state in qc_groups %}{% if count %}<span class="qc-segment {{ state }}" style="width:{{ (100 * count / qc.n_total)|round(3) }}%" title="{{ label }}: {{ count }}"></span>{% endif %}{% endfor %}
+      </div>
+      <figcaption class="qc-legend">{% for label, count, state in qc_groups %}<span><i class="qc-dot {{ state }}" aria-hidden="true"></i>{{ label }} <strong>{{ count }}</strong></span>{% endfor %}</figcaption>
+    </figure>
+    {% endif %}
+    {{ chart_grid(charts.qc) }}
+    <h3>Assembly QC table</h3>
     <div class="scroll">
     <table>
       <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
@@ -154,7 +156,7 @@
     </div>
     {% if qc.excluded %}
       <h3>Excluded samples</h3>
-      <table>
+      <table aria-label="Excluded genome QC samples">
         <tr><th>Sample</th><th>Reason</th></tr>
         {% for r in qc.excluded %}
         <tr><td>{{ r.sample }}</td><td>Failed QC thresholds ({{ r.overall_status }})</td></tr>
@@ -162,11 +164,19 @@
       </table>
     {% endif %}
   {% endif %}
+<div class="sequence-panel">
+  <h3>Mapping-sequence QC details</h3>
+  {% if sequence_qc %}<div class="scroll"><table aria-label="Mapping-sequence QC">
+    <tr><th>Sample</th><th>Status</th><th>Sequences</th><th>Total aligned bp</th><th>N/gap bp</th><th>N/gap %</th><th>Reported reason</th></tr>
+    {% for row in sequence_qc %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.n_sequences }}</td><td>{{ row.total_bp }}</td><td>{{ row.gap_bp }}</td><td>{{ row.n_percentage }}</td><td>{{ row.reason }}</td></tr>{% endfor %}
+  </table></div>{% else %}<div class="not-performed">Mapping-sequence QC was not available for this report.</div>{% endif %}
+</div>
 </section>
 
 {# ── 3. Cholera characterisation ─────────────────────────────────────────── #}
 <section id="s3">
   <h2><span class="num">3.</span> Cholera characterisation</h2>
+  {{ chart_grid(charts.typing) }}
   {% if characterisation.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ characterisation.reason }}</div>
   {% else %}
@@ -192,6 +202,7 @@
 {# ── 4. Virulence summary ────────────────────────────────────────────────── #}
 <section id="s4">
   <h2><span class="num">4.</span> Virulence summary</h2>
+  {{ chart_grid(charts.virulence) }}
   {% if virulence.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ virulence.reason }}</div>
   {% else %}
@@ -209,7 +220,7 @@
         {% for m in virulence.markers %}
           {% set state = virulence.grid[s][m] %}
           <td class="{{ 'vir-present' if state=='present' else ('vir-absent' if state=='absent' else 'vir-nt') }}">
-            {{ '✔' if state=='present' else ('—' if state=='absent' else 'n/t') }}
+            <span aria-hidden="true">{{ '✔' if state=='present' else ('—' if state=='absent' else 'n/t') }}</span><span class="sr-only">{{ state|replace('_', ' ') }}</span>
           </td>
         {% endfor %}
       </tr>
@@ -222,6 +233,7 @@
 {# ── 5. AMR summary ──────────────────────────────────────────────────────── #}
 <section id="s5">
   <h2><span class="num">5.</span> AMR summary</h2>
+  {{ chart_grid(charts.amr) }}
   {% if amr.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ amr.reason }}</div>
   {% else %}
@@ -242,10 +254,11 @@
           <td>
             {%- if r[col]|lower in ['yes','true','present'] -%}
               <strong>{{ r[genes_col] if r[genes_col] else 'present' }}</strong>
+            {%- elif r[col]|lower in ['not_run', 'not_performed', 'no_schema', ''] -%}<span class="muted">not run</span>
             {%- else -%}<span class="muted">—</span>{%- endif -%}
           </td>
         {% endfor %}
-        <td>{% if r.sxt_mdr|lower in ['yes','true'] %}<span class="pill fail">yes</span>{% else %}no{% endif %}</td>
+        <td>{% if r.sxt_mdr|lower in ['yes','true'] %}<span class="pill fail">yes</span>{% elif r.sxt_mdr|lower in ['not_run', 'not_performed', 'no_schema', ''] %}<span class="muted">not run</span>{% else %}no{% endif %}</td>
       </tr>
       {% endfor %}
     </table>
@@ -256,26 +269,22 @@
 {# ── 6. Phylogenetic summary ─────────────────────────────────────────────── #}
 <section id="s6">
   <h2><span class="num">6.</span> Phylogenetic summary</h2>
-  {% if phylogenetics.status == 'not_performed' %}
+  {% if phylogenetics.status == 'not_performed' and not cgmlst.heatmap %}
     <div class="not-performed">Analysis not performed — {{ phylogenetics.reason }}</div>
   {% else %}
-    {% if phylogenetics.newick %}
-      <h3>Maximum-likelihood tree (Newick)</h3>
-      <pre class="newick">{{ phylogenetics.newick }}</pre>
-    {% else %}
-      <p class="muted">Tree file not available.</p>
-    {% endif %}
+    {{ tree_panel(phylogenetics.tree_view, phylogenetics.newick, 'cohort-tree') }}
+    {{ chart_grid(charts.distances) }}
 
     {% if phylogenetics.heatmap %}
       <h3>SNP distance matrix</h3>
       <p class="muted">Darker cells indicate greater pairwise SNP distance (max
-        {{ phylogenetics.heatmap.max }} SNPs).</p>
+        {{ phylogenetics.heatmap.max }} SNPs in this view). Showing {{ phylogenetics.heatmap.shown_samples }} of {{ phylogenetics.heatmap.total_samples }} samples; the complete source matrix is published in phylogenetics/.</p>
       <div class="scroll">
-      <table>
-        <tr><th></th>{% for s in phylogenetics.heatmap.samples %}<th>{{ s }}</th>{% endfor %}</tr>
+      <table class="matrix-table" aria-label="Pairwise SNP distance matrix">
+        <tr><th scope="col">Sample</th>{% for s in phylogenetics.heatmap.samples %}<th scope="col">{{ s }}</th>{% endfor %}</tr>
         {% for row in phylogenetics.heatmap.rows %}
         <tr>
-          <th>{{ row.sample }}</th>
+          <th scope="row">{{ row.sample }}</th>
           {% for c in row.cells %}
           <td style="background:{{ c.bg }};color:{{ c.fg }};text-align:center">{{ c.text }}</td>
           {% endfor %}
@@ -284,6 +293,16 @@
       </table>
       </div>
     {% endif %}
+
+    {% if cgmlst.heatmap %}
+      <h3>cgMLST distance heatmap</h3>
+      <p class="muted">Showing {{ cgmlst.heatmap.shown_samples }} of {{ cgmlst.heatmap.total_samples }} samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
+      <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
+        <tr><th scope="col">Sample</th>{% for sample in cgmlst.heatmap.samples %}<th scope="col">{{ sample }}</th>{% endfor %}</tr>
+        {% for row in cgmlst.heatmap.rows %}<tr><th scope="row">{{ row.sample }}</th>{% for cell in row.cells %}<td style="background:{{ cell.bg }};color:{{ cell.fg }};text-align:center">{{ cell.text }}</td>{% endfor %}</tr>{% endfor %}
+      </table></div>
+    {% endif %}
+    {% if tree_diagnostics %}<details class="source-details"><summary>Original IQ-TREE inference diagnostics</summary><pre class="diagnostics">{{ tree_diagnostics }}</pre></details>{% endif %}
 
     {% if phylogenetics.clusters %}
       <h3>Cluster assignments</h3>
@@ -307,14 +326,14 @@
   {% if global.status == 'not_performed' %}
     <div class="not-performed">{{ global.message }}</div>
   {% else %}
-    <h3>Global context tree (Newick)</h3>
-    <pre class="newick">{{ global.newick }}</pre>
+    {{ tree_panel(global.tree_view, global.newick, 'global-tree') }}
   {% endif %}
 </section>
 
 {# ── 8. Outbreak interpretation ──────────────────────────────────────────── #}
 <section id="s8">
   <h2><span class="num">8.</span> Outbreak interpretation</h2>
+  {{ chart_grid(charts.clusters) }}
   {% if outbreak.status == 'not_performed' %}
     <div class="not-performed">Analysis not performed — {{ outbreak.reason }}</div>
   {% else %}
@@ -330,6 +349,11 @@
       {% endfor %}
     </table>
     </div>
+
+    {% if outbreak.pairs %}<details class="source-details"><summary>Reported within-threshold pairs ({{ outbreak.pairs|length }})</summary><div class="scroll"><table aria-label="Reported within-threshold pairs">
+      <tr>{% for field in outbreak.pairs[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+      {% for row in outbreak.pairs %}<tr>{% for field in outbreak.pairs[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+    </table></div></details>{% endif %}
 
     <h3>Interpretation</h3>
     <ul class="sentences">
@@ -388,14 +412,24 @@
     <p class="muted">Software versions file not available — see pipeline_info/software_versions.yml
       in the results directory once produced.</p>
   {% endif %}
+  <h3>Report input provenance</h3>
+  <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
+  <div class="scroll"><table aria-label="Report input provenance">
+    <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
+    {% for item in input_inventory %}<tr><td>{{ item.source }}</td><td>{{ item.file }}</td><td>{{ item.status }}</td><td>{{ item.bytes if item.bytes is not none else '—' }}</td><td class="checksum">{{ item.sha256 or '—' }}</td></tr>{% endfor %}
+  </table></div>
   <p class="muted">Report generated {{ methods.date }} by CholeraFlow {{ run.version }}.</p>
 </section>
 
+</main>
 <footer>
   CholeraFlow {{ run.version }} &middot; This report is a screening aid and requires
   integration with epidemiological and clinical data.
 </footer>
 
 </div>
+<script>
+{% include 'report.js.j2' %}
+</script>
 </body>
 </html>

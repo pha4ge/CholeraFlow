@@ -27,7 +27,7 @@ process RESFINDER {
     label 'process_medium'
 
     conda 'bioconda::resfinder=4.5.0'
-    container 'genomicepidemiology/resfinder:latest'
+    container 'genomicepidemiology/resfinder:4.5.0'
     containerOptions '--entrypoint ""'   // override ENTRYPOINT ["python -m resfinder"]
 
     input:
@@ -127,7 +127,7 @@ with open("${meta.id}_resfinder.json", "w") as fh:
     json.dump({
         "sample":  sample,
         "status":  "not_run",
-        "reason":  "resfinder_db not provided (see docs/PROGRESS.md for setup)",
+        "reason":  "resfinder_db not provided (see README.md database setup)",
         "genes":   [],
     }, fh, indent=2)
 with open("${meta.id}_resfinder.tsv", "w") as fh:
@@ -163,12 +163,13 @@ process AMR_MERGE {
     tuple val(meta), path("${meta.id}_amr.tsv"),  emit: amr_tsv
 
     script:
+    def amrfinder_arg = amrfinder_tsv ? "--amrfinder_tsv '${amrfinder_tsv}'" : ""
     """
     export PATH="${moduleDir.parent.parent}/bin:\${PATH}"
 
     amr_merge.py \\
         --sample          ${meta.id} \\
-        --amrfinder_tsv   ${amrfinder_tsv} \\
+        ${amrfinder_arg} \\
         --resfinder_json  ${resfinder_json} \\
         --output          ${meta.id}_amr.json
 
@@ -184,6 +185,8 @@ with open(amr_json) as fh:
 
 dc = d.get("drug_classes", {})
 def _present(key):
+    if d.get("status") == "not_run":
+        return "not_run"
     return "yes" if dc.get(key, {}).get("present") else "no"
 
 def _genes(key):
@@ -214,7 +217,7 @@ row = [
     _present("TRIMETHOPRIM"),   _genes("TRIMETHOPRIM"),
     _present("AMINOGLYCOSIDE"), _genes("AMINOGLYCOSIDE"),
     _present("PHENICOL"),       _genes("PHENICOL"),
-    str(d.get("sxt_mdr", False)),
+    "not_run" if d.get("status") == "not_run" else str(d.get("sxt_mdr", False)),
     ";".join(d.get("sxt_markers_detected", [])),
     d.get("class_summary", ""),
 ]

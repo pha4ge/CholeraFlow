@@ -1,8 +1,8 @@
 // ── SNP_DISTS ──────────────────────────────────────────────────────────────
 //
-// Step 10a: SNP distance matrix from the PIS alignment (pis_alignment.fasta).
+// Step 10a: SNP distance matrix from all recombination-masked polymorphic sites.
 //
-// Runs in parallel with IQTREE2 — both take the same pis_alignment input.
+// Includes singleton SNPs; PIS-only input would underestimate pairwise distances.
 // Uses -b to emit a blank top-left cell, matching cgMLST matrix format.
 // Uses -q to suppress per-site progress messages from stderr.
 //
@@ -20,13 +20,13 @@ process SNP_DISTS {
         'staphb/snp-dists:0.8.2' }"
 
     input:
-    path pis_aln
+    path masked_aln
 
     output:
     path 'snp_distance_matrix.tsv', emit: matrix
 
     script:
     """
-    snp-dists -q -b ${pis_aln} > snp_distance_matrix.tsv
+    snp-dists -q -b '${masked_aln}' > snp_distance_matrix.tsv
     """
 }

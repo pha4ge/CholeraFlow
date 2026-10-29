@@ -1,0 +1,28 @@
+name: Set up lightweight validation
+description: Install the supported Python, Java and Nextflow baseline
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Install test dependencies
+      shell: bash
+      run: python3 -m pip install -r requirements-dev.txt
+    - name: Install Nextflow 24.10.5
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/choleraflow-tools"
+        curl --fail --silent --show-error --location --retry 3 \
+          https://www.nextflow.io/releases/v24.10.5/nextflow-24.10.5-one.jar \
+          --output "$RUNNER_TEMP/choleraflow-tools/nextflow.jar"
+        cat > "$RUNNER_TEMP/choleraflow-tools/nextflow" <<'SH'
+        #!/usr/bin/env bash
+        exec java -jar "$(dirname "$0")/nextflow.jar" "$@"
+        SH
+        chmod +x "$RUNNER_TEMP/choleraflow-tools/nextflow"
+        echo "$RUNNER_TEMP/choleraflow-tools" >> "$GITHUB_PATH"

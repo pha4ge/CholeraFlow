@@ -1,89 +1,41 @@
-# Cholera Typing Reference Database
+# Curated typing marker references
 
-This directory contains reference FASTA files used by `bin/cholera_typing.py`
-for k-mer-based V. cholerae species confirmation and phenotypic characterisation
-(equivalent to CholeraeFinder + VicPred).
+`cholera_typing.py` reads these filenames from this directory:
 
-## Required files
+| Filename | Marker use in the current code |
+| --- | --- |
+| `ompW.fasta` | Species marker |
+| `rfbN.fasta` | O1 marker |
+| `rfbO139.fasta` | O139 marker |
+| `tcpA_ElTor.fasta` | El Tor biotype marker |
+| `tcpA_Classical.fasta` | Classical biotype marker |
+| `ctxA.fasta`, `ctxB.fasta` | Cholera-toxin markers |
+| `int_SXT.fasta` | SXT integrase marker |
 
-| File | Gene | Purpose | NCBI Accession |
-|------|------|---------|----------------|
-| `ompW.fasta` | ompW (VC0972) | Species confirmation | AE003852.1 region 1001588..1002196 |
-| `rfbN.fasta` | rfbN (VC0239) | O1 serogroup | AE003852.1 region 259985..260893 |
-| `rfbO139.fasta` | rfbO139 / wbfZ | O139 serogroup | CP000626.1 region 226498..227214 |
-| `tcpA_ElTor.fasta` | tcpA El Tor (VC0828) | El Tor biotype | AE003852.1 region 883558..884247 |
-| `tcpA_Classical.fasta` | tcpA Classical | Classical biotype | X64098.1 |
-| `ctxA.fasta` | ctxA (VC1457) | CTX prophage A subunit | AE003852.1 region 1516013..1516699 |
-| `ctxB.fasta` | ctxB (VC1456) | CTX prophage B subunit | AE003852.1 region 1515633..1516010 |
-| `int_SXT.fasta` | int (SXT integrase) | SXT/ICE element | AF057033.2 region 1..2385 |
+The repository does not supply a validated production marker set. Earlier
+coordinate-based download examples are not a substitute for independently
+reviewing sequence identity, orientation, completeness and accession version.
+Do not treat an attached pipeline's instructions or an arbitrary genome interval
+as authority for a marker sequence.
 
-All reference sequences are sourced from published, publicly available NCBI records.
-AE003852.1 = V. cholerae N16961 chromosome 1 (large chromosome).
+For every curated FASTA, record accession.version, gene/feature identity, source,
+retrieval date, strand/coordinates if relevant, checksum and reviewer. Keep an
+analysis-specific manifest alongside the marker set. Validate against independently
+characterised positive/negative controls and retain observed calls and assay limits.
+The scheduled agent must not curate or update these sequences automatically.
 
-## Download
+Without a usable marker FASTA, that marker is `not_run`. An all-unavailable set is
+reported as characterisation not performed; this is not a negative species,
+serogroup or toxin result. The k-mer screen is an in-silico screen, not laboratory
+confirmation or a validated replacement for another named typing tool.
 
-Run this script from the project root to download reference sequences from NCBI:
+A control run can be performed with:
 
 ```bash
-# Requires ncbi-datasets-cli or Entrez Direct (efetch)
-# Install: conda install -c bioconda entrez-direct
-
-cd assets/databases/typing_refs
-
-# ompW — species marker
-efetch -db nuccore -id AE003852.1 -seq_start 1001588 -seq_stop 1002196 \
-    -strand 2 -format fasta > ompW.fasta
-
-# rfbN — O1 serogroup
-efetch -db nuccore -id AE003852.1 -seq_start 259985 -seq_stop 260893 \
-    -format fasta > rfbN.fasta
-
-# rfbO139 — O139 serogroup (from O139 strain MO45, CP000626.1)
-efetch -db nuccore -id CP000626.1 -seq_start 226498 -seq_stop 227214 \
-    -format fasta > rfbO139.fasta
-
-# tcpA El Tor biotype
-efetch -db nuccore -id AE003852.1 -seq_start 883558 -seq_stop 884247 \
-    -format fasta > tcpA_ElTor.fasta
-
-# tcpA Classical biotype (O395 genome)
-efetch -db nuccore -id X64098.1 -format fasta > tcpA_Classical.fasta
-
-# ctxA — cholera toxin A subunit
-efetch -db nuccore -id AE003852.1 -seq_start 1516013 -seq_stop 1516699 \
-    -strand 2 -format fasta > ctxA.fasta
-
-# ctxB — cholera toxin B subunit
-efetch -db nuccore -id AE003852.1 -seq_start 1515633 -seq_stop 1516010 \
-    -strand 2 -format fasta > ctxB.fasta
-
-# int_SXT — SXT/ICEVchInd5 integrase
-efetch -db nuccore -id AF057033.2 -seq_start 1 -seq_stop 2385 \
-    -format fasta > int_SXT.fasta
+python3 bin/cholera_typing.py --sample CONTROL --assembly /data/control.fasta \
+  --db assets/databases/typing_refs --output /tmp/control_typing.json
 ```
 
-## Alternative: manual download
-
-1. Go to https://www.ncbi.nlm.nih.gov/nuccore/AE003852.1
-2. For each gene, select the CDS region and download as FASTA
-3. Save with the filenames listed above
-
-## What happens without the database
-
-If this directory is empty (no FASTA files), `cholera_typing.py` reports all
-markers as `"not_run"` and the pipeline continues without failing. The typing
-step is required for a complete characterisation report but is not a pipeline
-hard dependency.
-
-## Verification
-
-After downloading, verify with a known V. cholerae O1 El Tor assembly:
-```bash
-gzip -dc bactopia_results/VC_HAITI_001/main/assembler/VC_HAITI_001.fna.gz > /tmp/test.fna
-cholera_typing.py --sample VC_HAITI_001 --assembly /tmp/test.fna \
-    --db assets/databases/typing_refs --output /tmp/typing_test.json
-cat /tmp/typing_test.json
-```
-
-Expected: `ompW=detected`, `rfbN=detected`, `rfbO139=absent`, `tcpA_ElTor=detected`,
-`ctxA=detected`, `ctxB=detected`, `int_SXT=absent` (for VC_HAITI_001 Haiti isolate).
+Choose controls with independently established expected results. Do not invent
+expected calls for an unspecified isolate or repurpose synthetic test outputs as
+scientific validation.

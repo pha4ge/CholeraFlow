@@ -75,10 +75,14 @@ def parse_amrfinder_tsv(path):
     Returns a list of gene dicts; empty list if file has no data rows.
     """
     genes = []
-    if not os.path.isfile(path):
+    if not path or not os.path.isfile(path):
         return genes
     with open(path, newline="") as fh:
         reader = csv.DictReader(fh, delimiter="\t")
+        if not reader.fieldnames:
+            return genes
+        if 'Element symbol' not in reader.fieldnames:
+            raise ValueError(f'Invalid AMRFinderPlus TSV header: {path}')
         for row in reader:
             symbol = (row.get("Element symbol") or "").strip()
             if not symbol:
@@ -206,15 +210,18 @@ def merge(sample, amrfinder_path, resfinder_path=None):
 
     status = "acquired_resistance" if (acquired or sxt_mdr) else "pass"
 
-    sources = ["amrfinderplus"]
+    sources = ["amrfinderplus"] if amrfinder_path and os.path.isfile(amrfinder_path) and os.path.getsize(amrfinder_path) > 0 else []
     if resfinder_path and os.path.isfile(resfinder_path):
         try:
             with open(resfinder_path) as _f:
                 rf_status = json.load(_f).get("status", "")
-            if rf_status not in ("not_run", "failed"):
+            if rf_status == "complete":
                 sources.append("resfinder")
         except Exception:
             pass
+
+    if not sources:
+        status = 'not_run'
 
     return {
         "sample":                sample,
@@ -225,7 +232,7 @@ def merge(sample, amrfinder_path, resfinder_path=None):
         "drug_classes":          drug_map,
         "sxt_markers_detected":  sxt_genes,
         "sxt_mdr":               sxt_mdr,
-        "class_summary":         build_class_summary(drug_map, sxt_mdr),
+        "class_summary":         build_class_summary(drug_map, sxt_mdr) if sources else 'Analysis not performed',
     }
 
 
@@ -234,7 +241,7 @@ def main():
         description="Merge AMRFinderPlus + ResFinder for CholeraFlow Step 4d"
     )
     p.add_argument("--sample",         required=True,  help="Sample name")
-    p.add_argument("--amrfinder_tsv",  required=True,  help="AMRFinderPlus TSV from Bactopia")
+    p.add_argument("--amrfinder_tsv",  default=None,  help="AMRFinderPlus TSV from Bactopia (optional)")
     p.add_argument("--resfinder_json", default=None,   help="CholeraFlow ResFinder JSON (optional)")
     p.add_argument("--output",         required=True,  help="Output JSON path")
     args = p.parse_args()

@@ -1,62 +1,39 @@
-# EnteroBase V. cholerae cgMLST Schema
+# EnteroBase Vibrio cgMLST v1
 
-This directory holds the prepared ChewBBACA schema for V. cholerae cgMLST
-(EnteroBase wgMLST scheme, 2,402 core loci).
+Scheme: **`VIBwgMLST.cgMLSTv1`**, **1,128 core loci**.
+Source: [EnteroBase scheme directory](https://enterobase.warwick.ac.uk/schemes/VIBwgMLST.cgMLSTv1/).
+The older `Vibrio.cgMLSTv1` / 2,402-locus description is not the supported scheme.
 
-## Status
-
-**Not yet downloaded.** The pipeline will emit a `not_run` placeholder for
-Step 9b (cgMLST) until the schema is set up here.
-
-## Setup (run once)
-
-### 1. Download the raw scheme from EnteroBase
+From the repository root:
 
 ```bash
-# Requires an EnteroBase account (free)
-# Download: https://enterobase.warwick.ac.uk/schemes/Vibrio.cgMLSTv1/
-# Select "Download loci FASTA" → save to cgmlst_vibrio_raw/
+python3 scripts/setup_databases.py --cgmlst
+python3 scripts/setup_databases.py --prepare-cgmlst --cpu 4
 ```
 
-### 2. Prepare the schema for ChewBBACA
+The first command writes compressed loci to `raw_loci_gz/` and decompressed
+FASTA loci to `raw_loci/`. The second invokes chewBBACA PrepExternalSchema and
+writes `schema/`; use the same validated chewBBACA version as allele calling
+(the module currently declares 3.3.10). Preparation requires chewBBACA and its
+dependencies on PATH. Supply a reviewed training file through
+`--prodigal-training-file PATH` when required by your validated protocol.
+
+Enable allele calling with:
 
 ```bash
-# Run from the project root
-docker run --rm \
-    -v $(pwd)/assets/databases/cgmlst_vibrio_raw:/raw:ro \
-    -v $(pwd)/assets/databases/cgmlst_vibrio:/out \
-    quay.io/biocontainers/chewbbaca:3.3.10--pyhdfd78af_0 \
-    chewBBACA.py PrepExternalSchema \
-        -g /raw \
-        -o /out \
-        --cpu 4
+--cgmlst_schema assets/databases/cgmlst_vibrio/schema
 ```
 
-### 3. Verify
+A raw-locus directory or README-only directory is not a prepared schema. The
+pipeline requires `.schema_config`, otherwise it produces explicit unavailable
+outputs. It calls assembled contigs, not the Snippy consensus. The module uses
+`--no-inferred` to avoid writing inferred alleles back into the schema.
 
-```bash
-ls assets/databases/cgmlst_vibrio/short/ | wc -l   # should print 2402
-```
+Keep the database manifest, raw archive checksums, preparation command/tool
+version and prepared schema snapshot. A 1,128-file download check does not alone
+validate allele identities or schema equivalence. Review any scheme/locus-count
+change scientifically before rebuilding or comparing distances.
 
-### 4. Run the pipeline with cgMLST enabled
-
-```bash
-NXF_VER=24.10.5 nextflow run main.nf \
-    --input samplesheet.csv \
-    --outdir results/ \
-    --cgmlst_schema assets/databases/cgmlst_vibrio \
-    -profile docker
-```
-
-## Parameters
-
-| Parameter | Default | Description |
-|---|---|---|
-| `--cgmlst_schema` | `assets/databases/cgmlst_vibrio` | Prepared schema directory |
-| `--run_cgmlst` | `true` | Enable/disable cgMLST step |
-
-## Reference
-
-Enterobase Vibrio cgMLST v1 — 2,402 core loci selected from a panel of
->50,000 V. cholerae genomes. See:
-> Wirth T et al. (2006) *PLoS Genetics*; Enterobase documentation.
+Pairwise distances count differences only at loci called in both samples; invalid
+calls are excluded. A pair without any shared callable loci is NA. Assess callable
+locus completeness before interpreting a small allele distance.

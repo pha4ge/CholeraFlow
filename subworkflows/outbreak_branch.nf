@@ -45,6 +45,7 @@ workflow OUTBREAK_BRANCH {
     typing_summary     // value/queue: typing_summary.tsv          (for the report)
     virulence_summary  // value/queue: virulencefinder_summary.tsv (for the report)
     amr_summary        // value/queue: amr_summary.tsv             (for the report)
+    seq_qc_summary     // value/queue: seq_qc_summary.tsv          (for the report)
 
     main:
     ch_treefile        = Channel.empty()
@@ -57,15 +58,24 @@ workflow OUTBREAK_BRANCH {
     ch_cluster_pairs   = Channel.empty()
     ch_cluster_summary = Channel.empty()
 
-    // ── Steps 9a + 10a: tree and SNP distances (parallel, same input) ─────────
+    // ── Steps 9a + 10a: PIS tree and distances on ALL masked SNP sites ───────
     // These single-run process outputs are value channels, so they can feed BOTH
     // OUTBREAK_CLUSTER and the report (and be emitted) without being consumed once.
     if (params.run_phylogeny) {
-        IQTREE2(pis_alignment)
+        // A cohort can have singleton differences but no informative sites.
+        // Retain SNP distances and clustering, and omit unsupported tree inference.
+        ch_tree_alignment = pis_alignment.filter { aln ->
+            def has_sites = aln.readLines().any { line -> line.trim() && !line.startsWith('>') }
+            if (!has_sites) log.warn '[CholeraFlow] No PIS sites; skipping IQ-TREE2 while retaining masked SNP distances.'
+            has_sites
+        }
+        IQTREE2(ch_tree_alignment)
         ch_treefile   = IQTREE2.out.treefile
         ch_treereport = IQTREE2.out.report
 
-        SNP_DISTS(pis_alignment)
+        // Singleton SNPs contribute real pairwise differences. PIS filtering
+        // would discard them and can move pairs across outbreak thresholds.
+        SNP_DISTS(masked_alignment)
         ch_snp_matrix = SNP_DISTS.out.matrix
     }
 
@@ -111,14 +121,16 @@ workflow OUTBREAK_BRANCH {
         else {
             MERGE_ALIGNMENTS(masked_alignment, global_aln)
             VARCODONS_GLOBAL(MERGE_ALIGNMENTS.out.merged)
-            IQTREE2_GLOBAL(VARCODONS_GLOBAL.out.pis_aln)
+            IQTREE2_GLOBAL(VARCODONS_GLOBAL.out.pis_aln.filter { aln ->
+                aln.readLines().any { line -> line.trim() && !line.startsWith('>') }
+            })
             ch_global_tree = IQTREE2_GLOBAL.out.treefile
         }
     }
 
     // ── Step 12: outbreak cluster interpretation (after 10a + 10b) ────────────
-    if (params.run_phylogeny && params.run_cgmlst) {
-        OUTBREAK_CLUSTER(ch_snp_matrix, ch_cgmlst_matrix, metadata)
+    if (params.run_phylogeny) {
+        OUTBREAK_CLUSTER(ch_snp_matrix, ch_cgmlst_matrix.ifEmpty([]), metadata)
         ch_cluster_assign  = OUTBREAK_CLUSTER.out.assignments
         ch_cluster_pairs   = OUTBREAK_CLUSTER.out.pairs
         ch_cluster_summary = OUTBREAK_CLUSTER.out.summary
@@ -128,7 +140,7 @@ workflow OUTBREAK_BRANCH {
     // ifEmpty([]) makes each input emit [] when its upstream step was skipped, so
     // GENERATE_REPORT always runs exactly once and renders "Analysis not performed"
     // for absent sections.
-    report_template = file("${projectDir}/assets/report_templates/outbreak_report.html.j2")
+    report_template = file("${moduleDir}/../assets/report_templates")
     GENERATE_REPORT(
         report_template,
         genome_qc_summary.ifEmpty([]),
@@ -143,6 +155,8 @@ workflow OUTBREAK_BRANCH {
         ch_cgmlst_matrix.ifEmpty([]),
         ch_global_tree.ifEmpty([]),
         metadata.ifEmpty([]),
+        seq_qc_summary.ifEmpty([]),
+        ch_treereport.ifEmpty([]),
     )
     ch_report = GENERATE_REPORT.out.report
 

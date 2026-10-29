@@ -44,10 +44,19 @@ process SNIPPY_CORE {
     ${decomp}
     # snippy-core exits 2 when snp-sites finds no SNPs (samples identical to ref).
     # core.full.aln is still produced and is what Gubbins needs.
-    snippy-core \\
+    if snippy-core \\
         --ref    ${ref_arg} \\
         --prefix core \\
-        ${snippy_dirs.join(' ')} || true
+        ${snippy_dirs.join(' ')}; then
+        :
+    else
+        status=\$?
+        # Only accept snippy-core's documented no-SNP exit when its full
+        # alignment exists. All other tool failures must propagate.
+        if [ "\$status" -ne 2 ] || [ ! -s core.full.aln ]; then
+            exit "\$status"
+        fi
+    fi
     """
 }
 

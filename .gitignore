@@ -1,0 +1,29 @@
+# Execution products and local environments
+.nextflow*
+work/
+work_*/
+results/
+test_results/
+test_results_*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Downloaded scientific databases and their local provenance
+assets/databases/resfinder_db/
+assets/databases/virulencefinder_db/
+assets/databases/cgmlst_vibrio/raw_loci/
+assets/databases/cgmlst_vibrio/raw_loci_gz/
+assets/databases/cgmlst_vibrio/schema/
+assets/databases/database_manifest.json
+assets/databases/typing_refs/*.fa*
+
+# Downloaded example reads (the small committed fixtures remain tracked)
+tests/testdata/SRR*.fastq*
+tests/testdata/DRR*.fastq*
+tests/testdata/*.sra

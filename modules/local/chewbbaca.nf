@@ -2,7 +2,7 @@
 //
 // Step 9b: cgMLST allele calling against EnteroBase V. cholerae cgMLST scheme.
 //
-// Schema: assets/databases/cgmlst_vibrio/ (EnteroBase 2,402-locus scheme)
+// Schema: assets/databases/cgmlst_vibrio/ (EnteroBase VIBwgMLST.cgMLSTv1 1,128-locus scheme)
 //   Download: see assets/databases/cgmlst_vibrio/README.md
 //   Must be prepared with PrepExternalSchema before first use.
 //   Set --cgmlst_schema to the prepared schema directory to enable this step.

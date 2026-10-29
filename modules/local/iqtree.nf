@@ -42,6 +42,8 @@ process IQTREE2 {
         -m  TEST+ASC \\
         -B  1000 \\
         -T  AUTO \\
+        --threads-max ${task.cpus} \\
+        --seed 1 \\
         --prefix iqtree \\
         --redo
     """

@@ -1,0 +1,2 @@
+sample,fastq_1,fastq_2,fasta
+SYNTHETIC_TEST_ONLY,,,../testdata/VC_YEMEN_004.fna.gz

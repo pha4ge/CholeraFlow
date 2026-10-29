@@ -20,7 +20,7 @@ from pathlib import Path
 SAMPLE_NAME_RE = re.compile(r'^[A-Za-z0-9_]{1,50}$')
 
 # Tuple used with str.endswith() to correctly handle double extensions like .fna.gz
-FASTA_EXTENSIONS = ('.fasta', '.fa', '.fna', '.fas', '.fna.gz', '.fasta.gz')
+FASTA_EXTENSIONS = ('.fasta', '.fa', '.fna', '.fas', '.fa.gz', '.fas.gz', '.fna.gz', '.fasta.gz')
 
 REMOTE_SCHEMES = ('ftp://', 'https://', 'http://')
 
@@ -50,11 +50,11 @@ def is_fasta(path: str) -> bool:
 
 
 def local_exists(path: str, base_dir: Path) -> bool:
-    """Check existence of a local path, resolving relative to base_dir."""
+    """Require a nonempty regular file, resolving relative to base_dir."""
     p = Path(path)
-    if p.is_absolute():
-        return p.exists()
-    return (base_dir / p).exists()
+    if not p.is_absolute():
+        p = base_dir / p
+    return p.is_file() and p.stat().st_size > 0
 
 
 def sanitise_name(name: str) -> str:
@@ -82,9 +82,12 @@ def validate_samplesheet(csv_path: Path):
     base_dir  = real_path.parent
 
     try:
-        with open(real_path, newline='') as fh:
+        with open(real_path, newline='', encoding='utf-8-sig') as fh:
             reader = csv.DictReader(fh)
             fields = reader.fieldnames or []
+
+            if len(fields) != len(set(fields)):
+                return [], ["Samplesheet has duplicate column names. Fix: give each column a unique name."], []
 
             if 'sample' not in fields:
                 sys.exit(
@@ -96,6 +99,9 @@ def validate_samplesheet(csv_path: Path):
             has_fasta_col = 'fasta' in fields
 
             for lineno, row in enumerate(reader, start=2):
+                if None in row:
+                    errors.append(f"Row {lineno}: Too many CSV fields. Fix: quote fields containing commas.")
+                    continue
                 name = (row.get('sample') or '').strip()
                 fq1  = (row.get('fastq_1') or '').strip()
                 fq2  = (row.get('fastq_2') or '').strip()
@@ -123,6 +129,8 @@ def validate_samplesheet(csv_path: Path):
                         "  Fix: Every sample must have a unique name."
                     )
                 seen_names.add(name)
+                if name in {'Reference', 'not_run'}:
+                    errors.append(f"Row {lineno}: '{name}' is a reserved analysis label. Fix: rename the sample.")
 
                 # ── Detect input type ────────────────────────────────────────
                 # If fastq_1 carries a FASTA file and fastq_2 is absent, treat
@@ -147,13 +155,15 @@ def validate_samplesheet(csv_path: Path):
                             "then update the samplesheet to reference the .fna.gz file."
                         )
                     if fq1 or fq2:
-                        warnings.append(
+                        errors.append(
                             f"Row {lineno} ({name}): Both FASTA and FASTQ columns are "
-                            "populated — FASTA will be used, FASTQ ignored."
+                            "populated. Fix: provide one input type per sample; no files will be silently ignored."
                         )
 
                 elif fq1 and fq2:
                     input_type = 'paired'
+                    if _abs_path(fq1, base_dir) == _abs_path(fq2, base_dir):
+                        errors.append(f"Row {lineno} ({name}): Both mates reference the same file. Fix: supply distinct R1 and R2 files.")
                     for label, path in [('fastq_1', fq1), ('fastq_2', fq2)]:
                         if not is_remote(path) and not local_exists(path, base_dir):
                             errors.append(
@@ -190,9 +200,9 @@ def validate_samplesheet(csv_path: Path):
                     'type':    input_type,
                 })
 
-    except FileNotFoundError:
+    except OSError as exc:
         sys.exit(
-            f"ERROR: Samplesheet not found: '{csv_path}'\n"
+            f"ERROR: Cannot read samplesheet '{csv_path}': {exc}\n"
             "  Fix: Check the path supplied to --input and ensure the file exists."
         )
 
@@ -213,9 +223,11 @@ def validate_metadata(csv_path: Path, sample_names: list):
     meta_ids = set()
 
     try:
-        with open(csv_path.resolve(), newline='') as fh:
+        with open(csv_path.resolve(), newline='', encoding='utf-8-sig') as fh:
             reader = csv.DictReader(fh)
             fields = reader.fieldnames or []
+            if len(fields) != len(set(fields)):
+                return ["Metadata has duplicate column names. Fix: give each column a unique name."], []
 
             missing_required = [c for c in REQUIRED_META_FIELDS if c not in fields]
             if missing_required:
@@ -233,18 +245,29 @@ def validate_metadata(csv_path: Path, sample_names: list):
                 )
 
             for lineno, row in enumerate(reader, start=2):
+                if None in row:
+                    errors.append(f"Metadata row {lineno}: Too many CSV fields. Fix: quote fields containing commas.")
+                    continue
                 sid = (row.get('sample_id') or '').strip()
                 if not sid:
                     warnings.append(
                         f"Metadata row {lineno}: Empty sample_id — row skipped."
                     )
                     continue
+                if sid in meta_ids:
+                    errors.append(f"Metadata row {lineno}: Duplicate sample_id '{sid}'. Fix: keep one metadata row per sample.")
                 meta_ids.add(sid)
+
+                for field in REQUIRED_META_FIELDS[2:]:
+                    if not (row.get(field) or '').strip():
+                        errors.append(f"Metadata row {lineno} ({sid}): Required field '{field}' is empty.")
 
                 # collection_date — ISO 8601
                 date_val = (row.get('collection_date') or '').strip()
                 if date_val:
                     try:
+                        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_val):
+                            raise ValueError('date must use YYYY-MM-DD')
                         datetime.strptime(date_val, '%Y-%m-%d')
                     except ValueError:
                         errors.append(
@@ -271,6 +294,13 @@ def validate_metadata(csv_path: Path, sample_names: list):
                 # GPS coordinates — warn if only one of lat/lon provided
                 lat = (row.get('gps_lat') or '').strip()
                 lon = (row.get('gps_lon') or '').strip()
+                for field, value, limit in [('gps_lat', lat, 90), ('gps_lon', lon, 180)]:
+                    if value:
+                        try:
+                            if not -limit <= float(value) <= limit:
+                                raise ValueError('coordinate out of range')
+                        except ValueError:
+                            errors.append(f"Metadata row {lineno} ({sid}): {field} must be numeric and between {-limit} and {limit}.")
                 if bool(lat) != bool(lon):
                     warnings.append(
                         f"Metadata row {lineno} ({sid}): Only one GPS coordinate "
@@ -302,14 +332,6 @@ def validate_metadata(csv_path: Path, sample_names: list):
 
 # ── Bactopia samplesheet conversion ──────────────────────────────────────────
 
-# Bactopia v3 samplesheet (FOFN) is a 7-column TSV:
-#   sample  runtype  genome_size  species  r1  r2  extra
-#
-# CholeraFlow type → Bactopia runtype mapping:
-#   paired  → paired-end   (r1=fastq_1, r2=fastq_2, extra='')
-#   single  → single-end   (r1=fastq_1, r2='',      extra='')
-#   fasta   → assembly     (r1=fasta,   r2='',       extra='')
-#
 # All local file paths are resolved to absolute so Bactopia can find them
 # regardless of its working directory.
 
@@ -428,7 +450,8 @@ def main():
             fh, fieldnames=['sample', 'fastq_1', 'fastq_2', 'fasta', 'type']
         )
         writer.writeheader()
-        writer.writerows(samples)
+        writer.writerows({**s, **{k: _abs_path(s[k], base_dir)
+                                  for k in ('fastq_1', 'fastq_2', 'fasta')}} for s in samples)
 
     bactopia_tsv = write_bactopia_samplesheet(samples, base_dir, outdir)
 

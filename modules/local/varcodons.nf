@@ -9,8 +9,8 @@
 //   1. Parsimony-informative (≥2 character states, each in ≥2 sequences)
 //   2. Genotyped in ≥ params.min_parsimony_coverage of sequences (default 0.70)
 //
-// Singletons (one sample differs from all others) are excluded — they carry
-// no phylogenetic information and can bias branch lengths.
+// Singletons are excluded by the existing PIS tree method. They still contribute
+// to the separate distance calculation on the full masked polymorphic alignment.
 //
 // Output pis_alignment.fasta contains ONLY variable sites — required for
 // IQ-TREE2 +ASC model (ascertainment bias correction assumes no invariant sites).
@@ -42,6 +42,7 @@ process VARCODONS {
     varcodons.py \\
         --alignment              ${masked_aln} \\
         --output-dir             . \\
+        --allow-empty \\
         --min_parsimony_coverage ${params.min_parsimony_coverage}
     """
 }

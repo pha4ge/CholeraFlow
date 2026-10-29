@@ -23,7 +23,7 @@ process VIRULENCEFINDER {
     label 'process_medium'
 
     conda 'bioconda::virulencefinder=3.2.1'
-    container 'genomicepidemiology/virulencefinder:latest'
+    container 'genomicepidemiology/virulencefinder:3.2.1'
     containerOptions '--entrypoint ""'   // override ENTRYPOINT ["python -m virulencefinder"]
 
     input:
@@ -120,7 +120,7 @@ sample = "${meta.id}"
 result = {
     "sample":  sample,
     "status":  "not_run",
-    "reason":  "virulencefinder_db not provided (see docs/PROGRESS.md for setup)",
+    "reason":  "virulencefinder_db not provided (see README.md database setup)",
 }
 with open("${meta.id}_virulencefinder.json", "w") as f:
     json.dump(result, f, indent=2)

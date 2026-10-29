@@ -109,7 +109,8 @@ process RUN_BACTOPIA {
     // (params.bactopia_bin). With no `container` directive and no global
     // process.container default, this process executes natively even under
     // -profile docker.
-    conda "${ workflow.profile.contains('conda') ? 'bioconda::bactopia' : null }"
+    container null
+    conda "${ workflow.profile.contains('conda') ? 'bioconda::bactopia=4.0.0' : null }"
 
     input:
     path bactopia_samplesheet   // TSV produced by INPUT_VALIDATE
@@ -119,21 +120,23 @@ process RUN_BACTOPIA {
 
     script:
     def profile_flag = params.bactopia_profile ? "-profile ${params.bactopia_profile}" : ""
-    // The bactopia wrapper invokes sibling executables (bactopia-workflows,
-    // bactopia-prepare, …) plus its own nextflow/python from the same conda-env
-    // bin/. Calling the binary by absolute path does not put that bin/ on PATH,
-    // so it must be prepended explicitly (derived from params.bactopia_bin —
-    // still a single, overridable source of truth).
-    def bactopia_bindir = file(params.bactopia_bin).parent
+    def bactopia_cmd  = params.bactopia_bin.toString()
+    // A bare command such as `bactopia` should resolve from the active PATH.
+    // When the user supplies an explicit path, prepend its parent directory so
+    // Bactopia can also find sibling executables from the same environment.
+    def bactopia_path_export = bactopia_cmd.contains('/') ? "export PATH=\"${file(bactopia_cmd).parent}:\$PATH\"" : ""
+    def inner_runtime = params.bactopia_nextflow_version
+        ? "export NXF_VER='${params.bactopia_nextflow_version}'"
+        : 'unset NXF_VER'
     """
-    export PATH="${bactopia_bindir}:\$PATH"
+    ${bactopia_path_export}
     # CholeraFlow pins itself to NXF_VER=24.10.5, but that env var is inherited by
     # this subprocess and would force Bactopia's OWN Nextflow to 24.10.5 too.
     # Bactopia 4.0.0 requires Nextflow 26.x — unset NXF_VER so it selects its own.
-    unset NXF_VER
+    ${inner_runtime}
 
-    ${params.bactopia_bin} \\
-        --samples ${bactopia_samplesheet} \\
+    '${bactopia_cmd}' \\
+        --samples '${bactopia_samplesheet}' \\
         --outdir bactopia_results \\
         --shovill_assembler spades \\
         --maq ${params.min_trim_quality} \\
@@ -141,6 +144,10 @@ process RUN_BACTOPIA {
         --max_cpus ${task.cpus} \\
         --max_memory ${task.memory.toGiga()}.GB \\
         ${profile_flag}
+
+    python3 '${projectDir}/bin/check_bactopia_outputs.py' \\
+        --samplesheet '${bactopia_samplesheet}' --results bactopia_results \\
+        --output bactopia_results/choleraflow_inventory.json
     """
 }
 
@@ -160,6 +167,25 @@ workflow CORE_BACKBONE {
     bactopia_samplesheet   // path: TSV from INPUT_VALIDATE
 
     main:
+    ch_virulence_json = Channel.empty()
+    ch_virulence_summary = Channel.empty()
+    ch_amr_json = Channel.empty()
+    ch_amr_summary = Channel.empty()
+    ch_snippy_outdir = Channel.empty()
+    ch_snippy_aligned = Channel.empty()
+    ch_snippy_vcf = Channel.empty()
+    ch_seq_qc_json = Channel.empty()
+    ch_seq_qc_summary = Channel.empty()
+    ch_seq_qc_passed = Channel.empty()
+    ch_seq_qc_excluded = Channel.empty()
+    ch_core_aln = Channel.empty()
+    ch_core_full_aln = Channel.empty()
+    ch_gubbins_tree = Channel.empty()
+    ch_gubbins_masked = Channel.empty()
+    ch_pis_aln = Channel.empty()
+    ch_variant_codons = Channel.empty()
+    ch_snp_coords = Channel.empty()
+
     RUN_BACTOPIA(bactopia_samplesheet)
 
     // ── Step 2: Genome QC ─────────────────────────────────────────────────
@@ -215,45 +241,54 @@ workflow CORE_BACKBONE {
     // 3c: VirulenceFinder — ctxA, ctxB, tcpA, VPI genes, hlyA, mshA, hapA
     // Database: git clone https://bitbucket.org/genomicepidemiology/virulencefinder_db.git
     //           Set --virulencefinder_db to the cloned path to enable this step.
-    def vf_db = (params.virulencefinder_db && file(params.virulencefinder_db).exists())
+    def vf_db = (params.virulencefinder_db && file(params.virulencefinder_db).isDirectory())
         ? file(params.virulencefinder_db)
         : []
-    VIRULENCEFINDER(ch_assemblies, vf_db)
-    VIRULENCEFINDER_AGGREGATE(
-        VIRULENCEFINDER.out.results_json.map { meta, json -> json }.collect()
-    )
+    if (params.run_virulence) {
+        VIRULENCEFINDER(ch_assemblies, vf_db)
+        VIRULENCEFINDER_AGGREGATE(
+            VIRULENCEFINDER.out.results_json.map { meta, json -> json }.collect()
+        )
+        ch_virulence_json = VIRULENCEFINDER.out.results_json
+        ch_virulence_summary = VIRULENCEFINDER_AGGREGATE.out.summary
+    }
 
     // ── Step 4: AMR screening ─────────────────────────────────────────────
     // 4d(i): ResFinder — acquired resistance genes against cloned resfinder_db
     // Database: git clone https://bitbucket.org/genomicepidemiology/resfinder_db.git
     //           Set --resfinder_db to the cloned path to enable this step.
-    def rf_db = (params.resfinder_db && file(params.resfinder_db).exists())
+    def rf_db = (params.resfinder_db && file(params.resfinder_db).isDirectory())
         ? file(params.resfinder_db)
         : []
-    RESFINDER(ch_assemblies, rf_db)
+    if (params.run_amr) {
+        RESFINDER(ch_assemblies, rf_db)
 
-    // 4d(ii): Collect per-sample AMRFinderPlus TSVs from Bactopia output tree
-    //         Path: <outdir>/<SAMPLE>/tools/amrfinderplus/<SAMPLE>.tsv
-    ch_amrfinder_tsvs = RUN_BACTOPIA.out.outdir
-        .flatMap { outdir ->
-            outdir.toFile().listFiles()
-                .findAll { it.isDirectory() && !it.name.startsWith('bactopia-runs') }
-                .collect { sampleDir ->
-                    def sample = sampleDir.name
-                    def tsv    = new File("${sampleDir}/tools/amrfinderplus/${sample}.tsv")
-                    tsv.exists() ? [ [id: sample], tsv.toPath() ] : null
-                }
-                .findAll { it != null }
-        }
+        // 4d(ii): Collect per-sample AMRFinderPlus TSVs from Bactopia output tree
+        //         Path: <outdir>/<SAMPLE>/tools/amrfinderplus/<SAMPLE>.tsv
+        ch_amrfinder_tsvs = RUN_BACTOPIA.out.outdir
+            .flatMap { outdir ->
+                outdir.toFile().listFiles()
+                    .findAll { it.isDirectory() && !it.name.startsWith('bactopia-runs') }
+                    .collect { sampleDir ->
+                        def sample = sampleDir.name
+                        def tsv    = new File("${sampleDir}/tools/amrfinderplus/${sample}.tsv")
+                        tsv.exists() ? [ [id: sample], tsv.toPath() ] : null
+                    }
+                    .findAll { it != null }
+            }
 
-    // 4d(iii): Merge AMRFinderPlus + ResFinder per sample
-    ch_amr_inputs = ch_amrfinder_tsvs
-        .join(RESFINDER.out.results_json, by: 0)
-    AMR_MERGE(ch_amr_inputs)
+        // 4d(iii): Merge AMRFinderPlus + ResFinder per sample
+        ch_amr_inputs = RESFINDER.out.results_json
+            .join(ch_amrfinder_tsvs, by: 0, remainder: true)
+            .map { meta, rf_json, amr_tsv -> [meta, amr_tsv ?: [], rf_json] }
+        AMR_MERGE(ch_amr_inputs)
 
-    AMR_AGGREGATE(
-        AMR_MERGE.out.amr_tsv.map { meta, tsv -> tsv }.collect()
-    )
+        AMR_AGGREGATE(
+            AMR_MERGE.out.amr_tsv.map { meta, tsv -> tsv }.collect()
+        )
+        ch_amr_json = AMR_MERGE.out.amr_json
+        ch_amr_summary = AMR_AGGREGATE.out.summary
+    }
 
     // ── Step 5: Reference mapping (Snippy per-sample) ─────────────────────
     // Discovers trimmed FASTQs published by Bactopia QC step. Paired-end:
@@ -284,44 +319,62 @@ workflow CORE_BACKBONE {
     // Reference channel: emits the GenBank if present, empty channel otherwise
     // (graceful skip — downstream steps 5–11 are omitted with a log warning).
     def ref_gb = file(params.ref_genbank, checkIfExists: false)
-    ch_snippy_ref = ref_gb.exists()
-        ? Channel.value(ref_gb)
-        : Channel.empty()
-
-    if (!ref_gb.exists()) {
+    if (params.run_phylogeny && !ref_gb.isFile()) {
         log.warn "[CholeraFlow] Reference GenBank not found at ${params.ref_genbank}"
         log.warn "[CholeraFlow] Steps 5–11 (SNP mapping, phylogenetics) will be skipped"
         log.warn "[CholeraFlow] See assets/references/README.md for download instructions"
     }
 
-    SNIPPY(ch_trimmed_fastqs, ch_snippy_ref)
+    if (params.run_phylogeny && ref_gb.isFile()) {
+        ch_snippy_ref = Channel.value(ref_gb)
+        SNIPPY(ch_trimmed_fastqs, ch_snippy_ref)
 
-    // ── Step 6: Sequence QC filter (CRITICAL — must run before Gubbins) ───
-    // SEQ_CLEANER: per-sample N/gap proportion on snps.aligned.fa.
-    // SEQ_CLEANER_FILTER: aggregate; fails pipeline if <4 samples pass.
-    SEQ_CLEANER(SNIPPY.out.aligned_fa)
-    SEQ_CLEANER_FILTER(
-        SEQ_CLEANER.out.qc_json.map { meta, json -> json }.collect()
-    )
+        // ── Step 6: Sequence QC filter (CRITICAL — must run before Gubbins) ───
+        // SEQ_CLEANER: per-sample N/gap proportion on snps.aligned.fa.
+        // SEQ_CLEANER_FILTER: aggregate; fails pipeline if <4 samples pass.
+        SEQ_CLEANER(SNIPPY.out.aligned_fa)
+        SEQ_CLEANER_FILTER(
+            SEQ_CLEANER.out.qc_json.map { meta, json -> json }.collect()
+        )
 
-    // ── Step 7a: Multi-sample core alignment (snippy-core) ───────────────
-    // Join Snippy output dirs with seq QC JSON by sample ID, keep only
-    // samples whose QC JSON reports status == 'pass'.
-    ch_snippy_passed_dirs = SNIPPY.out.outdir
-        .join(SEQ_CLEANER.out.qc_json, by: 0)
-        .filter { meta, outdir, json ->
-            new groovy.json.JsonSlurper().parseText(json.text).status == 'pass'
-        }
-        .map { meta, outdir, json -> outdir }
-        .collect()
+        // ── Step 7a: Multi-sample core alignment (snippy-core) ───────────────
+        // Join Snippy output dirs with seq QC JSON by sample ID, keep only
+        // samples whose QC JSON reports status == 'pass'.
+        ch_snippy_passed_dirs = SNIPPY.out.outdir
+            .join(SEQ_CLEANER.out.qc_json, by: 0)
+            .filter { meta, outdir, json ->
+                new groovy.json.JsonSlurper().parseText(json.text).status == 'pass'
+            }
+            .map { meta, outdir, json -> outdir }
+            .collect()
 
-    SNIPPY_CORE(ch_snippy_passed_dirs, ch_snippy_ref)
+        // Wait for the aggregate minimum-four-samples check before snippy-core.
+        ch_checked_dirs = ch_snippy_passed_dirs
+            .map { dirs -> tuple('cohort', dirs) }
+            .join(SEQ_CLEANER_FILTER.out.passed.map { passed -> tuple('cohort', passed) })
+            .map { key, dirs, passed -> dirs }
+        SNIPPY_CORE(ch_checked_dirs, ch_snippy_ref)
 
-    // ── Step 7b: Recombination masking (Gubbins) ─────────────────────────
-    GUBBINS(SNIPPY_CORE.out.full_aln)
+        // ── Step 7b: Recombination masking (Gubbins) ─────────────────────────
+        GUBBINS(SNIPPY_CORE.out.full_aln)
 
-    // ── Step 8: Parsimony-informative site extraction ─────────────────────
-    VARCODONS(GUBBINS.out.masked_aln)
+        // ── Step 8: Parsimony-informative site extraction ─────────────────────
+        VARCODONS(GUBBINS.out.masked_aln)
+        ch_snippy_outdir = SNIPPY.out.outdir
+        ch_snippy_aligned = SNIPPY.out.aligned_fa
+        ch_snippy_vcf = SNIPPY.out.vcf
+        ch_seq_qc_json = SEQ_CLEANER.out.qc_json
+        ch_seq_qc_summary = SEQ_CLEANER_FILTER.out.summary
+        ch_seq_qc_passed = SEQ_CLEANER_FILTER.out.passed
+        ch_seq_qc_excluded = SEQ_CLEANER_FILTER.out.excluded
+        ch_core_aln = SNIPPY_CORE.out.core_aln
+        ch_core_full_aln = SNIPPY_CORE.out.full_aln
+        ch_gubbins_tree = GUBBINS.out.tree
+        ch_gubbins_masked = GUBBINS.out.masked_aln
+        ch_pis_aln = VARCODONS.out.pis_aln
+        ch_variant_codons = VARCODONS.out.variant_codons
+        ch_snp_coords = VARCODONS.out.snp_coords
+    }
 
     emit:
     bactopia_outdir          = RUN_BACTOPIA.out.outdir
@@ -332,22 +385,22 @@ workflow CORE_BACKBONE {
     genome_qc_summary        = GENOME_QC_AGGREGATE.out.summary
     typing_results           = CHOLERA_TYPING.out.results
     typing_summary           = CHOLERA_TYPING_AGGREGATE.out.summary
-    virulencefinder_json     = VIRULENCEFINDER.out.results_json
-    virulencefinder_summary  = VIRULENCEFINDER_AGGREGATE.out.summary
-    amr_json                 = AMR_MERGE.out.amr_json
-    amr_summary              = AMR_AGGREGATE.out.summary
-    snippy_outdir            = SNIPPY.out.outdir
-    snippy_aligned           = SNIPPY.out.aligned_fa
-    snippy_vcf               = SNIPPY.out.vcf
-    seq_qc_json              = SEQ_CLEANER.out.qc_json
-    seq_qc_summary           = SEQ_CLEANER_FILTER.out.summary
-    seq_qc_passed            = SEQ_CLEANER_FILTER.out.passed
-    seq_qc_excluded          = SEQ_CLEANER_FILTER.out.excluded
-    snippy_core_aln          = SNIPPY_CORE.out.core_aln
-    snippy_core_full_aln     = SNIPPY_CORE.out.full_aln
-    gubbins_tree             = GUBBINS.out.tree
-    gubbins_masked_aln       = GUBBINS.out.masked_aln
-    pis_alignment            = VARCODONS.out.pis_aln
-    variant_codons           = VARCODONS.out.variant_codons
-    snp_coords               = VARCODONS.out.snp_coords
+    virulencefinder_json     = ch_virulence_json
+    virulencefinder_summary  = ch_virulence_summary
+    amr_json                 = ch_amr_json
+    amr_summary              = ch_amr_summary
+    snippy_outdir            = ch_snippy_outdir
+    snippy_aligned           = ch_snippy_aligned
+    snippy_vcf               = ch_snippy_vcf
+    seq_qc_json              = ch_seq_qc_json
+    seq_qc_summary           = ch_seq_qc_summary
+    seq_qc_passed            = ch_seq_qc_passed
+    seq_qc_excluded          = ch_seq_qc_excluded
+    snippy_core_aln          = ch_core_aln
+    snippy_core_full_aln     = ch_core_full_aln
+    gubbins_tree             = ch_gubbins_tree
+    gubbins_masked_aln       = ch_gubbins_masked
+    pis_alignment            = ch_pis_aln
+    variant_codons           = ch_variant_codons
+    snp_coords               = ch_snp_coords
 }
