@@ -1,0 +1,4 @@
+sample,fastq_1,fastq_2,fasta
+VC_HAITI_001,../../tests/testdata/VC_HAITI_001_R1.fastq.gz,../../tests/testdata/VC_HAITI_001_R2.fastq.gz,
+VC_KENYA_003,../../tests/testdata/VC_KENYA_003_R1.fastq.gz,../../tests/testdata/VC_KENYA_003_R2.fastq.gz,
+VC_MALAWI_002,../../tests/testdata/VC_MALAWI_002_R1.fastq.gz,../../tests/testdata/VC_MALAWI_002_R2.fastq.gz,

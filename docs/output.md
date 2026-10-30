@@ -82,7 +82,7 @@ labelled as a synthetic demonstration built from software test fixtures.
 
 ## Extended graphs and tree view
 
-The report includes 19 chart panels when all corresponding inputs are supplied:
+The report includes 22 chart panels when all corresponding inputs are supplied:
 
 | Area | Graphs |
 | --- | --- |
@@ -91,6 +91,7 @@ The report includes 19 chart panels when all corresponding inputs are supplied:
 | Sample metadata (3) | Recorded country, specimen type and collection month |
 | Comparisons (2) | Pairwise SNP and cgMLST distance distributions with min/median/max and pair counts |
 | Existing analysis summaries (3) | Component sizes, reported AMR-class marker counts and reported marker-detection counts |
+| Typing and classification (3) | Assigned MLST scheme/ST frequencies, reported lineage frequencies and reported plasmid-cluster memberships |
 
 The report also includes the genome-QC distribution bar, SNP/cgMLST distance
 heatmaps and graphical cohort/global trees when available. Numeric QC graphs
@@ -126,3 +127,65 @@ input bytes; they do not establish scientific validity.
 For development-only interaction checks, make `jsdom` available in a temporary
 Node.js 22+ environment and run `node tests/report_dom_checks.cjs`. No Node.js or
 JavaScript package is required to generate or open the report.
+
+## Annotated tree layouts and typing
+
+Rectangular and circular layouts show five aligned metadata tracks: country,
+collection year, lineage, MLST scheme:ST and reported plasmid cluster. Ring colors
+and tip mappings have expandable legends and tables. Exact IDs take precedence;
+a unique terminal `_snippy` alias is accepted only when it cannot collide with
+another tip. Original labels are retained. Unknown values are grey and within-
+scheme conflicting lineage calls are explicitly ambiguous.
+
+Bactopia's existing per-sample MLST calls are collected automatically into
+`characterisation/mlst/mlst_summary.tsv`, retaining allele fields, exact ST text,
+source paths and source hashes. Missing typing sources are `not_run`. Schemes
+remain separate and an ST is never converted into a lineage.
+
+Use `--lineage_assignments records.tsv` for a reviewed table with columns
+`sample,lineage,scheme,reference,method`, or `--plasmid_results records.tsv` with
+`sample,cluster_id,scheme,reference,method` (CSV or TSV). These integrate existing
+classifier results and their provenance; no new lineage or plasmid-cluster
+classifier is executed. Without them, those classifications remain unavailable.
+Several plasmid memberships per sample are retained. Neither resistance markers
+nor MLST are used to infer plasmid transfer or lineage.
+
+The dummy samplesheet and rerun instructions are in [examples/dummy](../examples/dummy/README.md).
+
+## GrapeTree-style cgMLST network
+
+The cgMLST distance network uses a tree-shaped layout for a deterministic
+minimum spanning forest of supplied pairwise distances. “GrapeTree-style”
+describes the presentation: CholeraFlow uses Kruskal's algorithm with ties broken
+by sample ID, and does not run GrapeTree or MSTreeV2 or add a runtime dependency.
+The selected edges and their observed allele-difference values are preserved by
+the layout. Positions and line lengths do not encode distance.
+
+One equal-sized node represents one sample. Samples at zero distance remain
+separate nodes, and `Reference` is excluded. A pair is usable only when both
+matrix directions contain the same valid nonnegative integer. Missing, invalid
+or asymmetric pairs are omitted and counted; missing comparisons may leave
+separate components. These components describe usable matrix connections, not
+outbreak classifications. The display limit is 250 non-reference samples;
+larger inputs produce an explicit unavailable message without truncation.
+
+The interactive controls change the view only:
+
+- **Color by** selects supplied country, collection year, lineage, MLST scheme:ST
+  or plasmid-cluster metadata. Network metadata joins use exact sample IDs.
+  Missing values remain grey and no classification is inferred.
+- **Find sample** highlights matching identifiers and dims the others while
+  retaining every node and edge. **Zoom** enlarges the network; drag the
+  background or scroll to move around it.
+- **Sample labels** and **Edge distances** toggle labels. Select a node to read
+  its metadata, or use Tab to focus a node and Enter or Space to inspect it.
+  **Reset view** restores the initial controls.
+- **Download SVG** exports the vector graphic with the selected metadata-color
+  legend. Expand **Sample metadata** or **Observed network edges** to inspect
+  the underlying records and export their tables as CSV.
+
+Without JavaScript, the country-colored network, observed edge labels, legend
+and source tables remain available. The network does not change supplied
+matrices, thresholds or cluster assignments, and is not a phylogeny or a
+transmission reconstruction. Use the original matrix to inspect pairs beyond
+the selected forest edges.

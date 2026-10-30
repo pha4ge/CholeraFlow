@@ -25,6 +25,10 @@ import sys
 
 from report_charts import build_charts
 from report_tree import build_tree_view
+from report_annotations import annotate_tree, annotate_network
+from report_network import build_distance_network
+from report_classification import load_classifications
+from report_charts import categories
 
 # Fixed Limitations text — PIPELINE_SPEC.md Section 6 Step 13. Mandatory, verbatim.
 LIMITATIONS = [
@@ -450,7 +454,8 @@ def report_input_inventory(args):
     inventory = []
     for name in ('genome_qc', 'seq_qc', 'typing', 'virulence', 'amr', 'snp_matrix',
                  'cgmlst_matrix', 'treefile', 'tree_report', 'cluster_assignments',
-                 'cluster_summary', 'outbreak_pairs', 'metadata', 'global_tree', 'software_versions'):
+                 'cluster_summary', 'outbreak_pairs', 'metadata', 'global_tree', 'software_versions',
+                 'mlst', 'lineage_assignments', 'plasmid_results'):
         path = getattr(args, name, None)
         item = {'source': name, 'file': os.path.basename(path) if path else 'Not supplied',
                 'bytes': None, 'sha256': None, 'status': 'Not supplied'}
@@ -485,6 +490,11 @@ def build_context(args):
     metadata = load_metadata(args.metadata)
     sequence_qc = load_tsv(getattr(args, 'seq_qc', None))
     cgmlst_matrix = load_matrix(args.cgmlst_matrix)
+    mlst = load_tsv(getattr(args, 'mlst', None)) or []
+    lineages = load_classifications(getattr(args, 'lineage_assignments', None), 'lineage')
+    plasmids = load_classifications(getattr(args, 'plasmid_results', None), 'plasmid')
+    distance_network = build_distance_network(cgmlst_matrix)
+    distance_network['annotations'] = annotate_network(distance_network, metadata, mlst, lineages, plasmids)
 
     qc = build_qc(genome_qc)
     characterisation = build_characterisation(typing)
@@ -493,6 +503,11 @@ def build_context(args):
     phylo = build_phylogenetics(newick, matrix, cluster_rows)
     global_ctx = build_global(global_tree)
     outbreak = build_outbreak(cluster_rows, cluster_summary, pairs)
+    for tree in (phylo, global_ctx):
+        if tree.get('tree_view'):
+            view = tree['tree_view']
+            view['annotations'] = annotate_tree(view, metadata, mlst, lineages, plasmids)
+            view['circular']['font_size'] = max(2, min(11, 2100 / max(view['tip_count'], 1)))
 
     sample_count = args.sample_count
     if sample_count is None:
@@ -510,7 +525,8 @@ def build_context(args):
     for source, rows in [('Genome QC', genome_qc), ('Mapping-sequence QC', sequence_qc),
                          ('Characterisation', typing), ('Virulence', virulence),
                          ('AMR', amr), ('Cluster assignment', cluster_rows),
-                         ('Metadata', list(metadata.values()))]:
+                         ('Metadata', list(metadata.values())), ('MLST', mlst),
+                         ('Reported lineage', lineages), ('Reported plasmid clusters', plasmids)]:
         for row in rows or []:
             sample = row.get('sample') or row.get('sample_id')
             if sample and sample not in NOT_RUN_TOKENS:
@@ -546,7 +562,25 @@ def build_context(args):
         "sample_details": [{'sample': sample, 'sources': sample_records[sample]}
                            for sample in sorted(sample_records)],
         "input_inventory": report_input_inventory(args),
+        "mlst": mlst,
+        "lineages": lineages,
+        "plasmids": plasmids,
+        "distance_network": distance_network,
     }
+    mlst_plot = [dict(row, scheme_st='{}:{}'.format(row.get('scheme'), row.get('sequence_type')))
+                 for row in mlst if row.get('status') == 'assigned']
+    ctx['charts']['mlst'] = [categories('mlst-frequency', 'Reported MLST scheme and sequence types', mlst_plot, 'scheme_st',
+                                      'Assigned source calls only; schemes remain distinct. Sequence type is not a lineage.')]
+    ctx['charts']['mlst'][0].update(unit='calls', source_label='assigned call records')
+    ctx['charts']['lineages'] = [categories('lineage-frequency', 'Reported lineage assignments',
+                                          [dict(row, scheme_lineage='{}:{}'.format(row['scheme'], row['lineage'])) for row in lineages if row['status'] == 'reported'], 'scheme_lineage',
+                                          'Supplied assignment records; a sample may appear in several schemes or conflicting records. See the source table for provenance.')]
+    ctx['charts']['lineages'][0].update(unit='assignments', source_label='assignment records')
+    ctx['charts']['plasmids'] = [categories('plasmid-frequency', 'Reported plasmid cluster memberships',
+                                          [dict(row, scheme_cluster='{}:{}'.format(row['scheme'], row['cluster_id'])) for row in plasmids if row['status'] == 'reported'], 'scheme_cluster',
+                                          'Existing classifier records only; schemes remain distinct and a sample may have several plasmid clusters. No transfer event is inferred.')]
+    ctx['charts']['plasmids'][0].update(unit='memberships', source_label='membership records')
+    ctx['demo'] = bool(getattr(args, 'demo', False))
     if getattr(args, 'reference', None):
         ctx['methods']['reference'] = {
             'name': 'Mapping reference as configured (identity must be verified)',
@@ -580,6 +614,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--template", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--demo", action='store_true', help="Label all output as synthetic demonstration data")
     # Run summary
     p.add_argument("--pipeline-version", default="0.2.0")
     p.add_argument("--run-date", default=datetime.date.today().isoformat())
@@ -593,6 +628,9 @@ def main():
     # Inputs (all optional — absence renders "Analysis not performed")
     p.add_argument("--genome-qc", default=None)
     p.add_argument("--seq-qc", default=None, help="Reported mapping-sequence QC summary TSV")
+    p.add_argument("--mlst", default=None, help="Existing MLST summary with scheme/ST/provenance")
+    p.add_argument("--lineage-assignments", default=None, help="Reviewed lineage table; sample,lineage,scheme,reference,method")
+    p.add_argument("--plasmid-results", default=None, help="Existing plasmid cluster table; sample,cluster_id,scheme,reference,method")
     p.add_argument("--tree-report", default=None, help="Original IQ-TREE diagnostic report")
     p.add_argument("--typing", default=None)
     p.add_argument("--virulence", default=None)

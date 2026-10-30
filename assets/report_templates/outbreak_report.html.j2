@@ -1,4 +1,4 @@
-{% from 'visuals.html.j2' import chart_grid, chart_card, tree_panel %}
+{% from 'visuals.html.j2' import chart_grid, chart_card, tree_panel, network_panel %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -197,6 +197,14 @@
     </table>
     </div>
   {% endif %}
+<div class="classification-panels">
+<h3>MLST typing</h3>{{ chart_grid(charts.mlst) }}
+{% if mlst %}<div class="scroll"><table aria-label="MLST typing with provenance"><tr><th>Sample</th><th>Status</th><th>Scheme</th><th>Sequence type</th><th>Exact allele profile</th><th>Source</th><th>SHA-256</th></tr>{% for row in mlst %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.scheme }}</td><td>{{ row.sequence_type }}</td><td>{{ row.allele_profile }}</td><td>{{ row.source_file }}</td><td>{{ row.source_sha256 }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">No existing MLST output was supplied. Sequence types are not inferred from other classifications.</p>{% endif %}
+<h3>Reported lineage classifications</h3>{{ chart_grid(charts.lineages) }}
+{% if lineages %}<div class="scroll"><table aria-label="Reported lineage classifications"><tr><th>Sample</th><th>Lineage</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr>{% for row in lineages %}<tr><td>{{ row.sample }}</td><td>{{ row.lineage }}</td><td>{{ row.scheme }}</td><td>{{ row.reference }}</td><td>{{ row.method }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">Lineage classification was not performed: a reviewed scheme/reference or existing assignment table has not been configured. MLST sequence type is not a lineage.</p>{% endif %}
+<h3>Reported plasmid clusters</h3>{{ chart_grid(charts.plasmids) }}
+{% if plasmids %}<div class="scroll"><table aria-label="Reported plasmid cluster memberships"><tr><th>Sample</th><th>Cluster</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr>{% for row in plasmids %}<tr><td>{{ row.sample }}</td><td>{{ row.cluster_id }}</td><td>{{ row.scheme }}</td><td>{{ row.reference }}</td><td>{{ row.method }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">No plasmid-cluster classifier output was supplied. Clusters and transfer events are not inferred from resistance genes or MLST.</p>{% endif %}
+</div>
 </section>
 
 {# ── 4. Virulence summary ────────────────────────────────────────────────── #}
@@ -273,6 +281,7 @@
     <div class="not-performed">Analysis not performed — {{ phylogenetics.reason }}</div>
   {% else %}
     {{ tree_panel(phylogenetics.tree_view, phylogenetics.newick, 'cohort-tree') }}
+    {{ tree_panel(phylogenetics.tree_view, none, 'cohort-tree-circular', 'circular') }}
     {{ chart_grid(charts.distances) }}
 
     {% if phylogenetics.heatmap %}
@@ -295,6 +304,7 @@
     {% endif %}
 
     {% if cgmlst.heatmap %}
+      {{ network_panel(distance_network) }}
       <h3>cgMLST distance heatmap</h3>
       <p class="muted">Showing {{ cgmlst.heatmap.shown_samples }} of {{ cgmlst.heatmap.total_samples }} samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
       <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
@@ -327,6 +337,7 @@
     <div class="not-performed">{{ global.message }}</div>
   {% else %}
     {{ tree_panel(global.tree_view, global.newick, 'global-tree') }}
+    {{ tree_panel(global.tree_view, none, 'global-tree-circular', 'circular') }}
   {% endif %}
 </section>
 

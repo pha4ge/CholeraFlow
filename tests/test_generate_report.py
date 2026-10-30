@@ -80,6 +80,9 @@ METADATA = (
     "VC_HAITI_001,Haiti,2022-10-14,stool\nVC_KENYA_003,Kenya,2023-01-17,stool\n"
     "VC_MALAWI_002,Malawi,2022-12-03,rectal_swab\n"
 )
+MLST = 'sample\tstatus\tscheme\tsequence_type\tallele_profile\tsource_file\tsource_sha256\nVC_HAITI_001\tassigned\tDEMO_SCHEME\t1\t[]\tfixture\ttest-only\nVC_KENYA_003\tassigned\tDEMO_SCHEME\t1\t[]\tfixture\ttest-only\nVC_MALAWI_002\tassigned\tDEMO_SCHEME\t2\t[]\tfixture\ttest-only\n'
+LINEAGES = 'sample\tlineage\tscheme\treference\tmethod\nVC_HAITI_001\tDEMO_A\tDEMO_LINEAGE\ttest-fixture\tsynthetic-only\nVC_KENYA_003\tDEMO_A\tDEMO_LINEAGE\ttest-fixture\tsynthetic-only\nVC_MALAWI_002\tDEMO_B\tDEMO_LINEAGE\ttest-fixture\tsynthetic-only\n'
+PLASMIDS = 'sample\tcluster_id\tscheme\treference\tmethod\nVC_HAITI_001\tDEMO_P1\tDEMO_PLASMID\ttest-fixture\tsynthetic-only\nVC_KENYA_003\tDEMO_P1\tDEMO_PLASMID\ttest-fixture\tsynthetic-only\n'
 
 SECTION_HEADINGS = [
     "Run summary", "QC summary", "Cholera characterisation", "Virulence summary",
@@ -127,6 +130,9 @@ def _full(d):
         cgmlst_matrix=_write(d, "cgmlst_distance_matrix.tsv", CGMLST_MATRIX),
         seq_qc=_write(d, "seq_qc_summary.tsv", SEQUENCE_QC),
         metadata=_write(d, "metadata.csv", METADATA),
+        mlst=_write(d, 'mlst.tsv', MLST),
+        lineage_assignments=_write(d, 'lineages.tsv', LINEAGES),
+        plasmid_results=_write(d, 'plasmids.tsv', PLASMIDS),
     )
 
 
@@ -140,7 +146,7 @@ class TestRender(unittest.TestCase):
             self.assertEqual([node['label'] for node in view['nodes'] if node['leaf']],
                              ['VC_HAITI_001', 'VC_KENYA_003', 'VC_MALAWI_002'])
             html = gr.render(ctx, TEMPLATE, os.path.join(d, 'tree.html'))
-            self.assertLess(html.index('class="tree-svg"'), html.index('Original tree data (Newick)'))
+            self.assertLess(html.index('class="tree-svg '), html.index('Original tree data (Newick)'))
             self.assertIn('Branch lengths as supplied', html)
             self.assertNotIn('<details class="source-details" open>', html)
 
@@ -157,7 +163,7 @@ class TestRender(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             charts = [chart for group in ctx['charts'].values() for chart in group]
-            self.assertEqual(len(charts), 19)
+            self.assertEqual(len(charts), 22)
             self.assertTrue(all(chart['status'] == 'ok' for chart in charts))
             self.assertEqual(len(ctx['sample_details']), 3)
             missing = next(chart for chart in ctx['charts']['qc'] if chart['id'] == 'sequence-missing')
@@ -370,6 +376,32 @@ class TestRender(unittest.TestCase):
             self.assertEqual(grid["VC_HAITI_001"]["tcpA"], "present")
             self.assertEqual(grid["VC_HAITI_001"]["hlyA"], "present")
             self.assertEqual(grid["VC_KENYA_003"]["ctxA"], "absent")
+
+
+class TestClassificationChartCounts(unittest.TestCase):
+    def test_plasmid_clusters_with_equal_names_remain_separate_across_schemes(self):
+        with tempfile.TemporaryDirectory() as d:
+            args = _full(d)
+            _write(d, 'plasmids.tsv',
+                   'sample\tcluster_id\tscheme\treference\tmethod\n'
+                   'VC_HAITI_001\tDEMO_C1\tDEMO_S1\ttest-fixture\tsynthetic-only\n'
+                   'VC_HAITI_001\tDEMO_C1\tDEMO_S2\ttest-fixture\tsynthetic-only\n'
+                   'VC_KENYA_003\tDEMO_C1\tDEMO_S1\ttest-fixture\tsynthetic-only\n')
+            ctx = gr.build_context(args)
+            chart = ctx['charts']['plasmids'][0]
+            self.assertEqual({row['label']: row['value'] for row in chart['rows']},
+                             {'DEMO_S1:DEMO_C1': 2, 'DEMO_S2:DEMO_C1': 1})
+            self.assertEqual(chart['unit'], 'memberships')
+            self.assertEqual(chart['source_count'], 3)
+            self.assertEqual(chart['source_label'], 'membership records')
+
+    def test_classification_charts_name_record_denominators(self):
+        with tempfile.TemporaryDirectory() as d:
+            ctx = gr.build_context(_full(d))
+            self.assertEqual(ctx['charts']['mlst'][0]['unit'], 'calls')
+            self.assertEqual(ctx['charts']['mlst'][0]['source_label'], 'assigned call records')
+            self.assertEqual(ctx['charts']['lineages'][0]['unit'], 'assignments')
+            self.assertEqual(ctx['charts']['lineages'][0]['source_label'], 'assignment records')
 
 
 if __name__ == "__main__":

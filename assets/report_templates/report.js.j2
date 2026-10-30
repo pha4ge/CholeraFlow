@@ -107,9 +107,39 @@
       // XMLSerializer supplies the namespace; setting a second plain xmlns
       // attribute produces invalid SVG in standards-compliant serializers.
       const dimensions = svg.getAttribute("viewBox").trim().split(/\s+/);
+      if (figure.classList.contains("network-panel")) {
+        // Keep the selected metadata legend with the standalone network graphic.
+        const entries = Array.from(figure.querySelectorAll(".network-legend span"));
+        const key = document.createElementNS(namespace, "g");
+        const startY = Number(dimensions[3]) + 25;
+        const heading = document.createElementNS(namespace, "text");
+        heading.setAttribute("x", "24"); heading.setAttribute("y", startY);
+        heading.setAttribute("font-size", "14"); heading.setAttribute("fill", "#172a3c");
+        heading.textContent = "Color by " + figure.querySelector(".network-color option:checked").textContent + " · one node per sample";
+        key.append(heading);
+        entries.forEach((entry, index) => {
+          const x = 24 + (index % 2) * (Number(dimensions[2]) / 2);
+          const y = startY + 28 + Math.floor(index / 2) * 24;
+          const marker = document.createElementNS(namespace, "circle");
+          marker.setAttribute("cx", x); marker.setAttribute("cy", y - 4);
+          marker.setAttribute("r", "5"); marker.setAttribute("fill", entry.dataset.color);
+          const label = document.createElementNS(namespace, "text");
+          label.setAttribute("x", x + 12); label.setAttribute("y", y);
+          label.setAttribute("font-size", "12"); label.setAttribute("fill", "#172a3c");
+          const value = entry.dataset.value;
+          label.textContent = (value.length > 48 ? value.slice(0, 45) + "…" : value) + " (" + entry.dataset.count + ")";
+          const full = document.createElementNS(namespace, "title"); full.textContent = value; label.append(full);
+          key.append(marker, label);
+        });
+        svg.append(key);
+        dimensions[3] = String(startY + 45 + Math.ceil(entries.length / 2) * 24);
+        svg.setAttribute("viewBox", dimensions.join(" "));
+        svg.querySelectorAll(".network-node").forEach(node => { node.classList.remove("dimmed"); node.removeAttribute("tabindex"); node.removeAttribute("role"); });
+      }
       svg.setAttribute("width", dimensions[2]);
       svg.setAttribute("height", dimensions[3]);
       svg.style.width = dimensions[2] + "px";
+      svg.style.height = dimensions[3] + "px";
       const title = document.createElementNS(namespace, "title");
       title.id = figure.id + "-export-title";
       title.textContent = figure.querySelector("h3").textContent;
@@ -120,6 +150,91 @@
       svg.prepend(style);
       download(new XMLSerializer().serializeToString(svg), "choleraflow-" + figure.id + ".svg", "image/svg+xml;charset=utf-8");
     });
+  });
+  document.querySelectorAll(".network-panel").forEach(panel => {
+    const svg = panel.querySelector("svg");
+    if (!svg) return;
+    const nodes = Array.from(panel.querySelectorAll(".network-node"));
+    const color = panel.querySelector(".network-color");
+    const search = panel.querySelector(".network-find");
+    const zoom = panel.querySelector(".network-zoom");
+    const labels = panel.querySelector(".network-labels");
+    const distances = panel.querySelector(".network-distances");
+    const viewport = panel.querySelector(".network-viewport");
+    const selection = panel.querySelector(".network-selection");
+    const feedback = panel.querySelector(".network-feedback");
+    const legends = panel.querySelector(".network-legend");
+    const metadata = new Map(nodes.map(node => [node, JSON.parse(node.dataset.metadata)]));
+    panel.querySelector(".network-controls").hidden = false;
+    selection.textContent = "Select a sample to inspect its metadata. Drag the background or scroll to explore when zoomed.";
+    const paint = () => {
+      const field = color.value;
+      const fieldName = color.selectedOptions[0].textContent;
+      const counts = new Map();
+      nodes.forEach(node => {
+        const entry = metadata.get(node)[field];
+        node.querySelector("circle").setAttribute("fill", entry.color);
+        node.querySelector("title").textContent = node.dataset.sample + " · " + fieldName + ": " + entry.value + " · one sample";
+        const previous = counts.get(entry.value);
+        counts.set(entry.value, {color: entry.color, count: previous ? previous.count + 1 : 1});
+      });
+      legends.replaceChildren();
+      Array.from(counts).sort((a, b) => collator.compare(a[0], b[0])).forEach(([value, entry]) => {
+        const item = make("span");
+        item.dataset.value = value; item.dataset.color = entry.color; item.dataset.count = entry.count;
+        const swatch = make("i"); swatch.style.background = entry.color;
+        item.append(swatch, document.createTextNode(value + " (" + entry.count + ")")); legends.append(item);
+      });
+      svg.querySelector("desc").textContent = "Minimum spanning forest from observed pairwise allele distances. One equal-sized vertex per sample. Edge labels show distances; line lengths are layout-only. Colors: " + fieldName + ".";
+    };
+    const find = () => {
+      const query = search.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      nodes.forEach(node => {
+        const match = !!query && node.dataset.sample.toLocaleLowerCase().includes(query);
+        node.classList.toggle("match", match);
+        node.classList.toggle("dimmed", !!query && !match);
+        if (match) matches++;
+      });
+      feedback.textContent = query ? matches + " of " + nodes.length + " matching samples · all nodes and edges retained" : "One node per sample · edge labels are observed allele differences.";
+    };
+    nodes.forEach(node => {
+      node.setAttribute("tabindex", "0"); node.setAttribute("role", "button");
+      node.setAttribute("aria-label", "Inspect sample " + node.dataset.sample);
+      const select = () => {
+        nodes.forEach(other => other.classList.toggle("selected", other === node));
+        const values = metadata.get(node);
+        selection.textContent = node.dataset.sample + " · " + Array.from(color.options).map(option => option.textContent + ": " + values[option.value].value).join(" · ");
+      };
+      node.addEventListener("click", select);
+      node.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } });
+    });
+    color.addEventListener("change", paint);
+    search.addEventListener("input", find);
+    zoom.addEventListener("input", () => { svg.style.width = svg.style.height = zoom.value + "%"; });
+    labels.addEventListener("change", () => svg.classList.toggle("hide-node-labels", !labels.checked));
+    distances.addEventListener("change", () => svg.classList.toggle("hide-edge-distances", !distances.checked));
+    panel.querySelector(".network-reset").addEventListener("click", () => {
+      color.value = "country"; search.value = ""; zoom.value = "100";
+      svg.style.width = svg.style.height = "100%"; labels.checked = nodes.length <= 30; distances.checked = true;
+      svg.classList.toggle("hide-node-labels", !labels.checked); svg.classList.remove("hide-edge-distances");
+      nodes.forEach(node => node.classList.remove("selected"));
+      viewport.scrollLeft = viewport.scrollTop = 0;
+      selection.textContent = "Select a sample to inspect its metadata. Drag the background or scroll to explore when zoomed.";
+      paint(); find();
+    });
+    let drag;
+    viewport.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || event.target.closest(".network-node")) return;
+      drag = {x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop};
+      viewport.setPointerCapture?.(event.pointerId); viewport.classList.add("dragging");
+    });
+    viewport.addEventListener("pointermove", event => {
+      if (!drag) return;
+      viewport.scrollLeft = drag.left + drag.x - event.clientX;
+      viewport.scrollTop = drag.top + drag.y - event.clientY;
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => viewport.addEventListener(type, () => { drag = null; viewport.classList.remove("dragging"); }));
   });
   document.querySelectorAll(".tree-panel").forEach(panel => {
     const svg = panel.querySelector("svg");
