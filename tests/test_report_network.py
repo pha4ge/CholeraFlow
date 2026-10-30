@@ -36,6 +36,14 @@ def assert_bounded_geometry(network):
     json.dumps(network, allow_nan=False)
 
 
+def assert_distinct_markers(network):
+    """The report draws seven-pixel circles; their outlines must not touch."""
+    nodes = network["nodes"]
+    for index, left in enumerate(nodes):
+        for right in nodes[index + 1:]:
+            assert math.hypot(left["x"] - right["x"], left["y"] - right["y"]) > 14
+
+
 def test_kruskal_selects_deterministic_minimum_edges_without_cycles():
     source = matrix(["D", "B", "A", "C"], [
         ("A", "B", 1), ("A", "C", 1), ("B", "C", 1),
@@ -135,6 +143,51 @@ def test_visualization_has_explicit_interpretation_limits():
     note = build_distance_network(matrix(["A"], []))["note"].lower()
     for required in ("observed pairwise distances", "layout-only", "not a phylogeny", "does not establish transmission"):
         assert required in note
+    assert "not a grapetree/mstreev2 analysis" in note
+
+
+@pytest.mark.parametrize("shape,count", [("star", MAX_NODES), ("chain", 64), ("balanced", 63)])
+def test_branching_layout_keeps_markers_separate_at_dense_tips(shape, count):
+    names = [f"sample_{index:03d}" for index in range(count)]
+    pairs = []
+    for index in range(1, count):
+        parent = 0 if shape == "star" else index - 1 if shape == "chain" else (index - 1) // 2
+        pairs.append((names[parent], names[index], index % 5))
+    source = matrix(names, pairs)
+    result = build_distance_network(source)
+    assert len(result["nodes"]) == count
+    assert len(result["edges"]) == count - 1
+    assert result["component_count"] == 1
+    assert sorted(edge_values(result)) == sorted(pairs)
+    assert_bounded_geometry(result)
+    assert_distinct_markers(result)
+    if shape == "balanced":
+        source["samples"].reverse()
+        source["dist"] = dict(reversed(list(source["dist"].items())))
+        assert build_distance_network(source) == result
+    if shape == "star":
+        hub, *leaves = result["nodes"]
+        assert abs(hub["x"] - sum(node["x"] for node in leaves) / len(leaves)) < 30
+        assert abs(hub["y"] - sum(node["y"] for node in leaves) / len(leaves)) < 30
+
+
+def test_layout_responds_to_selected_topology_instead_of_identifier_circles():
+    names = ["A", "B", "C", "D", "E", "F", "G"]
+    star = matrix(names, [("A", sample, 1) for sample in names[1:]])
+    chain = matrix(names, [(left, right, 1) for left, right in zip(names, names[1:])])
+    assert build_distance_network(star)["nodes"] != build_distance_network(chain)["nodes"]
+
+
+def test_large_component_and_isolated_samples_have_separate_display_space():
+    names = [f"sample_{index:03d}" for index in range(120)]
+    source = matrix(names, [(names[(index - 1) // 2], names[index], 1)
+                            for index in range(1, 60)])
+    result = build_distance_network(source)
+    assert result["component_count"] == 61
+    assert len(result["nodes"]) == 120
+    assert len(result["edges"]) == 59
+    assert_bounded_geometry(result)
+    assert_distinct_markers(result)
 
 
 @pytest.mark.parametrize("source", [None, {}, {"samples": [], "dist": {}}, matrix(["Reference"], [])])

@@ -159,6 +159,7 @@ include { SNIPPY }                                     from '../modules/local/sn
 include { SEQ_CLEANER; SEQ_CLEANER_FILTER }            from '../modules/local/seq_cleaner'
 include { SNIPPY_CORE; GUBBINS }                       from '../modules/local/snippy_core_gubbins'
 include { VARCODONS }                                  from '../modules/local/varcodons'
+include { MLST_COLLECT }                               from '../modules/local/mlst_collect'
 
 // ── CORE_BACKBONE subworkflow ─────────────────────────────────────────────────
 
@@ -187,6 +188,7 @@ workflow CORE_BACKBONE {
     ch_snp_coords = Channel.empty()
 
     RUN_BACTOPIA(bactopia_samplesheet)
+    MLST_COLLECT(RUN_BACTOPIA.out.outdir, bactopia_samplesheet)
 
     // ── Step 2: Genome QC ─────────────────────────────────────────────────
     // Discover per-sample assembly stats TSVs from the Bactopia output tree.
@@ -378,6 +380,7 @@ workflow CORE_BACKBONE {
 
     emit:
     bactopia_outdir          = RUN_BACTOPIA.out.outdir
+    mlst_summary             = MLST_COLLECT.out.summary
     assembly_fna_files       = ch_assemblies.map { meta, fna -> fna }
     genome_qc_json           = GENOME_QC.out.qc_json
     passed_samples           = GENOME_QC_AGGREGATE.out.passed

@@ -28,6 +28,11 @@ assert provenance['parameters']['run_phylogeny'] is False
 report = (out / 'reports/outbreak_report.html').read_text()
 assert 'SYNTHETIC_TEST_ONLY' in report
 assert 'Analysis not performed' in report
+assert (out / 'characterisation/mlst/mlst_summary.tsv').is_file()
+with (out / 'characterisation/mlst/mlst_summary.tsv').open() as handle:
+    mlst = list(__import__('csv').DictReader(handle, delimiter='\t'))
+assert len(mlst) == 1 and mlst[0]['status'] == 'not_run'
+assert not mlst[0]['sequence_type']
 assert not (out / 'mapping').exists()
 assert not (out / 'cgmlst').exists()
 assert not (out / 'characterisation/amr').exists()

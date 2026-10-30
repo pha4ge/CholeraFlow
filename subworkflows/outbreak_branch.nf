@@ -46,6 +46,7 @@ workflow OUTBREAK_BRANCH {
     virulence_summary  // value/queue: virulencefinder_summary.tsv (for the report)
     amr_summary        // value/queue: amr_summary.tsv             (for the report)
     seq_qc_summary     // value/queue: seq_qc_summary.tsv          (for the report)
+    mlst_summary
 
     main:
     ch_treefile        = Channel.empty()
@@ -157,6 +158,9 @@ workflow OUTBREAK_BRANCH {
         metadata.ifEmpty([]),
         seq_qc_summary.ifEmpty([]),
         ch_treereport.ifEmpty([]),
+        mlst_summary.ifEmpty([]),
+        params.lineage_assignments ? file(params.lineage_assignments, checkIfExists: true) : [],
+        params.plasmid_results ? file(params.plasmid_results, checkIfExists: true) : [],
     )
     ch_report = GENERATE_REPORT.out.report
 

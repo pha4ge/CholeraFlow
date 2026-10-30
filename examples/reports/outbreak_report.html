@@ -20,9 +20,9 @@
 html { scroll-padding-top: 24px; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 a { color: var(--brand-dark); text-underline-offset: 3px; }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; }
-button:focus-visible, a:focus-visible, input:focus-visible, .scroll:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .scroll:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3px; }
 [hidden] { display: none !important; }
 .skip-link { position: fixed; left: 20px; top: -90px; padding: 12px 20px; background: #fff; z-index: 20; border-radius: 6px; }
 .skip-link:focus { top: 12px; }
@@ -137,6 +137,31 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
 .tree-viewport { overflow: auto; max-height: 680px; border: 1px solid var(--line); border-radius: 7px; background: #fbfdfe; }
 .tree-svg { display: block; width: 100%; min-width: 800px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .tree-tip.match { fill: #a52e36; font-weight: 750; text-decoration: underline; }
+.tree-panel + .tree-panel { margin-top: 22px; }
+.tree-circular { min-width: 1000px; }
+.metadata-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 11px; margin: 8px 0 18px; }
+.metadata-legend span { display: inline-flex; align-items: center; gap: 6px; }.metadata-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.classification-panels { padding: 22px; margin-bottom: 22px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.network-panel { margin: 24px 0; padding: 22px; border-top: 3px solid var(--brand); }
+.network-panel .chart-heading h3 { font-size: 18px; letter-spacing: -.3px; }
+.network-summary { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 15px 0; color: var(--muted); font-size: 11px; }
+.network-summary b { color: var(--ink); font-size: 15px; margin-right: 3px; }
+.network-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px; background: var(--panel-alt); border: 1px solid var(--line); border-radius: 8px; }
+.network-controls label { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+.network-controls select, .network-find { max-width: 175px; padding: 6px 8px; border: 1px solid #c9d7e0; border-radius: 5px; color: var(--ink); background: #fff; }
+.network-zoom { width: 95px; accent-color: var(--brand); }
+.network-feedback { min-height: 20px; font-size: 11px; color: var(--muted); }
+.network-viewport { overflow: auto; height: clamp(300px, 44vw, 600px); border: 1px solid var(--line); border-radius: 8px; background: radial-gradient(circle, #cbdbe3 1px, transparent 1px) 0 0 / 22px 22px, #fbfdfe; cursor: grab; }
+.network-viewport.dragging { cursor: grabbing; user-select: none; }
+.report-network { display: block; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.network-distance, .network-sample-label { paint-order: stroke; stroke: #fbfdfe; stroke-width: 4px; stroke-linejoin: round; }
+.network-node { cursor: pointer; }
+.network-node.dimmed { opacity: .2; }
+.network-node.match circle, .network-node.selected circle, .network-node:focus circle { stroke: #172a3c; stroke-width: 3px; }
+.network-node.match text, .network-node.selected text { font-weight: 750; }
+.network-node:focus { outline: none; }
+.hide-node-labels .network-sample-label, .hide-edge-distances .network-distance { display: none; }
+.network-selection { padding: 10px 13px; background: var(--brand-soft); border-radius: 6px; color: var(--brand-dark); font-size: 12px; overflow-wrap: anywhere; }
 .diagnostics { max-height: 500px; overflow: auto; padding: 16px; background: var(--panel-alt); border-radius: 7px; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (min-width: 1600px) { nav.toc { width: max(250px, calc((100vw - 1640px) / 2 + 250px)); padding-left: max(20px, calc((100vw - 1640px) / 2 + 20px)); } }
 @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .wrap { padding: 28px 24px 24px 270px; } }
@@ -168,9 +193,11 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
   tr[hidden] { display: table-row !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .charts-grid { grid-template-columns: 1fr; }.chart-card, .tree-panel { break-inside: avoid; box-shadow: none; }
-  .chart-viewport, .tree-viewport { overflow: visible; max-height: none; }
-  .report-chart, .tree-svg { min-width: 0; width: 100% !important; max-height: 230mm; }
-  .tree-controls, .js-svg-export, .sample-filter-label, .sample-filter-count { display: none !important; }
+  .chart-viewport, .tree-viewport, .network-viewport { overflow: visible; max-height: none; height: auto; background: #fff; }
+  .report-chart, .tree-svg, .report-network { min-width: 0; width: 100% !important; max-height: 230mm; }
+  .report-network { height: auto !important; }
+  .tree-controls, .network-controls, .js-svg-export, .sample-filter-label, .sample-filter-count { display: none !important; }
+  .network-node.dimmed { opacity: 1; }
   .sample-record[hidden] { display: block !important; }
 }</style>
 </head>
@@ -354,10 +381,10 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
     <p class="muted">All supplied source fields are retained below. Records are grouped only by exact identifiers; tool-specific suffixes remain visible.</p>
     <label class="sample-filter-label" hidden>Find sample <input class="sample-filter" type="search" placeholder="Sample identifier" aria-label="Filter sample record explorer"></label>
     <span class="sample-filter-count muted" aria-live="polite"></span>
-<details class="sample-record" data-sample="VC_HAITI_001"><summary>VC_HAITI_001 <span class="muted">· 7 source record(s)</span></summary>
-<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.05</dd></div><div><dt>gc_percent</dt><dd>47.6</dd></div><div><dt>largest_contig_kb</dt><dd>822.6</dd></div><div><dt>n50</dt><dd>248199</dd></div><div><dt>contig_count</dt><dd>51</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>400000</dd></div><div><dt>n_percentage</dt><dd>10</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.98</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>ctxA;ctxB;hlyA</dd></div><div><dt>ctx_A</dt><dd>True</dd></div><div><dt>ctx_B</dt><dd>True</dd></div><div><dt>tcp_genes</dt><dd>tcpA</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>acquired_resistance</dd></div><div><dt>tetracycline</dt><dd>yes</dd></div><div><dt>tet_genes</dt><dd>tet(A)</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>yes</dd></div><div><dt>sul_genes</dt><dd>sul2</dd></div><div><dt>trimethoprim</dt><dd>yes</dd></div><div><dt>dfr_genes</dt><dd>dfrA1</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>yes</dd></div><div><dt>sxt_markers</dt><dd>sul2;dfrA1;strB</dd></div><div><dt>class_summary</dt><dd>SXT-MDR</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_HAITI_001</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl>    </details><details class="sample-record" data-sample="VC_KENYA_003"><summary>VC_KENYA_003 <span class="muted">· 7 source record(s)</span></summary>
-<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.02</dd></div><div><dt>gc_percent</dt><dd>47.5</dd></div><div><dt>largest_contig_kb</dt><dd>640.1</dd></div><div><dt>n50</dt><dd>180000</dd></div><div><dt>contig_count</dt><dd>60</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>200000</dd></div><div><dt>n_percentage</dt><dd>5</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.97</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>hlyA</dd></div><div><dt>ctx_A</dt><dd>False</dd></div><div><dt>ctx_B</dt><dd>False</dd></div><div><dt>tcp_genes</dt><dd>Not recorded</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>tetracycline</dt><dd>no</dd></div><div><dt>tet_genes</dt><dd>Not recorded</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>no</dd></div><div><dt>sul_genes</dt><dd>Not recorded</dd></div><div><dt>trimethoprim</dt><dd>no</dd></div><div><dt>dfr_genes</dt><dd>Not recorded</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>no</dd></div><div><dt>sxt_markers</dt><dd>Not recorded</dd></div><div><dt>class_summary</dt><dd>none</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_KENYA_003</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl>    </details><details class="sample-record" data-sample="VC_MALAWI_002"><summary>VC_MALAWI_002 <span class="muted">· 4 source record(s)</span></summary>
-<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>overall_status</dt><dd>fail</dd></div><div><dt>genome_size_mb</dt><dd>3.10</dd></div><div><dt>gc_percent</dt><dd>45.0</dd></div><div><dt>largest_contig_kb</dt><dd>120.0</dd></div><div><dt>n50</dt><dd>9000</dd></div><div><dt>contig_count</dt><dd>400</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>status</dt><dd>not_run</dd></div><div><dt>n_sequences</dt><dd>Not recorded</dd></div><div><dt>total_bp</dt><dd>Not recorded</dd></div><div><dt>gap_bp</dt><dd>Not recorded</dd></div><div><dt>n_percentage</dt><dd>Not recorded</dd></div><div><dt>reason</dt><dd>Synthetic unavailable fixture</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>cluster_id</dt><dd>2</dd></div><div><dt>snp_category</dt><dd>related_cluster</dd></div><div><dt>cgmlst_category</dt><dd>not_available</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_MALAWI_002</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl>    </details>  </details>
+<details class="sample-record" data-sample="VC_HAITI_001"><summary>VC_HAITI_001 <span class="muted">· 10 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.05</dd></div><div><dt>gc_percent</dt><dd>47.6</dd></div><div><dt>largest_contig_kb</dt><dd>822.6</dd></div><div><dt>n50</dt><dd>248199</dd></div><div><dt>contig_count</dt><dd>51</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>400000</dd></div><div><dt>n_percentage</dt><dd>10</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.98</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>ctxA;ctxB;hlyA</dd></div><div><dt>ctx_A</dt><dd>True</dd></div><div><dt>ctx_B</dt><dd>True</dd></div><div><dt>tcp_genes</dt><dd>tcpA</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>acquired_resistance</dd></div><div><dt>tetracycline</dt><dd>yes</dd></div><div><dt>tet_genes</dt><dd>tet(A)</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>yes</dd></div><div><dt>sul_genes</dt><dd>sul2</dd></div><div><dt>trimethoprim</dt><dd>yes</dd></div><div><dt>dfr_genes</dt><dd>dfrA1</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>yes</dd></div><div><dt>sxt_markers</dt><dd>sul2;dfrA1;strB</dd></div><div><dt>class_summary</dt><dd>SXT-MDR</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_HAITI_001</dd></div><div><dt>country</dt><dd>Haiti</dd></div><div><dt>collection_date</dt><dd>2022-10-14</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>MLST</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>status</dt><dd>assigned</dd></div><div><dt>scheme</dt><dd>DEMO_SCHEME</dd></div><div><dt>sequence_type</dt><dd>1</dd></div><div><dt>allele_profile</dt><dd>[]</dd></div><div><dt>source_file</dt><dd>fixture</dd></div><div><dt>source_sha256</dt><dd>test-only</dd></div></dl><h4>Reported lineage</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>lineage</dt><dd>DEMO_A</dd></div><div><dt>scheme</dt><dd>DEMO_LINEAGE</dd></div><div><dt>reference</dt><dd>test-fixture</dd></div><div><dt>method</dt><dd>synthetic-only</dd></div><div><dt>status</dt><dd>reported</dd></div></dl><h4>Reported plasmid clusters</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_HAITI_001</dd></div><div><dt>cluster_id</dt><dd>DEMO_P1</dd></div><div><dt>scheme</dt><dd>DEMO_PLASMID</dd></div><div><dt>reference</dt><dd>test-fixture</dd></div><div><dt>method</dt><dd>synthetic-only</dd></div><div><dt>status</dt><dd>reported</dd></div></dl>    </details><details class="sample-record" data-sample="VC_KENYA_003"><summary>VC_KENYA_003 <span class="muted">· 10 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>genome_size_mb</dt><dd>4.02</dd></div><div><dt>gc_percent</dt><dd>47.5</dd></div><div><dt>largest_contig_kb</dt><dd>640.1</dd></div><div><dt>n50</dt><dd>180000</dd></div><div><dt>contig_count</dt><dd>60</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>n_sequences</dt><dd>2</dd></div><div><dt>total_bp</dt><dd>4000000</dd></div><div><dt>gap_bp</dt><dd>200000</dd></div><div><dt>n_percentage</dt><dd>5</dd></div><div><dt>reason</dt><dd>Synthetic fixture</dd></div></dl><h4>Characterisation</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>overall_status</dt><dd>pass</dd></div><div><dt>species_confirmation</dt><dd>confirmed</dd></div><div><dt>serogroup</dt><dd>O1</dd></div><div><dt>biotype</dt><dd>El Tor</dd></div><div><dt>ctx_prophage</dt><dd>present (classical)</dd></div><div><dt>sxt_element</dt><dd>absent</dd></div><div><dt>ompW_kmer_frac</dt><dd>0.97</dd></div></dl><h4>Virulence</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>genes_detected</dt><dd>hlyA</dd></div><div><dt>ctx_A</dt><dd>False</dd></div><div><dt>ctx_B</dt><dd>False</dd></div><div><dt>tcp_genes</dt><dd>Not recorded</dd></div><div><dt>vpi1_present</dt><dd>True</dd></div></dl><h4>AMR</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>pass</dd></div><div><dt>tetracycline</dt><dd>no</dd></div><div><dt>tet_genes</dt><dd>Not recorded</dd></div><div><dt>quinolone</dt><dd>no</dd></div><div><dt>qnr_genes</dt><dd>Not recorded</dd></div><div><dt>betalactam</dt><dd>no</dd></div><div><dt>bla_genes</dt><dd>Not recorded</dd></div><div><dt>macrolide</dt><dd>no</dd></div><div><dt>mac_genes</dt><dd>Not recorded</dd></div><div><dt>sulfonamide</dt><dd>no</dd></div><div><dt>sul_genes</dt><dd>Not recorded</dd></div><div><dt>trimethoprim</dt><dd>no</dd></div><div><dt>dfr_genes</dt><dd>Not recorded</dd></div><div><dt>aminoglycoside</dt><dd>no</dd></div><div><dt>ami_genes</dt><dd>Not recorded</dd></div><div><dt>phenicol</dt><dd>no</dd></div><div><dt>phe_genes</dt><dd>Not recorded</dd></div><div><dt>sxt_mdr</dt><dd>no</dd></div><div><dt>sxt_markers</dt><dd>Not recorded</dd></div><div><dt>class_summary</dt><dd>none</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>cluster_id</dt><dd>1</dd></div><div><dt>snp_category</dt><dd>same_outbreak</dd></div><div><dt>cgmlst_category</dt><dd>same_outbreak</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_KENYA_003</dd></div><div><dt>country</dt><dd>Kenya</dd></div><div><dt>collection_date</dt><dd>2023-01-17</dd></div><div><dt>specimen_type</dt><dd>stool</dd></div></dl><h4>MLST</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>status</dt><dd>assigned</dd></div><div><dt>scheme</dt><dd>DEMO_SCHEME</dd></div><div><dt>sequence_type</dt><dd>1</dd></div><div><dt>allele_profile</dt><dd>[]</dd></div><div><dt>source_file</dt><dd>fixture</dd></div><div><dt>source_sha256</dt><dd>test-only</dd></div></dl><h4>Reported lineage</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>lineage</dt><dd>DEMO_A</dd></div><div><dt>scheme</dt><dd>DEMO_LINEAGE</dd></div><div><dt>reference</dt><dd>test-fixture</dd></div><div><dt>method</dt><dd>synthetic-only</dd></div><div><dt>status</dt><dd>reported</dd></div></dl><h4>Reported plasmid clusters</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_KENYA_003</dd></div><div><dt>cluster_id</dt><dd>DEMO_P1</dd></div><div><dt>scheme</dt><dd>DEMO_PLASMID</dd></div><div><dt>reference</dt><dd>test-fixture</dd></div><div><dt>method</dt><dd>synthetic-only</dd></div><div><dt>status</dt><dd>reported</dd></div></dl>    </details><details class="sample-record" data-sample="VC_MALAWI_002"><summary>VC_MALAWI_002 <span class="muted">· 6 source record(s)</span></summary>
+<h4>Genome QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>overall_status</dt><dd>fail</dd></div><div><dt>genome_size_mb</dt><dd>3.10</dd></div><div><dt>gc_percent</dt><dd>45.0</dd></div><div><dt>largest_contig_kb</dt><dd>120.0</dd></div><div><dt>n50</dt><dd>9000</dd></div><div><dt>contig_count</dt><dd>400</dd></div><div><dt>busco</dt><dd>not_run</dd></div><div><dt>checkm</dt><dd>not_run</dd></div></dl><h4>Mapping-sequence QC</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>status</dt><dd>not_run</dd></div><div><dt>n_sequences</dt><dd>Not recorded</dd></div><div><dt>total_bp</dt><dd>Not recorded</dd></div><div><dt>gap_bp</dt><dd>Not recorded</dd></div><div><dt>n_percentage</dt><dd>Not recorded</dd></div><div><dt>reason</dt><dd>Synthetic unavailable fixture</dd></div></dl><h4>Cluster assignment</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>cluster_id</dt><dd>2</dd></div><div><dt>snp_category</dt><dd>related_cluster</dd></div><div><dt>cgmlst_category</dt><dd>not_available</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl><h4>Metadata</h4><dl class="record-fields"><div><dt>sample_id</dt><dd>VC_MALAWI_002</dd></div><div><dt>country</dt><dd>Malawi</dd></div><div><dt>collection_date</dt><dd>2022-12-03</dd></div><div><dt>specimen_type</dt><dd>rectal_swab</dd></div></dl><h4>MLST</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>status</dt><dd>assigned</dd></div><div><dt>scheme</dt><dd>DEMO_SCHEME</dd></div><div><dt>sequence_type</dt><dd>2</dd></div><div><dt>allele_profile</dt><dd>[]</dd></div><div><dt>source_file</dt><dd>fixture</dd></div><div><dt>source_sha256</dt><dd>test-only</dd></div></dl><h4>Reported lineage</h4><dl class="record-fields"><div><dt>sample</dt><dd>VC_MALAWI_002</dd></div><div><dt>lineage</dt><dd>DEMO_B</dd></div><div><dt>scheme</dt><dd>DEMO_LINEAGE</dd></div><div><dt>reference</dt><dd>test-fixture</dd></div><div><dt>method</dt><dd>synthetic-only</dd></div><div><dt>status</dt><dd>reported</dd></div></dl>    </details>  </details>
 </section>
 
 <section id="s2">
@@ -695,6 +722,79 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
       </tr>
     </table>
     </div>
+<div class="classification-panels">
+<h3>MLST typing</h3><div class="charts-grid"><figure class="chart-card" id="chart-mlst-frequency">
+  <div class="chart-heading"><h3 id="title-mlst-frequency">Reported MLST scheme and sequence types</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported MLST scheme and sequence types as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported MLST scheme and sequence types graphic">
+  <svg class="report-chart" viewBox="0 0 720 132" role="img" aria-labelledby="title-mlst-frequency desc-mlst-frequency">
+    <desc id="desc-mlst-frequency">Reported MLST scheme and sequence types. Assigned source calls only; schemes remain distinct. Sequence type is not a lineage. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="92" stroke="#b5c8d4"/>
+      <g><title>DEMO_SCHEME:1: 2 calls</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">DEMO_SCHEME:1</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <g><title>DEMO_SCHEME:2: 1 calls</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">DEMO_SCHEME:2</text>
+      <rect x="240" y="63" width="180.0" height="18" rx="3" fill="#496db5"/>
+      <text x="428.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="117" fill="#536779" font-size="10">0</text>
+      <text x="600" y="117" text-anchor="end" fill="#536779" font-size="10">2 calls</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 assigned call records · 2 categories · 0 unavailable/invalid values omitted</div>
+<p class="muted">Assigned source calls only; schemes remain distinct. Sequence type is not a lineage.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (2 rows)</summary><div class="scroll"><table aria-label="Reported MLST scheme and sequence types source data">
+    <tr><th>Sample / category</th><th>calls</th></tr>
+<tr><td>DEMO_SCHEME:1</td><td>2.0</td></tr><tr><td>DEMO_SCHEME:2</td><td>1.0</td></tr>  </table></div></details>
+</figure></div>
+<div class="scroll"><table aria-label="MLST typing with provenance"><tr><th>Sample</th><th>Status</th><th>Scheme</th><th>Sequence type</th><th>Exact allele profile</th><th>Source</th><th>SHA-256</th></tr><tr><td>VC_HAITI_001</td><td>assigned</td><td>DEMO_SCHEME</td><td>1</td><td>[]</td><td>fixture</td><td>test-only</td></tr><tr><td>VC_KENYA_003</td><td>assigned</td><td>DEMO_SCHEME</td><td>1</td><td>[]</td><td>fixture</td><td>test-only</td></tr><tr><td>VC_MALAWI_002</td><td>assigned</td><td>DEMO_SCHEME</td><td>2</td><td>[]</td><td>fixture</td><td>test-only</td></tr></table></div><h3>Reported lineage classifications</h3><div class="charts-grid"><figure class="chart-card" id="chart-lineage-frequency">
+  <div class="chart-heading"><h3 id="title-lineage-frequency">Reported lineage assignments</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported lineage assignments as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported lineage assignments graphic">
+  <svg class="report-chart" viewBox="0 0 720 132" role="img" aria-labelledby="title-lineage-frequency desc-lineage-frequency">
+    <desc id="desc-lineage-frequency">Reported lineage assignments. Supplied assignment records; a sample may appear in several schemes or conflicting records. See the source table for provenance. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="92" stroke="#b5c8d4"/>
+      <g><title>DEMO_LINEAGE:DEMO_A: 2 assignments</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">DEMO_LINEAGE:DEMO_A</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <g><title>DEMO_LINEAGE:DEMO_B: 1 assignments</title>
+      <text x="228" y="77" text-anchor="end" fill="#354f61" font-size="11">DEMO_LINEAGE:DEMO_B</text>
+      <rect x="240" y="63" width="180.0" height="18" rx="3" fill="#496db5"/>
+      <text x="428.0" y="77" fill="#172a3c" font-size="11">1</text></g>
+      <text x="240" y="117" fill="#536779" font-size="10">0</text>
+      <text x="600" y="117" text-anchor="end" fill="#536779" font-size="10">2 assignments</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">3 assignment records · 2 categories · 0 unavailable/invalid values omitted</div>
+<p class="muted">Supplied assignment records; a sample may appear in several schemes or conflicting records. See the source table for provenance.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (2 rows)</summary><div class="scroll"><table aria-label="Reported lineage assignments source data">
+    <tr><th>Sample / category</th><th>assignments</th></tr>
+<tr><td>DEMO_LINEAGE:DEMO_A</td><td>2.0</td></tr><tr><td>DEMO_LINEAGE:DEMO_B</td><td>1.0</td></tr>  </table></div></details>
+</figure></div>
+<div class="scroll"><table aria-label="Reported lineage classifications"><tr><th>Sample</th><th>Lineage</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr><tr><td>VC_HAITI_001</td><td>DEMO_A</td><td>DEMO_LINEAGE</td><td>test-fixture</td><td>synthetic-only</td></tr><tr><td>VC_KENYA_003</td><td>DEMO_A</td><td>DEMO_LINEAGE</td><td>test-fixture</td><td>synthetic-only</td></tr><tr><td>VC_MALAWI_002</td><td>DEMO_B</td><td>DEMO_LINEAGE</td><td>test-fixture</td><td>synthetic-only</td></tr></table></div><h3>Reported plasmid clusters</h3><div class="charts-grid"><figure class="chart-card" id="chart-plasmid-frequency">
+  <div class="chart-heading"><h3 id="title-plasmid-frequency">Reported plasmid cluster memberships</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Reported plasmid cluster memberships as SVG">SVG</button></div>
+  <div class="chart-viewport" tabindex="0" role="region" aria-label="Reported plasmid cluster memberships graphic">
+  <svg class="report-chart" viewBox="0 0 720 110" role="img" aria-labelledby="title-plasmid-frequency desc-plasmid-frequency">
+    <desc id="desc-plasmid-frequency">Reported plasmid cluster memberships. Existing classifier records only; schemes remain distinct and a sample may have several plasmid clusters. No transfer event is inferred. Full numeric values are in the expandable chart data table.</desc>
+      <line x1="240" y1="22" x2="240" y2="70" stroke="#b5c8d4"/>
+      <g><title>DEMO_PLASMID:DEMO_P1: 2 memberships</title>
+      <text x="228" y="52" text-anchor="end" fill="#354f61" font-size="11">DEMO_PLASMID:DEMO_P1</text>
+      <rect x="240" y="38" width="360.0" height="18" rx="3" fill="#087d83"/>
+      <text x="608.0" y="52" fill="#172a3c" font-size="11">2</text></g>
+      <text x="240" y="95" fill="#536779" font-size="10">0</text>
+      <text x="600" y="95" text-anchor="end" fill="#536779" font-size="10">2 memberships</text>
+  </svg>
+  </div>
+  <figcaption>
+    <div class="chart-meta">2 membership records · 1 categories · 0 unavailable/invalid values omitted</div>
+<p class="muted">Existing classifier records only; schemes remain distinct and a sample may have several plasmid clusters. No transfer event is inferred.</p>  </figcaption>
+  <details class="chart-data"><summary>View chart data (1 rows)</summary><div class="scroll"><table aria-label="Reported plasmid cluster memberships source data">
+    <tr><th>Sample / category</th><th>memberships</th></tr>
+<tr><td>DEMO_PLASMID:DEMO_P1</td><td>2.0</td></tr>  </table></div></details>
+</figure></div>
+<div class="scroll"><table aria-label="Reported plasmid cluster memberships"><tr><th>Sample</th><th>Cluster</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr><tr><td>VC_HAITI_001</td><td>DEMO_P1</td><td>DEMO_PLASMID</td><td>test-fixture</td><td>synthetic-only</td></tr><tr><td>VC_KENYA_003</td><td>DEMO_P1</td><td>DEMO_PLASMID</td><td>test-fixture</td><td>synthetic-only</td></tr></table></div></div>
 </section>
 
 <section id="s4">
@@ -883,22 +983,47 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
 <section id="s6">
   <h2><span class="num">6.</span> Phylogenetic summary</h2>
     <figure class="tree-panel" id="cohort-tree">
-  <div class="chart-heading"><h3 id="cohort-tree-title">Tree view</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  <div class="chart-heading"><h3 id="cohort-tree-title">Rectangular tree</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
   <div class="tree-controls" hidden>
-    <label>Zoom <input class="tree-zoom" type="range" min="60" max="250" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="1000" step="10" value="100" aria-label="Tree zoom"></label>
     <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
     <span class="tree-match-count" aria-live="polite"></span>
   </div>
   <p class="muted">3 tips · Branch lengths as supplied. Input order and topology are preserved; this display does not infer or change rooting.</p>
   <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
-  <svg class="tree-svg" viewBox="0 0 976 164" role="img" aria-labelledby="cohort-tree-title cohort-tree-description">
+  <svg class="tree-svg tree-rectangular" viewBox="0 0 1446 164" role="img" aria-labelledby="cohort-tree-title cohort-tree-description">
     <desc id="cohort-tree-description">A tree rendered directly from the supplied Newick file. Branch lengths as supplied. Internal labels are shown as supplied and are not reinterpreted.</desc>
-<line x1="32.0" y1="32.0" x2="32.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="32.0" x2="70.0" y2="32.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="60.0" x2="70.0" y2="60.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="88.0" x2="792.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><circle cx="70.0" cy="32.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_HAITI_001" x="78.0" y="36.0" fill="#172a3c" font-size="12"><title>VC_HAITI_001 · Supplied branch length: 0.001</title>VC_HAITI_001</text>
-<circle cx="70.0" cy="60.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_KENYA_003" x="78.0" y="64.0" fill="#172a3c" font-size="12"><title>VC_KENYA_003 · Supplied branch length: 0.001</title>VC_KENYA_003</text>
-<circle cx="792.0" cy="88.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_MALAWI_002" x="800.0" y="92.0" fill="#172a3c" font-size="12"><title>VC_MALAWI_002 · Supplied branch length: 0.02</title>VC_MALAWI_002</text>
+<line x1="32.0" y1="32.0" x2="32.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="32.0" x2="70.0" y2="32.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="60.0" x2="70.0" y2="60.0" stroke="#355a6a" stroke-width="1.5"/><line x1="32.0" y1="88.0" x2="792.0" y2="88.0" stroke="#355a6a" stroke-width="1.5"/><text x="1026" y="13" text-anchor="middle" font-size="9" fill="#354f61">Country</text><text x="1116" y="13" text-anchor="middle" font-size="9" fill="#354f61">Year</text><text x="1206" y="13" text-anchor="middle" font-size="9" fill="#354f61">Lineage</text><text x="1296" y="13" text-anchor="middle" font-size="9" fill="#354f61">MLST scheme:ST</text><text x="1386" y="13" text-anchor="middle" font-size="9" fill="#354f61">Plasmid cluster</text><rect class="metadata-cell" x="986" y="24.0" width="80" height="16" fill="hsl(62,58%,43%)"><title>VC_HAITI_001 · country: Haiti</title></rect><rect class="metadata-cell" x="1076" y="24.0" width="80" height="16" fill="hsl(65,58%,43%)"><title>VC_HAITI_001 · year: 2022</title></rect><rect class="metadata-cell" x="1166" y="24.0" width="80" height="16" fill="hsl(204,58%,43%)"><title>VC_HAITI_001 · lineage: DEMO_LINEAGE:DEMO_A</title></rect><rect class="metadata-cell" x="1256" y="24.0" width="80" height="16" fill="hsl(187,58%,43%)"><title>VC_HAITI_001 · mlst: DEMO_SCHEME:1</title></rect><rect class="metadata-cell" x="1346" y="24.0" width="80" height="16" fill="hsl(337,58%,43%)"><title>VC_HAITI_001 · plasmid_cluster: DEMO_PLASMID:DEMO_P1</title></rect><rect class="metadata-cell" x="986" y="52.0" width="80" height="16" fill="hsl(117,58%,43%)"><title>VC_KENYA_003 · country: Kenya</title></rect><rect class="metadata-cell" x="1076" y="52.0" width="80" height="16" fill="hsl(173,58%,43%)"><title>VC_KENYA_003 · year: 2023</title></rect><rect class="metadata-cell" x="1166" y="52.0" width="80" height="16" fill="hsl(204,58%,43%)"><title>VC_KENYA_003 · lineage: DEMO_LINEAGE:DEMO_A</title></rect><rect class="metadata-cell" x="1256" y="52.0" width="80" height="16" fill="hsl(187,58%,43%)"><title>VC_KENYA_003 · mlst: DEMO_SCHEME:1</title></rect><rect class="metadata-cell" x="1346" y="52.0" width="80" height="16" fill="hsl(337,58%,43%)"><title>VC_KENYA_003 · plasmid_cluster: DEMO_PLASMID:DEMO_P1</title></rect><rect class="metadata-cell" x="986" y="80.0" width="80" height="16" fill="hsl(85,58%,43%)"><title>VC_MALAWI_002 · country: Malawi</title></rect><rect class="metadata-cell" x="1076" y="80.0" width="80" height="16" fill="hsl(65,58%,43%)"><title>VC_MALAWI_002 · year: 2022</title></rect><rect class="metadata-cell" x="1166" y="80.0" width="80" height="16" fill="hsl(339,58%,43%)"><title>VC_MALAWI_002 · lineage: DEMO_LINEAGE:DEMO_B</title></rect><rect class="metadata-cell" x="1256" y="80.0" width="80" height="16" fill="hsl(345,58%,43%)"><title>VC_MALAWI_002 · mlst: DEMO_SCHEME:2</title></rect><rect class="metadata-cell" x="1346" y="80.0" width="80" height="16" fill="#cbd5df"><title>VC_MALAWI_002 · plasmid_cluster: Not available</title></rect><circle cx="70.0" cy="32.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_HAITI_001" x="78.0" y="36.0"  fill="#172a3c" font-size="12"><title>VC_HAITI_001 · Supplied branch length: 0.001</title>VC_HAITI_001</text>
+<circle cx="70.0" cy="60.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_KENYA_003" x="78.0" y="64.0"  fill="#172a3c" font-size="12"><title>VC_KENYA_003 · Supplied branch length: 0.001</title>VC_KENYA_003</text>
+<circle cx="792.0" cy="88.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_MALAWI_002" x="800.0" y="92.0"  fill="#172a3c" font-size="12"><title>VC_MALAWI_002 · Supplied branch length: 0.02</title>VC_MALAWI_002</text>
 <line x1="32.0" y1="138" x2="792.0" y2="138" stroke="#355a6a" stroke-width="2"/><text x="32.0" y="155" fill="#536779" font-size="10">0.02 supplied branch-length units</text>  </svg>
   </div>
-<figcaption class="muted">Leaf order and root orientation follow the supplied Newick; no rooting or relationship inference was performed.</figcaption><details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">(VC_HAITI_001:0.001,VC_KENYA_003:0.001,VC_MALAWI_002:0.02);</pre></details></figure>
+<figcaption class="muted">Leaf order and root orientation follow the supplied Newick; no rooting or relationship inference was performed.</figcaption>  <p class="muted">Exact sample IDs are matched first. A unique terminal _snippy suffix may be ignored only for annotation matching; original tip labels are retained. Missing or conflicting classifications are never inferred. Circular ring order, inner to outer: Country, Year, Lineage, MLST, Plasmid cluster.</p>
+  <details class="source-details"><summary>Metadata colors and tip mapping</summary>
+<h4>Country</h4><div class="metadata-legend"><span><i style="background:hsl(62,58%,43%)"></i>Haiti (1)</span><span><i style="background:hsl(117,58%,43%)"></i>Kenya (1)</span><span><i style="background:hsl(85,58%,43%)"></i>Malawi (1)</span></div><h4>Year</h4><div class="metadata-legend"><span><i style="background:hsl(65,58%,43%)"></i>2022 (2)</span><span><i style="background:hsl(173,58%,43%)"></i>2023 (1)</span></div><h4>Lineage</h4><div class="metadata-legend"><span><i style="background:hsl(204,58%,43%)"></i>DEMO_LINEAGE:DEMO_A (2)</span><span><i style="background:hsl(339,58%,43%)"></i>DEMO_LINEAGE:DEMO_B (1)</span></div><h4>MLST scheme:ST</h4><div class="metadata-legend"><span><i style="background:hsl(187,58%,43%)"></i>DEMO_SCHEME:1 (2)</span><span><i style="background:hsl(345,58%,43%)"></i>DEMO_SCHEME:2 (1)</span></div><h4>Plasmid cluster</h4><div class="metadata-legend"><span><i style="background:hsl(337,58%,43%)"></i>DEMO_PLASMID:DEMO_P1 (2)</span><span><i style="background:#cbd5df"></i>Not available (1)</span></div>    <div class="scroll"><table aria-label="rectangular tree metadata"><tr><th>Tip</th><th>Matched sample</th><th>Match method</th><th>Country</th><th>Year</th><th>Lineage</th><th>MLST scheme:ST</th><th>Plasmid cluster</th></tr><tr><td>VC_HAITI_001</td><td>VC_HAITI_001</td><td>exact</td><td>Haiti</td><td>2022</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_KENYA_003</td><td>VC_KENYA_003</td><td>exact</td><td>Kenya</td><td>2023</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_MALAWI_002</td><td>VC_MALAWI_002</td><td>exact</td><td>Malawi</td><td>2022</td><td>DEMO_LINEAGE:DEMO_B</td><td>DEMO_SCHEME:2</td><td>Not available</td></tr></table></div>
+  </details>
+<details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">(VC_HAITI_001:0.001,VC_KENYA_003:0.001,VC_MALAWI_002:0.02);</pre></details></figure>
+    <figure class="tree-panel" id="cohort-tree-circular">
+  <div class="chart-heading"><h3 id="cohort-tree-circular-title">Circular tree</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  <div class="tree-controls" hidden>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="1000" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
+    <span class="tree-match-count" aria-live="polite"></span>
+  </div>
+  <p class="muted">3 tips · Branch lengths as supplied. Input order and topology are preserved; this display does not infer or change rooting.</p>
+  <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
+  <svg class="tree-svg tree-circular" viewBox="-100 -100 1400 1400" role="img" aria-labelledby="cohort-tree-circular-title cohort-tree-circular-description">
+    <desc id="cohort-tree-circular-description">A tree rendered directly from the supplied Newick file. Branch lengths as supplied. Internal labels are shown as supplied and are not reinterpreted.</desc>
+<path d="M 600.000000 600.000000 A 0.000000 0.000000 0 1 1 600.000000 600.000000" fill="none" stroke="#355a6a" stroke-width="1.5"/><line x1="600.0" y1="600.0" x2="620.2844423520704" y2="605.4351999471529" stroke="#355a6a" stroke-width="1.5"/><line x1="600.0" y1="600.0" x2="579.0" y2="600.0" stroke="#355a6a" stroke-width="1.5"/><line x1="600.0" y1="600.0" x2="1005.6888470414087" y2="491.2960010569413" stroke="#355a6a" stroke-width="1.5"/><path class="metadata-cell" d="M 1159.233,629.308 L 1174.212,630.093 A 575,575 0 0,1 1112.329,861.045 L 1098.964,854.235 A 560,560 0 0,0 1159.233,629.308 Z" fill="hsl(62,58%,43%)"><title>VC_HAITI_001 · country: Haiti</title></path><path class="metadata-cell" d="M 1177.208,630.250 L 1192.187,631.035 A 593,593 0 0,1 1128.367,869.216 L 1115.002,862.407 A 578,578 0 0,0 1177.208,630.250 Z" fill="hsl(65,58%,43%)"><title>VC_HAITI_001 · year: 2022</title></path><path class="metadata-cell" d="M 1195.183,631.192 L 1210.163,631.977 A 611,611 0 0,1 1144.405,877.388 L 1131.040,870.578 A 596,596 0 0,0 1195.183,631.192 Z" fill="hsl(204,58%,43%)"><title>VC_HAITI_001 · lineage: DEMO_LINEAGE:DEMO_A</title></path><path class="metadata-cell" d="M 1213.159,632.134 L 1228.138,632.919 A 629,629 0 0,1 1160.443,885.560 L 1147.078,878.750 A 614,614 0 0,0 1213.159,632.134 Z" fill="hsl(187,58%,43%)"><title>VC_HAITI_001 · mlst: DEMO_SCHEME:1</title></path><path class="metadata-cell" d="M 1231.134,633.076 L 1246.113,633.861 A 647,647 0 0,1 1176.481,893.732 L 1163.116,886.922 A 632,632 0 0,0 1231.134,633.076 Z" fill="hsl(337,58%,43%)"><title>VC_HAITI_001 · plasmid_cluster: DEMO_PLASMID:DEMO_P1</title></path><path class="metadata-cell" d="M 52.237,716.431 L 37.565,719.549 A 575,575 0 0,1 37.565,480.451 L 52.237,483.569 A 560,560 0 0,0 52.237,716.431 Z" fill="hsl(117,58%,43%)"><title>VC_KENYA_003 · country: Kenya</title></path><path class="metadata-cell" d="M 34.631,720.173 L 19.958,723.292 A 593,593 0 0,1 19.958,476.708 L 34.631,479.827 A 578,578 0 0,0 34.631,720.173 Z" fill="hsl(173,58%,43%)"><title>VC_KENYA_003 · year: 2023</title></path><path class="metadata-cell" d="M 17.024,723.915 L 2.352,727.034 A 611,611 0 0,1 2.352,472.966 L 17.024,476.085 A 596,596 0 0,0 17.024,723.915 Z" fill="hsl(204,58%,43%)"><title>VC_KENYA_003 · lineage: DEMO_LINEAGE:DEMO_A</title></path><path class="metadata-cell" d="M -0.583,727.658 L -15.255,730.776 A 629,629 0 0,1 -15.255,469.224 L -0.583,472.342 A 614,614 0 0,0 -0.583,727.658 Z" fill="hsl(187,58%,43%)"><title>VC_KENYA_003 · mlst: DEMO_SCHEME:1</title></path><path class="metadata-cell" d="M -18.189,731.400 L -32.861,734.519 A 647,647 0 0,1 -32.861,465.481 L -18.189,468.600 A 632,632 0 0,0 -18.189,731.400 Z" fill="hsl(337,58%,43%)"><title>VC_KENYA_003 · plasmid_cluster: DEMO_PLASMID:DEMO_P1</title></path><path class="metadata-cell" d="M 1098.964,345.765 L 1112.329,338.955 A 575,575 0 0,1 1174.212,569.907 L 1159.233,570.692 A 560,560 0 0,0 1098.964,345.765 Z" fill="hsl(85,58%,43%)"><title>VC_MALAWI_002 · country: Malawi</title></path><path class="metadata-cell" d="M 1115.002,337.593 L 1128.367,330.784 A 593,593 0 0,1 1192.187,568.965 L 1177.208,569.750 A 578,578 0 0,0 1115.002,337.593 Z" fill="hsl(65,58%,43%)"><title>VC_MALAWI_002 · year: 2022</title></path><path class="metadata-cell" d="M 1131.040,329.422 L 1144.405,322.612 A 611,611 0 0,1 1210.163,568.023 L 1195.183,568.808 A 596,596 0 0,0 1131.040,329.422 Z" fill="hsl(339,58%,43%)"><title>VC_MALAWI_002 · lineage: DEMO_LINEAGE:DEMO_B</title></path><path class="metadata-cell" d="M 1147.078,321.250 L 1160.443,314.440 A 629,629 0 0,1 1228.138,567.081 L 1213.159,567.866 A 614,614 0 0,0 1147.078,321.250 Z" fill="hsl(345,58%,43%)"><title>VC_MALAWI_002 · mlst: DEMO_SCHEME:2</title></path><path class="metadata-cell" d="M 1163.116,313.078 L 1176.481,306.268 A 647,647 0 0,1 1246.113,566.139 L 1231.134,566.924 A 632,632 0 0,0 1163.116,313.078 Z" fill="#cbd5df"><title>VC_MALAWI_002 · plasmid_cluster: Not available</title></path><circle cx="620.2844423520704" cy="605.4351999471529" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_HAITI_001" x="631.8755522675392" y="608.5410284883832" text-anchor="start" transform="rotate(15.0 631.8755522675392 608.5410284883832)" fill="#172a3c" font-size="11"><title>VC_HAITI_001 · Supplied branch length: 0.001</title>VC_HAITI_001</text>
+<circle cx="579.0" cy="600.0" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_KENYA_003" x="567.0" y="600.0" text-anchor="end" transform="rotate(0.0 567.0 600.0)" fill="#172a3c" font-size="11"><title>VC_KENYA_003 · Supplied branch length: 0.001</title>VC_KENYA_003</text>
+<circle cx="1005.6888470414087" cy="491.2960010569413" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="VC_MALAWI_002" x="1017.2799569568775" y="488.1901725157111" text-anchor="start" transform="rotate(-15.0 1017.2799569568775 488.1901725157111)" fill="#172a3c" font-size="11"><title>VC_MALAWI_002 · Supplied branch length: 0.02</title>VC_MALAWI_002</text>
+<line x1="32.0" y1="1170.0" x2="452.0" y2="1170.0" stroke="#355a6a" stroke-width="2"/><text x="32.0" y="1187.0" fill="#536779" font-size="10">0.02 supplied branch-length units</text>  </svg>
+  </div>
+<figcaption class="muted">Leaf order and root orientation follow the supplied Newick; no rooting or relationship inference was performed.</figcaption>  <p class="muted">Exact sample IDs are matched first. A unique terminal _snippy suffix may be ignored only for annotation matching; original tip labels are retained. Missing or conflicting classifications are never inferred. Circular ring order, inner to outer: Country, Year, Lineage, MLST, Plasmid cluster.</p>
+  <details class="source-details"><summary>Metadata colors and tip mapping</summary>
+<h4>Country</h4><div class="metadata-legend"><span><i style="background:hsl(62,58%,43%)"></i>Haiti (1)</span><span><i style="background:hsl(117,58%,43%)"></i>Kenya (1)</span><span><i style="background:hsl(85,58%,43%)"></i>Malawi (1)</span></div><h4>Year</h4><div class="metadata-legend"><span><i style="background:hsl(65,58%,43%)"></i>2022 (2)</span><span><i style="background:hsl(173,58%,43%)"></i>2023 (1)</span></div><h4>Lineage</h4><div class="metadata-legend"><span><i style="background:hsl(204,58%,43%)"></i>DEMO_LINEAGE:DEMO_A (2)</span><span><i style="background:hsl(339,58%,43%)"></i>DEMO_LINEAGE:DEMO_B (1)</span></div><h4>MLST scheme:ST</h4><div class="metadata-legend"><span><i style="background:hsl(187,58%,43%)"></i>DEMO_SCHEME:1 (2)</span><span><i style="background:hsl(345,58%,43%)"></i>DEMO_SCHEME:2 (1)</span></div><h4>Plasmid cluster</h4><div class="metadata-legend"><span><i style="background:hsl(337,58%,43%)"></i>DEMO_PLASMID:DEMO_P1 (2)</span><span><i style="background:#cbd5df"></i>Not available (1)</span></div>    <div class="scroll"><table aria-label="circular tree metadata"><tr><th>Tip</th><th>Matched sample</th><th>Match method</th><th>Country</th><th>Year</th><th>Lineage</th><th>MLST scheme:ST</th><th>Plasmid cluster</th></tr><tr><td>VC_HAITI_001</td><td>VC_HAITI_001</td><td>exact</td><td>Haiti</td><td>2022</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_KENYA_003</td><td>VC_KENYA_003</td><td>exact</td><td>Kenya</td><td>2023</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_MALAWI_002</td><td>VC_MALAWI_002</td><td>exact</td><td>Malawi</td><td>2022</td><td>DEMO_LINEAGE:DEMO_B</td><td>DEMO_SCHEME:2</td><td>Not available</td></tr></table></div>
+  </details>
+</figure>
     <div class="charts-grid"><figure class="chart-card" id="chart-snp-distribution">
   <div class="chart-heading"><h3 id="title-snp-distribution">Pairwise SNP distance distribution</h3><button class="button js-svg-export" type="button" hidden aria-label="Download Pairwise SNP distance distribution as SVG">SVG</button></div>
   <div class="chart-viewport" tabindex="0" role="region" aria-label="Pairwise SNP distance distribution graphic">
@@ -996,6 +1121,35 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
       </table>
       </div>
 
+      <figure class="chart-card network-panel" id="allele-network">
+  <div class="chart-heading"><div><p class="eyebrow">Explore cgMLST relationships</p><h3 id="allele-network-title">GrapeTree-style distance network</h3></div><button class="button js-svg-export" type="button" hidden aria-label="Download distance network as SVG">Download SVG</button></div>
+  <div class="network-summary"><span><b>3</b> samples</span><span><b>1</b> observed edges</span><span><b>2</b> components</span><span><b>2</b> unavailable/invalid pairs</span></div>
+  <div class="network-controls" hidden>
+    <label>Color by <select class="network-color" aria-label="Color network by metadata"><option value="country">Country</option><option value="year">Year</option><option value="lineage">Lineage</option><option value="mlst">MLST scheme:ST</option><option value="plasmid_cluster">Plasmid cluster</option></select></label>
+    <label>Find sample <input class="network-find" type="search" placeholder="Sample identifier" aria-label="Find a network sample"></label>
+    <label>Zoom <input class="network-zoom" type="range" min="100" max="400" step="25" value="100" aria-label="Network zoom"></label>
+    <label><input class="network-labels" type="checkbox" checked> Sample labels</label>
+    <label><input class="network-distances" type="checkbox" checked> Edge distances</label>
+    <button class="button network-reset" type="button">Reset view</button>
+  </div>
+  <p class="network-feedback" aria-live="polite">One node per sample · colors show supplied country metadata.</p>
+  <div class="network-viewport" tabindex="0" role="region" aria-label="Distance network; scroll to explore when zoomed">
+  <svg class="report-network" viewBox="0 0 1000 720" role="img" aria-labelledby="allele-network-title allele-network-description">
+    <desc id="allele-network-description">Minimum spanning forest from observed pairwise allele distances. One vertex per sample; equal-sized nodes. Edge labels show distances; line lengths are layout-only. Colors show supplied country metadata.</desc>
+<g class="network-edge"><title>VC_HAITI_001 ↔ VC_KENYA_003: 4 allele differences</title><line x1="403.75" y1="38.25" x2="156.25" y2="681.75" stroke="#96aab6" stroke-width="1.8"/><text class="network-distance" x="280.0" y="353.0" text-anchor="middle" font-size="11" fill="#536779">4</text></g><g class="network-node" data-sample="VC_HAITI_001" data-metadata="{&#34;country&#34;: {&#34;color&#34;: &#34;hsl(62,58%,43%)&#34;, &#34;value&#34;: &#34;Haiti&#34;}, &#34;lineage&#34;: {&#34;color&#34;: &#34;hsl(204,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_LINEAGE:DEMO_A&#34;}, &#34;mlst&#34;: {&#34;color&#34;: &#34;hsl(187,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_SCHEME:1&#34;}, &#34;plasmid_cluster&#34;: {&#34;color&#34;: &#34;hsl(337,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_PLASMID:DEMO_P1&#34;}, &#34;year&#34;: {&#34;color&#34;: &#34;hsl(65,58%,43%)&#34;, &#34;value&#34;: &#34;2022&#34;}}">
+      <title>VC_HAITI_001 · Country: Haiti · one sample</title><circle cx="403.75" cy="38.25" r="7" fill="hsl(62,58%,43%)" stroke="#fff" stroke-width="2"/><text class="network-sample-label" x="415.75" y="42.25" font-size="11" fill="#172a3c">VC_HAITI_001</text>
+    </g><g class="network-node" data-sample="VC_KENYA_003" data-metadata="{&#34;country&#34;: {&#34;color&#34;: &#34;hsl(117,58%,43%)&#34;, &#34;value&#34;: &#34;Kenya&#34;}, &#34;lineage&#34;: {&#34;color&#34;: &#34;hsl(204,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_LINEAGE:DEMO_A&#34;}, &#34;mlst&#34;: {&#34;color&#34;: &#34;hsl(187,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_SCHEME:1&#34;}, &#34;plasmid_cluster&#34;: {&#34;color&#34;: &#34;hsl(337,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_PLASMID:DEMO_P1&#34;}, &#34;year&#34;: {&#34;color&#34;: &#34;hsl(173,58%,43%)&#34;, &#34;value&#34;: &#34;2023&#34;}}">
+      <title>VC_KENYA_003 · Country: Kenya · one sample</title><circle cx="156.25" cy="681.75" r="7" fill="hsl(117,58%,43%)" stroke="#fff" stroke-width="2"/><text class="network-sample-label" x="168.25" y="685.75" font-size="11" fill="#172a3c">VC_KENYA_003</text>
+    </g><g class="network-node" data-sample="VC_MALAWI_002" data-metadata="{&#34;country&#34;: {&#34;color&#34;: &#34;hsl(85,58%,43%)&#34;, &#34;value&#34;: &#34;Malawi&#34;}, &#34;lineage&#34;: {&#34;color&#34;: &#34;hsl(339,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_LINEAGE:DEMO_B&#34;}, &#34;mlst&#34;: {&#34;color&#34;: &#34;hsl(345,58%,43%)&#34;, &#34;value&#34;: &#34;DEMO_SCHEME:2&#34;}, &#34;plasmid_cluster&#34;: {&#34;color&#34;: &#34;#cbd5df&#34;, &#34;value&#34;: &#34;Not available&#34;}, &#34;year&#34;: {&#34;color&#34;: &#34;hsl(65,58%,43%)&#34;, &#34;value&#34;: &#34;2022&#34;}}">
+      <title>VC_MALAWI_002 · Country: Malawi · one sample</title><circle cx="764.0" cy="360.0" r="7" fill="hsl(85,58%,43%)" stroke="#fff" stroke-width="2"/><text class="network-sample-label" x="776.0" y="364.0" font-size="11" fill="#172a3c">VC_MALAWI_002</text>
+    </g>  </svg>
+  </div>
+  <div class="network-legend metadata-legend" aria-label="Network color legend"><span data-value="Haiti" data-color="hsl(62,58%,43%)" data-count="1"><i style="background:hsl(62,58%,43%)"></i>Haiti (1)</span><span data-value="Kenya" data-color="hsl(117,58%,43%)" data-count="1"><i style="background:hsl(117,58%,43%)"></i>Kenya (1)</span><span data-value="Malawi" data-color="hsl(85,58%,43%)" data-count="1"><i style="background:hsl(85,58%,43%)"></i>Malawi (1)</span></div>
+  <p class="network-selection" aria-live="polite">Sample metadata and observed edges are available in the tables below.</p>
+  <figcaption class="muted">Display method: deterministic minimum spanning forest (Kruskal, ties by sample ID). Edge labels are observed pairwise distances. Node positions and line lengths are layout-only and do not represent distance. This minimum spanning forest is not a phylogeny and does not establish transmission. Each sample remains a separate vertex, including samples with zero distance. Reference is excluded; missing, invalid or asymmetric pairs are omitted. This is a GrapeTree-inspired display, not a GrapeTree/MSTreeV2 analysis. GrapeTree-style describes the presentation; GrapeTree/MSTreeV2 is not run.</figcaption>
+  <details class="chart-data"><summary>Sample metadata (3 samples)</summary><div class="scroll"><table aria-label="Distance network sample metadata"><tr><th>Sample</th><th>Country</th><th>Year</th><th>Lineage</th><th>MLST scheme:ST</th><th>Plasmid cluster</th></tr><tr><td>VC_HAITI_001</td><td>Haiti</td><td>2022</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_KENYA_003</td><td>Kenya</td><td>2023</td><td>DEMO_LINEAGE:DEMO_A</td><td>DEMO_SCHEME:1</td><td>DEMO_PLASMID:DEMO_P1</td></tr><tr><td>VC_MALAWI_002</td><td>Malawi</td><td>2022</td><td>DEMO_LINEAGE:DEMO_B</td><td>DEMO_SCHEME:2</td><td>Not available</td></tr></table></div></details>
+  <details class="chart-data"><summary>Observed network edges (1)</summary><div class="scroll"><table aria-label="Distance network observed edges"><tr><th>Sample 1</th><th>Sample 2</th><th>Allele differences</th></tr><tr><td>VC_HAITI_001</td><td>VC_KENYA_003</td><td>4</td></tr></table></div></details>
+</figure>
       <h3>cgMLST distance heatmap</h3>
       <p class="muted">Showing 3 of 3 samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
       <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
@@ -1111,7 +1265,7 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
   <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
   <div class="scroll"><table aria-label="Report input provenance">
     <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
-<tr><td>genome_qc</td><td>genome_qc_summary.tsv</td><td>Non-empty file</td><td>276</td><td class="checksum">886e2f8c5185e6c4a72135d54207a3c18101ca80101c37916bc3a6cbb2ec9c44</td></tr><tr><td>seq_qc</td><td>seq_qc_summary.tsv</td><td>Non-empty file</td><td>229</td><td class="checksum">04bab2635d4ebfa98ce8c3d80d9db4751552fc6a610e75ee7c7debccadd9217b</td></tr><tr><td>typing</td><td>typing_summary.tsv</td><td>Non-empty file</td><td>241</td><td class="checksum">a1f9727cd39dd80f59e32ed1c10bad4b062d08281fcc87764b5b8e1fc196b57c</td></tr><tr><td>virulence</td><td>virulencefinder_summary.tsv</td><td>Non-empty file</td><td>158</td><td class="checksum">03891cfca034b49a5b2f5485f3521ea0de3f01f6dc7bcaccfee2769cd6f56227</td></tr><tr><td>amr</td><td>amr_summary.tsv</td><td>Non-empty file</td><td>391</td><td class="checksum">df578c6483dca1c90778313e040f70a225909b2a9294927caaab863d2868581f</td></tr><tr><td>snp_matrix</td><td>snp_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">64de1422bae61a7d8e726a7850a2a0dfb0ccc46ea8a3ffd20613faa1ee8e8046</td></tr><tr><td>cgmlst_matrix</td><td>cgmlst_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">bbd3745f4c64d3af4796f406b46f96807c514d2cab50a51798e12287fa2a2150</td></tr><tr><td>treefile</td><td>iqtree.treefile</td><td>Non-empty file</td><td>60</td><td class="checksum">1ea0f65aba33e7ca35a2ca617ea5d4267671e978d1d8f85a1769f9b7f032e35b</td></tr><tr><td>tree_report</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>cluster_assignments</td><td>cluster_assignments.tsv</td><td>Non-empty file</td><td>293</td><td class="checksum">7707bce582c2815b29bfa74ed9a1ff721b8f8566d16d1138ee4cc60bd54dce28</td></tr><tr><td>cluster_summary</td><td>cluster_summary.json</td><td>Non-empty file</td><td>478</td><td class="checksum">68c24dc61485edb804f3d50f65b84ab2387b7175e7e2b270a819f2d5db0d0efb</td></tr><tr><td>outbreak_pairs</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>metadata</td><td>metadata.csv</td><td>Non-empty file</td><td>164</td><td class="checksum">1417f3af2a47aeb8d8d10be77b5808402b35e5d23596988bdbc7feea5b833248</td></tr><tr><td>global_tree</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>software_versions</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr>  </table></div>
+<tr><td>genome_qc</td><td>genome_qc_summary.tsv</td><td>Non-empty file</td><td>276</td><td class="checksum">886e2f8c5185e6c4a72135d54207a3c18101ca80101c37916bc3a6cbb2ec9c44</td></tr><tr><td>seq_qc</td><td>seq_qc_summary.tsv</td><td>Non-empty file</td><td>229</td><td class="checksum">04bab2635d4ebfa98ce8c3d80d9db4751552fc6a610e75ee7c7debccadd9217b</td></tr><tr><td>typing</td><td>typing_summary.tsv</td><td>Non-empty file</td><td>241</td><td class="checksum">a1f9727cd39dd80f59e32ed1c10bad4b062d08281fcc87764b5b8e1fc196b57c</td></tr><tr><td>virulence</td><td>virulencefinder_summary.tsv</td><td>Non-empty file</td><td>158</td><td class="checksum">03891cfca034b49a5b2f5485f3521ea0de3f01f6dc7bcaccfee2769cd6f56227</td></tr><tr><td>amr</td><td>amr_summary.tsv</td><td>Non-empty file</td><td>391</td><td class="checksum">df578c6483dca1c90778313e040f70a225909b2a9294927caaab863d2868581f</td></tr><tr><td>snp_matrix</td><td>snp_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">64de1422bae61a7d8e726a7850a2a0dfb0ccc46ea8a3ffd20613faa1ee8e8046</td></tr><tr><td>cgmlst_matrix</td><td>cgmlst_distance_matrix.tsv</td><td>Non-empty file</td><td>103</td><td class="checksum">bbd3745f4c64d3af4796f406b46f96807c514d2cab50a51798e12287fa2a2150</td></tr><tr><td>treefile</td><td>iqtree.treefile</td><td>Non-empty file</td><td>60</td><td class="checksum">1ea0f65aba33e7ca35a2ca617ea5d4267671e978d1d8f85a1769f9b7f032e35b</td></tr><tr><td>tree_report</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>cluster_assignments</td><td>cluster_assignments.tsv</td><td>Non-empty file</td><td>293</td><td class="checksum">7707bce582c2815b29bfa74ed9a1ff721b8f8566d16d1138ee4cc60bd54dce28</td></tr><tr><td>cluster_summary</td><td>cluster_summary.json</td><td>Non-empty file</td><td>478</td><td class="checksum">68c24dc61485edb804f3d50f65b84ab2387b7175e7e2b270a819f2d5db0d0efb</td></tr><tr><td>outbreak_pairs</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>metadata</td><td>metadata.csv</td><td>Non-empty file</td><td>164</td><td class="checksum">1417f3af2a47aeb8d8d10be77b5808402b35e5d23596988bdbc7feea5b833248</td></tr><tr><td>global_tree</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>software_versions</td><td>Not supplied</td><td>Not supplied</td><td>—</td><td class="checksum">—</td></tr><tr><td>mlst</td><td>mlst.tsv</td><td>Non-empty file</td><td>248</td><td class="checksum">7e7c6a87eea605129aa3f63afab0a0b1cc59d6166364ed1b8cf258133b56b773</td></tr><tr><td>lineage_assignments</td><td>lineages.tsv</td><td>Non-empty file</td><td>223</td><td class="checksum">9f97c39d7a450757f37a5ecb40df21a50cafac45b0322994c2e67d85bde5922b</td></tr><tr><td>plasmid_results</td><td>plasmids.tsv</td><td>Non-empty file</td><td>166</td><td class="checksum">7f74daa5ba8ce997c0c5d866e00f2a832f788fed47df4698fac7c3f9b94e9e48</td></tr>  </table></div>
   <p class="muted">Report generated 2026-07-08 by CholeraFlow synthetic demonstration.</p>
 </section>
 
@@ -1232,9 +1386,39 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
       // XMLSerializer supplies the namespace; setting a second plain xmlns
       // attribute produces invalid SVG in standards-compliant serializers.
       const dimensions = svg.getAttribute("viewBox").trim().split(/\s+/);
+      if (figure.classList.contains("network-panel")) {
+        // Keep the selected metadata legend with the standalone network graphic.
+        const entries = Array.from(figure.querySelectorAll(".network-legend span"));
+        const key = document.createElementNS(namespace, "g");
+        const startY = Number(dimensions[3]) + 25;
+        const heading = document.createElementNS(namespace, "text");
+        heading.setAttribute("x", "24"); heading.setAttribute("y", startY);
+        heading.setAttribute("font-size", "14"); heading.setAttribute("fill", "#172a3c");
+        heading.textContent = "Color by " + figure.querySelector(".network-color option:checked").textContent + " · one node per sample";
+        key.append(heading);
+        entries.forEach((entry, index) => {
+          const x = 24 + (index % 2) * (Number(dimensions[2]) / 2);
+          const y = startY + 28 + Math.floor(index / 2) * 24;
+          const marker = document.createElementNS(namespace, "circle");
+          marker.setAttribute("cx", x); marker.setAttribute("cy", y - 4);
+          marker.setAttribute("r", "5"); marker.setAttribute("fill", entry.dataset.color);
+          const label = document.createElementNS(namespace, "text");
+          label.setAttribute("x", x + 12); label.setAttribute("y", y);
+          label.setAttribute("font-size", "12"); label.setAttribute("fill", "#172a3c");
+          const value = entry.dataset.value;
+          label.textContent = (value.length > 48 ? value.slice(0, 45) + "…" : value) + " (" + entry.dataset.count + ")";
+          const full = document.createElementNS(namespace, "title"); full.textContent = value; label.append(full);
+          key.append(marker, label);
+        });
+        svg.append(key);
+        dimensions[3] = String(startY + 45 + Math.ceil(entries.length / 2) * 24);
+        svg.setAttribute("viewBox", dimensions.join(" "));
+        svg.querySelectorAll(".network-node").forEach(node => { node.classList.remove("dimmed"); node.removeAttribute("tabindex"); node.removeAttribute("role"); });
+      }
       svg.setAttribute("width", dimensions[2]);
       svg.setAttribute("height", dimensions[3]);
       svg.style.width = dimensions[2] + "px";
+      svg.style.height = dimensions[3] + "px";
       const title = document.createElementNS(namespace, "title");
       title.id = figure.id + "-export-title";
       title.textContent = figure.querySelector("h3").textContent;
@@ -1245,6 +1429,91 @@ details > summary:focus-visible { outline: 3px solid #e5aa38; outline-offset: 3p
       svg.prepend(style);
       download(new XMLSerializer().serializeToString(svg), "choleraflow-" + figure.id + ".svg", "image/svg+xml;charset=utf-8");
     });
+  });
+  document.querySelectorAll(".network-panel").forEach(panel => {
+    const svg = panel.querySelector("svg");
+    if (!svg) return;
+    const nodes = Array.from(panel.querySelectorAll(".network-node"));
+    const color = panel.querySelector(".network-color");
+    const search = panel.querySelector(".network-find");
+    const zoom = panel.querySelector(".network-zoom");
+    const labels = panel.querySelector(".network-labels");
+    const distances = panel.querySelector(".network-distances");
+    const viewport = panel.querySelector(".network-viewport");
+    const selection = panel.querySelector(".network-selection");
+    const feedback = panel.querySelector(".network-feedback");
+    const legends = panel.querySelector(".network-legend");
+    const metadata = new Map(nodes.map(node => [node, JSON.parse(node.dataset.metadata)]));
+    panel.querySelector(".network-controls").hidden = false;
+    selection.textContent = "Select a sample to inspect its metadata. Drag the background or scroll to explore when zoomed.";
+    const paint = () => {
+      const field = color.value;
+      const fieldName = color.selectedOptions[0].textContent;
+      const counts = new Map();
+      nodes.forEach(node => {
+        const entry = metadata.get(node)[field];
+        node.querySelector("circle").setAttribute("fill", entry.color);
+        node.querySelector("title").textContent = node.dataset.sample + " · " + fieldName + ": " + entry.value + " · one sample";
+        const previous = counts.get(entry.value);
+        counts.set(entry.value, {color: entry.color, count: previous ? previous.count + 1 : 1});
+      });
+      legends.replaceChildren();
+      Array.from(counts).sort((a, b) => collator.compare(a[0], b[0])).forEach(([value, entry]) => {
+        const item = make("span");
+        item.dataset.value = value; item.dataset.color = entry.color; item.dataset.count = entry.count;
+        const swatch = make("i"); swatch.style.background = entry.color;
+        item.append(swatch, document.createTextNode(value + " (" + entry.count + ")")); legends.append(item);
+      });
+      svg.querySelector("desc").textContent = "Minimum spanning forest from observed pairwise allele distances. One equal-sized vertex per sample. Edge labels show distances; line lengths are layout-only. Colors: " + fieldName + ".";
+    };
+    const find = () => {
+      const query = search.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      nodes.forEach(node => {
+        const match = !!query && node.dataset.sample.toLocaleLowerCase().includes(query);
+        node.classList.toggle("match", match);
+        node.classList.toggle("dimmed", !!query && !match);
+        if (match) matches++;
+      });
+      feedback.textContent = query ? matches + " of " + nodes.length + " matching samples · all nodes and edges retained" : "One node per sample · edge labels are observed allele differences.";
+    };
+    nodes.forEach(node => {
+      node.setAttribute("tabindex", "0"); node.setAttribute("role", "button");
+      node.setAttribute("aria-label", "Inspect sample " + node.dataset.sample);
+      const select = () => {
+        nodes.forEach(other => other.classList.toggle("selected", other === node));
+        const values = metadata.get(node);
+        selection.textContent = node.dataset.sample + " · " + Array.from(color.options).map(option => option.textContent + ": " + values[option.value].value).join(" · ");
+      };
+      node.addEventListener("click", select);
+      node.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } });
+    });
+    color.addEventListener("change", paint);
+    search.addEventListener("input", find);
+    zoom.addEventListener("input", () => { svg.style.width = svg.style.height = zoom.value + "%"; });
+    labels.addEventListener("change", () => svg.classList.toggle("hide-node-labels", !labels.checked));
+    distances.addEventListener("change", () => svg.classList.toggle("hide-edge-distances", !distances.checked));
+    panel.querySelector(".network-reset").addEventListener("click", () => {
+      color.value = "country"; search.value = ""; zoom.value = "100";
+      svg.style.width = svg.style.height = "100%"; labels.checked = nodes.length <= 30; distances.checked = true;
+      svg.classList.toggle("hide-node-labels", !labels.checked); svg.classList.remove("hide-edge-distances");
+      nodes.forEach(node => node.classList.remove("selected"));
+      viewport.scrollLeft = viewport.scrollTop = 0;
+      selection.textContent = "Select a sample to inspect its metadata. Drag the background or scroll to explore when zoomed.";
+      paint(); find();
+    });
+    let drag;
+    viewport.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || event.target.closest(".network-node")) return;
+      drag = {x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop};
+      viewport.setPointerCapture?.(event.pointerId); viewport.classList.add("dragging");
+    });
+    viewport.addEventListener("pointermove", event => {
+      if (!drag) return;
+      viewport.scrollLeft = drag.left + drag.x - event.clientX;
+      viewport.scrollTop = drag.top + drag.y - event.clientY;
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => viewport.addEventListener(type, () => { drag = null; viewport.classList.remove("dragging"); }));
   });
   document.querySelectorAll(".tree-panel").forEach(panel => {
     const svg = panel.querySelector("svg");

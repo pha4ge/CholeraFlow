@@ -226,7 +226,8 @@ workflow {
             CORE_BACKBONE.out.typing_summary,
             CORE_BACKBONE.out.virulencefinder_summary,
             CORE_BACKBONE.out.amr_summary,
-            CORE_BACKBONE.out.seq_qc_summary
+            CORE_BACKBONE.out.seq_qc_summary,
+            CORE_BACKBONE.out.mlst_summary
         )
 
         OUTBREAK_BRANCH.out.treefile.view { f ->

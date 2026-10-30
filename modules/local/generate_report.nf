@@ -35,6 +35,9 @@ process GENERATE_REPORT {
     path metadata             // metadata CSV                 (optional [])
     path seq_qc               // seq_qc_summary.tsv            (optional [])
     path tree_report          // original IQ-TREE diagnostics  (optional [])
+    path mlst, stageAs: 'mlst_summary.tsv'
+    path lineage, stageAs: 'lineage_assignments.txt'
+    path plasmids, stageAs: 'plasmid_clusters.txt'
 
     output:
     path 'outbreak_report.html', emit: report
@@ -54,6 +57,10 @@ process GENERATE_REPORT {
     def meta_arg       = metadata            ? "--metadata ${metadata}"                         : ""
     def seq_arg        = seq_qc              ? "--seq-qc ${seq_qc}"                             : ""
     def diagnostics_arg = tree_report        ? "--tree-report ${tree_report}"                   : ""
+    def mlst_arg = mlst ? "--mlst ${mlst}" : ""
+    def lineage_arg = lineage ? "--lineage-assignments ${lineage}" : ""
+    def plasmid_arg = plasmids ? "--plasmid-results ${plasmids}" : ""
+    def demo_arg = params.demo_run ? '--demo' : ''
     """
     export PATH="${moduleDir.parent.parent}/bin:\$PATH"
     
@@ -76,6 +83,6 @@ process GENERATE_REPORT {
         --min-parsimony-coverage ${params.min_parsimony_coverage} \\
         ${genome_qc_arg} ${typing_arg} ${virulence_arg} ${amr_arg} \\
         ${snp_arg} ${tree_arg} ${clust_arg} ${csum_arg} ${pairs_arg} \\
-        ${cgmlst_arg} ${global_arg} ${meta_arg} ${seq_arg} ${diagnostics_arg}
+        ${cgmlst_arg} ${global_arg} ${meta_arg} ${seq_arg} ${diagnostics_arg} ${mlst_arg} ${lineage_arg} ${plasmid_arg} ${demo_arg}
     """
 }

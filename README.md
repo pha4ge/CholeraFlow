@@ -13,8 +13,10 @@ CholeraFlow is a Nextflow DSL2 pipeline for *Vibrio cholerae* genomic surveillan
 The browser GUI in `reference_gui.html` is a prototype; the supported execution path is the command line and the Nextflow workflow beginning at `main.nf`.
 
 <p align="center">
-  <img src="flow.png" width="1000" alt="CholeraFlow workflow" />
+  <img src="assets/images/choleraflow-workflow.png" width="1000" alt="CholeraFlow workflow: validated sequence inputs and Bactopia QC feed characterisation, SNP and optional cgMLST comparisons, followed by an offline outbreak report." />
 </p>
+
+[View full-size workflow](assets/images/choleraflow-workflow.png) · [PNG version](assets/images/choleraflow-workflow.png)
 
 ## Runtime baseline
 
@@ -148,11 +150,20 @@ These directories appear only when the relevant analysis ran. `not_run` placehol
 The HTML report is self-contained and contains no external CSS, JavaScript,
 or font dependencies.
 
-The dashboard includes a rendered tree with zoom and tip search, 19 data-chart
-panels when their inputs are available, SNP/cgMLST heatmaps, analysis availability
-badges, searchable sample records, CSV/SVG exports, and a print/PDF view. See
+The dashboard includes rectangular and circular trees, a GrapeTree-style
+cgMLST distance network, 22 data-chart panels when their inputs are available,
+SNP/cgMLST heatmaps, searchable sample records, CSV/SVG exports, and a print/PDF
+view. The network supports metadata coloring, sample search, zoom, drag and
+keyboard inspection. It displays a deterministic minimum spanning forest of
+supplied distances; GrapeTree/MSTreeV2 is not run. See
 [report controls](docs/output.md#exploring-the-html-report) and the explicitly
 labelled [synthetic example](examples/reports/outbreak_report.html).
+
+Both rectangular and circular trees have country/year/lineage/MLST/plasmid
+metadata tracks. Existing MLST output is collected from Bactopia automatically;
+lineage and plasmid tracks use explicitly supplied classifier records with
+scheme, method and reference provenance. See the [dummy cohort](examples/dummy/README.md)
+for samplesheet generation and a clearly labelled demonstration.
 
 The report contains these sections in order:
 

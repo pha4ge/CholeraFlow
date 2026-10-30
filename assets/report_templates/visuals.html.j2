@@ -42,28 +42,69 @@
 
 {% macro chart_grid(charts) -%}<div class="charts-grid">{% for chart in charts %}{{ chart_card(chart) }}{% endfor %}</div>{%- endmacro %}
 
-{% macro tree_panel(view, newick, panel_id) -%}
+{% macro network_panel(view) -%}
+<figure class="chart-card network-panel" id="allele-network">
+  <div class="chart-heading"><div><p class="eyebrow">Explore cgMLST relationships</p><h3 id="allele-network-title">GrapeTree-style distance network</h3></div><button class="button js-svg-export" type="button" hidden aria-label="Download distance network as SVG">Download SVG</button></div>
+  {% if view.status == 'ok' %}
+  <div class="network-summary"><span><b>{{ view.nodes|length }}</b> samples</span><span><b>{{ view.edges|length }}</b> observed edges</span><span><b>{{ view.component_count }}</b> components</span><span><b>{{ view.omitted_pairs }}</b> unavailable/invalid pairs</span></div>
+  <div class="network-controls" hidden>
+    <label>Color by <select class="network-color" aria-label="Color network by metadata">{% for column in view.annotations.columns %}<option value="{{ column.key }}">{{ column.label }}</option>{% endfor %}</select></label>
+    <label>Find sample <input class="network-find" type="search" placeholder="Sample identifier" aria-label="Find a network sample"></label>
+    <label>Zoom <input class="network-zoom" type="range" min="100" max="400" step="25" value="100" aria-label="Network zoom"></label>
+    <label><input class="network-labels" type="checkbox" {% if view.nodes|length <= 30 %}checked{% endif %}> Sample labels</label>
+    <label><input class="network-distances" type="checkbox" checked> Edge distances</label>
+    <button class="button network-reset" type="button">Reset view</button>
+  </div>
+  <p class="network-feedback" aria-live="polite">One node per sample · colors show supplied country metadata.</p>
+  <div class="network-viewport" tabindex="0" role="region" aria-label="Distance network; scroll to explore when zoomed">
+  <svg class="report-network{% if view.nodes|length > 30 %} hide-node-labels{% endif %}" viewBox="0 0 {{ view.width }} {{ view.height }}" role="img" aria-labelledby="allele-network-title allele-network-description">
+    <desc id="allele-network-description">Minimum spanning forest from observed pairwise allele distances. One vertex per sample; equal-sized nodes. Edge labels show distances; line lengths are layout-only. Colors show supplied country metadata.</desc>
+    {% for edge in view.edges %}<g class="network-edge"><title>{{ edge.sample_1 }} ↔ {{ edge.sample_2 }}: {{ edge.distance }} allele differences</title><line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#96aab6" stroke-width="1.8"/><text class="network-distance" x="{{ (edge.x1 + edge.x2)/2 }}" y="{{ (edge.y1 + edge.y2)/2 - 7 }}" text-anchor="middle" font-size="11" fill="#536779">{{ edge.distance }}</text></g>{% endfor %}
+    {% for node in view.nodes %}{% set meta = view.annotations.samples[node.sample] %}<g class="network-node" data-sample="{{ node.sample }}" data-metadata="{{ meta|tojson|forceescape }}">
+      <title>{{ node.sample }} · Country: {{ meta.country.value }} · one sample</title><circle cx="{{ node.x }}" cy="{{ node.y }}" r="7" fill="{{ meta.country.color }}" stroke="#fff" stroke-width="2"/><text class="network-sample-label" x="{{ node.x + 12 }}" y="{{ node.y + 4 }}" font-size="11" fill="#172a3c">{{ node.sample|truncate(24,true) }}</text>
+    </g>{% endfor %}
+  </svg>
+  </div>
+  <div class="network-legend metadata-legend" aria-label="Network color legend">{% for entry in view.annotations.legends.country %}<span data-value="{{ entry.value }}" data-color="{{ entry.color }}" data-count="{{ entry.count }}"><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>
+  <p class="network-selection" aria-live="polite">Sample metadata and observed edges are available in the tables below.</p>
+  <figcaption class="muted">Display method: deterministic minimum spanning forest (Kruskal, ties by sample ID). {{ view.note }} GrapeTree-style describes the presentation; GrapeTree/MSTreeV2 is not run.</figcaption>
+  <details class="chart-data"><summary>Sample metadata ({{ view.nodes|length }} samples)</summary><div class="scroll"><table aria-label="Distance network sample metadata"><tr><th>Sample</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for node in view.nodes %}<tr><td>{{ node.sample }}</td>{% for column in view.annotations.columns %}<td>{{ view.annotations.samples[node.sample][column.key].value }}</td>{% endfor %}</tr>{% endfor %}</table></div></details>
+  <details class="chart-data"><summary>Observed network edges ({{ view.edges|length }})</summary><div class="scroll"><table aria-label="Distance network observed edges"><tr><th>Sample 1</th><th>Sample 2</th><th>Allele differences</th></tr>{% for edge in view.edges %}<tr><td>{{ edge.sample_1 }}</td><td>{{ edge.sample_2 }}</td><td>{{ edge.distance }}</td></tr>{% endfor %}</table></div></details>
+  {% else %}<div class="not-performed">{{ view.reason }}</div>{% endif %}
+</figure>
+{%- endmacro %}
+
+{% macro tree_panel(view, newick, panel_id, layout='rectangular') -%}
+{% set shape = view.circular if layout == 'circular' else view %}
 <figure class="tree-panel" id="{{ panel_id }}">
-  <div class="chart-heading"><h3 id="{{ panel_id }}-title">Tree view</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  <div class="chart-heading"><h3 id="{{ panel_id }}-title">{{ layout|capitalize }} tree</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
   {% if view.status == 'ok' %}
   <div class="tree-controls" hidden>
-    <label>Zoom <input class="tree-zoom" type="range" min="60" max="250" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="1000" step="10" value="100" aria-label="Tree zoom"></label>
     <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
     <span class="tree-match-count" aria-live="polite"></span>
   </div>
   <p class="muted">{{ view.tip_count }} tips · {{ view.layout }}. Input order and topology are preserved; this display does not infer or change rooting.</p>
   <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
-  <svg class="tree-svg" viewBox="0 0 {{ view.width }} {{ view.height }}" role="img" aria-labelledby="{{ panel_id }}-title {{ panel_id }}-description">
+  <svg class="tree-svg {{ 'tree-circular' if layout == 'circular' else 'tree-rectangular' }}" viewBox="{{ view.annotations.circular_viewbox if layout == 'circular' else '0 0 ' ~ view.annotations.rect_width ~ ' ' ~ view.height }}" role="img" aria-labelledby="{{ panel_id }}-title {{ panel_id }}-description">
     <desc id="{{ panel_id }}-description">A tree rendered directly from the supplied Newick file. {{ view.layout }}. Internal labels are shown as supplied and are not reinterpreted.</desc>
-    {% for edge in view.branches %}<line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#355a6a" stroke-width="1.5"/>{% endfor %}
-    {% for node in view.nodes %}
-      {% if node.leaf %}<circle cx="{{ node.x }}" cy="{{ node.y }}" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="{{ node.label }}" x="{{ node.x + 8 }}" y="{{ node.y + 4 }}" fill="#172a3c" font-size="12"><title>{{ node.label }} · Supplied branch length: {{ node.branch_length_text if node.branch_length_text is not none else 'Not provided' }}</title>{{ node.label }}</text>
+    {% for edge in shape.branches %}{% if edge.kind == 'arc' %}<path d="{{ edge.path }}" fill="none" stroke="#355a6a" stroke-width="1.5"/>{% else %}<line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#355a6a" stroke-width="1.5"/>{% endif %}{% endfor %}
+    {% if layout == 'circular' %}{% for cell in view.annotations.circular_cells %}<path class="metadata-cell" d="{{ cell.path }}" fill="{{ cell.color }}"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></path>{% endfor %}
+    {% else %}{% for column in view.annotations.columns %}<text x="{{ column.x + 40 }}" y="13" text-anchor="middle" font-size="9" fill="#354f61">{{ column.label }}</text>{% endfor %}
+    {% for cell in view.annotations.rect_cells %}<rect class="metadata-cell" x="{{ cell.x }}" y="{{ cell.y }}" width="{{ cell.width }}" height="{{ cell.height }}" fill="{{ cell.color }}"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></rect>{% endfor %}{% endif %}
+    {% for node in shape.nodes %}
+      {% if node.leaf %}<circle cx="{{ node.x }}" cy="{{ node.y }}" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="{{ node.label }}" x="{{ node.label_x if layout == 'circular' else node.x + 8 }}" y="{{ node.label_y if layout == 'circular' else node.y + 4 }}" {% if layout == 'circular' %}text-anchor="{{ node.text_anchor }}" transform="rotate({{ node.label_rotation }} {{ node.label_x }} {{ node.label_y }})"{% endif %} fill="#172a3c" font-size="{{ shape.font_size if layout == 'circular' else 12 }}"><title>{{ node.label }} · Supplied branch length: {{ node.branch_length_text if node.branch_length_text is not none else 'Not provided' }}</title>{{ node.label|truncate(18 if layout == 'circular' else 46, true) }}</text>
       {% elif node.label %}<text x="{{ node.x + 3 }}" y="{{ node.y - 5 }}" fill="#536779" font-size="10">{{ node.label }}</text>{% endif %}
     {% endfor %}
-    {% if view.scale %}<line x1="{{ view.scale.x1 }}" y1="{{ view.scale.y }}" x2="{{ view.scale.x2 }}" y2="{{ view.scale.y }}" stroke="#355a6a" stroke-width="2"/><text x="{{ view.scale.x1 }}" y="{{ view.scale.y + 17 }}" fill="#536779" font-size="10">{{ view.scale.label }}</text>{% endif %}
+    {% if shape.scale %}<line x1="{{ shape.scale.x1 }}" y1="{{ shape.scale.y }}" x2="{{ shape.scale.x2 }}" y2="{{ shape.scale.y }}" stroke="#355a6a" stroke-width="2"/><text x="{{ shape.scale.x1 }}" y="{{ shape.scale.y + 17 }}" fill="#536779" font-size="10">{{ shape.scale.label }}</text>{% endif %}
   </svg>
   </div>
   {% if view.note %}<figcaption class="muted">{{ view.note }}</figcaption>{% endif %}
+  <p class="muted">{{ view.annotations.mapping_note }} Circular ring order, inner to outer: Country, Year, Lineage, MLST, Plasmid cluster.</p>
+  <details class="source-details"><summary>Metadata colors and tip mapping</summary>
+    {% for legend in view.annotations.legends %}<h4>{{ legend.label }}</h4><div class="metadata-legend">{% for entry in legend.entries %}<span><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>{% endfor %}
+    <div class="scroll"><table aria-label="{{ layout }} tree metadata"><tr><th>Tip</th><th>Matched sample</th><th>Match method</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for row in view.annotations.rows %}<tr><td>{{ row.tip_label }}</td><td>{{ row.sample }}</td><td>{{ row.match_method }}</td>{% for column in view.annotations.columns %}<td>{{ row['values'][column.key] }}</td>{% endfor %}</tr>{% endfor %}</table></div>
+  </details>
   {% else %}<div class="not-performed">Tree view unavailable — {{ view.reason }}</div>{% endif %}
   {% if newick %}<details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">{{ newick }}</pre></details>{% endif %}
 </figure>
