@@ -1,0 +1,18 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['run'] -%}
+{{ page_header(page, 'Run identity and the parameters recorded for this report.') }}
+{% call panel('Run summary', 'info') %}
+<table class="kv">
+    <tr><td>Pipeline version</td><td>CholeraFlow {{ run.version }}</td></tr>
+    <tr><td>Report generated</td><td>{{ run.generated_at or run.date }}</td></tr>
+    <tr><td>Analysis mode</td><td>{{ run.mode }}</td></tr>
+    <tr><td>Samples submitted</td><td>{{ run.sample_count }}</td></tr>
+    <tr><td>Runtime</td><td>{{ run.runtime }}</td></tr>
+    {% for k, v in run.params.items() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+</table>
+{% endcall %}
+{{ page_footer(page) }}

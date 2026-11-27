@@ -1,0 +1,28 @@
+.js .cf-tree-inactive { display:none; }
+.cf-tree-no-labels .tree-tip { visibility:hidden; } .cf-tree-no-tracks .metadata-cell { visibility:hidden; }
+.tree-tip[data-cf-select] { cursor:pointer; } .tree-tip.is-selected { fill:var(--cf-accent) !important; font-weight:800; }
+@media print { .js .cf-tree-inactive { display:block; } .cf-tree-no-labels .tree-tip, .cf-tree-no-tracks .metadata-cell { visibility:visible; } }
+
+.tree-circular { min-width:0; width:100%; height:min(65vh,640px); }
+@media print { .tree-circular { height:auto !important; } }
+
+.tree-panel { padding:22px; border-radius:12px; box-shadow:none; }
+.tree-panel .chart-heading { padding-bottom:14px; border-bottom:1px solid var(--cf-border); }
+.tree-panel .chart-heading h3 { font-size:18px; }
+.tree-viewport { padding:16px; background:var(--cf-chart-surface); }
+.tree-rectangular { min-width:850px; width:100%; }
+.tree-circular { height:620px; width:100%; min-width:720px; }
+.tree-branch { stroke:var(--cf-text-2); stroke-width:1.5; fill:none; }
+.tree-leader { stroke:var(--cf-border-strong); stroke-width:1; stroke-dasharray:2 4; }
+.tree-terminal { fill:var(--cf-accent); stroke:var(--cf-surface); stroke-width:1.5; }
+.tree-scale { stroke:var(--cf-text); stroke-width:1.5; }
+.tree-scale-label,.tree-track-heading,.tree-internal-label { fill:var(--cf-text-2); font-size:10px; }
+.tree-tip { font-family:var(--cf-font-mono); fill:var(--cf-text); }
+.tree-review-dot { fill:var(--cf-indigo); }
+.tree-legends { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:18px 0;border-bottom:1px solid var(--cf-border); }
+.tree-legend-block > strong { font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--cf-text-2); }
+.tree-legend-block .metadata-legend { margin:8px 0 0;gap:7px 12px;font-size:11px; }
+.tree-legend-block small { color:var(--cf-text-2); }
+.tree-guide { margin:14px 0 0; font-size:11px; }
+@media(max-width:640px){.tree-panel{padding:14px;}.tree-legends{grid-template-columns:1fr 1fr;}}
+@media print{.tree-circular,.tree-rectangular{min-width:0;height:auto;}}

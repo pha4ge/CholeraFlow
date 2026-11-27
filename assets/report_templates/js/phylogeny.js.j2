@@ -1,0 +1,24 @@
+/* Tree controls change presentation only: no rerooting, pruning or branch rescaling. */
+CF.module("phylogeny", () => {
+ const page=doc.getElementById("phylogeny");
+ const panels=CF.qsa(".tree-panel",page); if(!panels.length)return;
+ const selector=CF.el("select",{"aria-label":"Tree layout",class:"cf-select"},CF.el("option",{value:"rectangular"},"Rectangular"),CF.el("option",{value:"circular"},"Circular"),CF.el("option",{value:"both"},"Both layouts"));
+ const setLayout=()=>panels.forEach(panel=>panel.classList.toggle("cf-tree-inactive",selector.value!=="both"&&!panel.querySelector(".tree-"+selector.value)));
+ selector.addEventListener("change",setLayout); page.querySelector(".cf-page-header").after(CF.el("label",{class:"cf-field"},"Tree layout",selector));setLayout();
+ panels.forEach(panel=>{
+  const svg=panel.querySelector("svg.tree-svg");const controls=panel.querySelector(".tree-controls");if(!svg||!controls)return;
+  const zoom=panel.querySelector(".tree-zoom");const viewport=panel.querySelector(".tree-viewport");
+  if(svg.classList.contains("tree-circular"))zoom.addEventListener("input",()=>{svg.style.height=(640*Number(zoom.value)/100)+"px";});
+  const checkbox=(text,cls,handler)=>{const input=CF.el("input",{type:"checkbox",checked:true});input.addEventListener("change",()=>handler(input.checked));controls.append(CF.el("label",null,input," "+text));};
+  checkbox("Tip labels","labels",on=>svg.classList.toggle("cf-tree-no-labels",!on));
+  checkbox("Metadata tracks","tracks",on=>svg.classList.toggle("cf-tree-no-tracks",!on));
+  const size=CF.el("input",{type:"range",min:8,max:20,value:12,"aria-label":"Tree label size"});const labelSize=()=>{const box=svg.viewBox.baseVal;const bounds=svg.getBoundingClientRect();const factor=Math.min(bounds.width/box.width,bounds.height/box.height)||1;CF.qsa(".tree-tip",svg).forEach(tip=>tip.style.fontSize=(Number(size.value)/factor)+"px");};
+  if(svg.classList.contains("tree-circular")&&CF.qsa(".tree-tip",svg).length>60)size.value=9;
+  size.addEventListener("input",labelSize);
+  if(svg.classList.contains("tree-circular")){CF.raf(labelSize);selector.addEventListener("change",()=>CF.raf(labelSize));}controls.append(CF.el("label",null,"Label size ",size));
+  const reset=CF.el("button",{type:"button",class:"cf-btn cf-btn--sm"},"Fit / reset");reset.addEventListener("click",()=>{zoom.value=100;svg.style.width="100%";svg.style.removeProperty("height");viewport.scrollLeft=viewport.scrollTop=0;panel.querySelector(".tree-find").value="";CF.qsa(".tree-tip",svg).forEach(t=>{t.classList.remove("match");t.style.removeProperty("font-size");});});
+  const focus=CF.el("button",{type:"button",class:"cf-btn cf-btn--sm"},"Focus figure");focus.addEventListener("click",()=>CF.focusFigure(panel));controls.append(reset,focus);
+  CF.qsa(".tree-tip",svg).forEach(tip=>{const id=CF.resolve(tip.dataset.tipLabel);if(id){tip.dataset.cfSelect=id;tip.dataset.cfSample=id;tip.tabIndex=0;tip.setAttribute("role","button");tip.setAttribute("aria-label","Inspect sample "+tip.dataset.tipLabel);}});
+  panel.dataset.scope="filterable";
+ });
+}, {page:"phylogeny"});

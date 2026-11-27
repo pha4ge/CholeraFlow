@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — scientific figure refinement, 2026-11-27
+
+- Rework all shared figures with legible labels, consistent axes and direct values;
+  add a consolidated QC board, adaptive metadata composition and a collection timeline.
+- Introduce source-valued SVG distance maps, explicit marker-state matrices,
+  typing profiles and annotated rectangular/circular tree workspaces with visible legends.
+- Preserve original branch lengths/root stems, matrix cells, evidence denominators,
+  unavailable states and observed forest edges; extend presentation regression coverage.
+
+## Unreleased — Genomic Surveillance Explorer, 2026-11-27
+
+- Introduce an offline application shell with grouped navigation, sample search,
+  linked selection, metadata filters, detail tabs, light/dark themes and print views.
+- Add an original vector workflow, sample and evidence coverage views, explicit
+  singleton-component reporting, and local downloads of records, matrices,
+  Newick, network edges and the workflow schematic.
+- Surface discordant CTX/SXT-related records and failed-QC comparative inclusion
+  for review, preserving both source calls and existing scientific methods.
+- Use direct marks and exact observed-distance categories for small cohorts;
+  keep complete matrix data embedded for offline downloads when display is bounded.
+- Fix duplicate XML namespaces in standalone SVG exports, retain complete figure
+  captions, embed asset licences and improve tablet/mobile toolbar layout.
+- Add reporting regressions and file-based browser/scale validation tools.
+
 ## Unreleased — pipeline improvement, 2026-10-28
 
 ### Correctness and execution

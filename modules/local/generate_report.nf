@@ -61,6 +61,9 @@ process GENERATE_REPORT {
     def lineage_arg = lineage ? "--lineage-assignments ${lineage}" : ""
     def plasmid_arg = plasmids ? "--plasmid-results ${plasmids}" : ""
     def demo_arg = params.demo_run ? '--demo' : ''
+    // Run identity shown in the report header and Run information page (optional).
+    def run_id_arg = workflow.runName ? "--run-id '${workflow.runName}'" : ''
+    def revision_arg = workflow.commitId ? "--pipeline-revision '${workflow.commitId}'" : ''
     """
     export PATH="${moduleDir.parent.parent}/bin:\$PATH"
     
@@ -75,6 +78,9 @@ process GENERATE_REPORT {
         --output   outbreak_report.html \\
         --pipeline-version ${workflow.manifest.version ?: '0.2.0'} \\
         --run-date "\$(date +%Y-%m-%d)" \\
+        --generated-at "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
+        --nextflow-version '${nextflow.version}' \\
+        ${run_id_arg} ${revision_arg} \\
         --mode ${params.use_case} \\
         --reference '${params.ref_genbank}' \\
         --snp-threshold ${params.snp_outbreak_threshold} \\

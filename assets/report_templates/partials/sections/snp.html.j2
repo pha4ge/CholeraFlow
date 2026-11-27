@@ -1,0 +1,22 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['snp'] -%}
+{{ page_header(page, 'Validated pairwise SNP distances from the supplied matrix. SNP differences are not allele differences.') }}
+{%- from 'partials/distance_map.html.j2' import distance_map -%}
+{% if views.distances.snp %}{% call figure('snp-heatmap', 'The pairwise SNP landscape', 'Each tile is one supplied comparison. Zero distance and unavailable comparisons remain distinct.', scope='fixed', exports=('svg','png'), caption='Sequential colour indicates greater distance; the diagonal is the supplied self-comparison. This display does not establish direct transmission.') %}
+{{ distance_map(views.distances.snp, 'snp') }}
+{% endcall %}{% endif %}
+{{ chart_grid(charts.distances[:1]) }}
+{% if phylogenetics.heatmap %}
+  <details class="cf-disclosure"><summary>Accessible SNP matrix · original numeric values</summary>
+  <p class="muted">Darker cells indicate greater pairwise SNP distance (max {{ phylogenetics.heatmap.max }} SNPs in this view). Showing {{ phylogenetics.heatmap.shown_samples }} of {{ phylogenetics.heatmap.total_samples }} samples; the complete included matrix is available in Downloads.</p>
+  <p class="muted">Scale: 0 to {{ phylogenetics.heatmap.max }} SNP differences. Light to dark: increasing distance. Hatched NA: unavailable.</p>
+  <div class="scroll"><table class="matrix-table" aria-label="Pairwise SNP distance matrix">
+    <tr><th scope="col">Sample</th>{% for s in phylogenetics.heatmap.samples %}<th scope="col">{{ s }}</th>{% endfor %}</tr>
+    {% for row in phylogenetics.heatmap.rows %}<tr><th scope="row">{{ row.sample }}</th>{% for c in row.cells %}<td class="cf-distance-tone cf-distance-{{ c.tone }}" style="text-align:center">{{ c.text }}</td>{% endfor %}</tr>{% endfor %}
+  </table></div></details>
+{% else %}<div class="not-performed">Analysis not performed — no SNP distance matrix was supplied.</div>{% endif %}
+{{ page_footer(page) }}

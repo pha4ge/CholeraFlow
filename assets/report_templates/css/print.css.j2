@@ -1,0 +1,55 @@
+/* ── Print / PDF: a scientific technical report, not a printed dashboard ─────
+   Every section prints in order (filters and paging are not applied), with
+   interactive chrome removed, white backgrounds and figure captions retained. */
+@media print {
+  @page { size: auto; margin: 14mm 13mm 16mm; }
+  :root, :root[data-theme="dark"] {
+    color-scheme: light;
+    --cf-bg: #fff; --cf-surface: #fff; --cf-surface-2: #f6f8fa; --cf-surface-3: #eef2f6; --cf-sunken: #f6f8fa;
+    --cf-border: #d5dde6; --cf-border-strong: #b8c4d0; --cf-text: #111c2e; --cf-text-2: #455467; --cf-text-3: #5b6b80;
+    --cf-chart-surface: #fff; --cf-chart-ink: #111c2e; --cf-chart-ink-2: #455467; --cf-chart-grid: #e8edf2; --cf-chart-axis: #b8c4d0;
+    --cf-accent: #087f8c; --cf-accent-soft: #eef7f6; --cf-accent-ink: #065e68; --cf-link: #065e68;
+  }
+  html, body { background: #fff !important; font-size: 10pt; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; animation: none !important; }
+  .cf-sidebar, .cf-toolbar, .cf-filterbar, .cf-drawer, .cf-popover, .cf-scrim, .cf-tooltip, .cf-dialog, .skip-link,
+  .cf-page-footer, .cf-figure-actions, .cf-table-tools, .cf-no-matches, .cf-tablist, .cf-present-exit,
+  .tree-controls, .network-controls, .js-svg-export, .sample-filter-label, .sample-filter-count, [data-print="hide"] { display: none !important; }
+  .cf-shell { margin: 0 !important; }
+  .cf-main { max-width: none; padding: 0; }
+  .js.cf-paged .cf-page, .cf-page { display: block !important; animation: none; }
+  .cf-page { break-before: page; margin: 0 !important; padding: 0 !important; border: 0 !important; }
+  .cf-page:first-of-type { break-before: auto; }
+  .cf-page-header { margin-bottom: 12px; }
+  .cf-page-title { font-size: 17pt; }
+  .cf-page-icon { width: 26px; height: 26px; }
+  h2, h3, h4, .cf-figure-header, .cf-panel-header { break-after: avoid; }
+  .cf-figure, .cf-panel, .cf-metric, .cf-notice, .cf-empty, tr, .cf-availability-item { break-inside: avoid; }
+  .cf-grid { display: block; }
+  .cf-grid > * { margin-bottom: 12px; }
+  .cf-metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .cf-metric { min-height: 0; border-color: #cfd8e3; }
+  .cf-hero { background: #fff !important; color: #111c2e; border: 1px solid #cfd8e3; padding: 16px 18px; }
+  .cf-hero-title { color: #102a43; font-size: 20pt; }
+  .cf-hero-subtitle, .cf-hero-meta li { color: #334155; }
+  .cf-hero-meta li strong { color: #111c2e; }
+  .cf-hero-meta li { border-color: #cfd8e3; background: #f8fafc; }
+  .cf-hero-art { display: none !important; }
+  .cf-table-wrap, .scroll, .cf-figure-viewport, .chart-viewport, .tree-viewport, .network-viewport { overflow: visible !important; max-height: none !important; height: auto !important; border-color: #d5dde6; }
+  .cf-table thead { display: table-header-group; }
+  .cf-table thead th { position: static; }
+  .cf-table th, .cf-table td, .cf-page table th, .cf-page table td { padding: 4px 6px; font-size: 8pt; white-space: normal !important; overflow-wrap: anywhere; }
+  .cf-table--sticky-first tbody td:first-child, .cf-table--sticky-first thead th:first-child, .matrix-table th { position: static; }
+  .cf-table tr.cf-hide-text, .cf-table tr.cf-hide-filter, tr[hidden] { display: table-row !important; }
+  .is-filtered-out, svg .is-filtered-out { opacity: 1 !important; }
+  .cf-tabpanel[hidden] { display: block !important; }
+  .js .cf-tabs.is-enhanced .cf-tabpanel-title { position: static; width: auto; height: auto; clip: auto; }
+  svg { max-width: 100% !important; }
+  .report-chart, .tree-svg, .report-network, .cf-figure svg { min-width: 0 !important; width: 100% !important; height: auto !important; max-height: 235mm; }
+  details > *:not(summary) { display: block; }
+  .cf-disclosure > summary .cf-disclosure-chevron { display: none; }
+  a { color: inherit; text-decoration: none; }
+  .cf-footer { border-top: 1px solid #cfd8e3; padding: 8px 0 0; }
+  .cf-print-only { display: block !important; }
+}
+.cf-print-only { display: none; }

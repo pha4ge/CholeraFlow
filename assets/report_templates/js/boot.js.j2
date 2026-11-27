@@ -1,0 +1,39 @@
+/* CholeraFlow report runtime — boot. Each step is isolated so one failure
+   leaves the rest of the report (and all static content) working. */
+CF.enhance = scope => {
+  const target = scope || doc;
+  CF.enhanceTabs(target);
+  CF.qsa(".scroll table:not(.matrix-table):not([data-cf-enhanced]), table[data-cf-table]:not([data-cf-enhanced])", target)
+    .forEach(table => { if (table.closest(".cf-page")) CF.enhanceTable(table); });
+  CF.enhanceFigures(target);
+  CF.qsa("svg [data-cf-select]:not([tabindex])", target).forEach(node => { node.setAttribute("tabindex", "0"); if (!node.hasAttribute("role")) node.setAttribute("role", "button"); });
+  CF.paintSelection();
+};
+const initPageModules = CF.initPage;
+CF.initPage = pageId => {
+  const pending = CF.modules.some(entry => entry.options.page === pageId && !entry.done);
+  initPageModules(pageId);
+  if (pending) {
+    const page = doc.getElementById(pageId);
+    try { CF.enhance(page); } catch (error) { console.error(error); }
+    if (CF.activeFilters().length) CF.applyFilters();
+  }
+};
+const initAllModules = CF.initAll;
+CF.initAll = () => {
+  const pending = CF.modules.some(entry => !entry.done);
+  initAllModules();
+  if (pending) { try { CF.enhance(doc); } catch (error) { console.error(error); } }
+};
+(function boot() {
+  const step = (name, fn) => { try { fn(); } catch (error) { console.error("CholeraFlow: " + name + " failed; static content remains available.", error); } };
+  step("tooltip", CF.tooltip.init);
+  step("modules", () => CF.modules.filter(entry => !entry.options.page).forEach(CF.runModule));
+  step("enhance", () => CF.enhance(doc));
+  step("shell", CF.shell.init);
+  step("downloads", CF.shell.wireDownloadButtons);
+  step("route", () => CF.shell.route());
+  step("scopes", () => { CF.qsa("[data-cf-scope]").length && CF.emit("filters", {ids: null}); });
+  CF.ready = true;
+  CF.emit("ready", {});
+})();

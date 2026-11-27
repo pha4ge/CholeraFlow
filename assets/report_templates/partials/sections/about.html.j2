@@ -1,0 +1,12 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['about'] -%}
+{{ page_header(page, 'About CholeraFlow and this offline report.') }}
+<p>CholeraFlow is a Nextflow pipeline for <em>Vibrio cholerae</em> genomic surveillance and outbreak investigation.</p>
+<p>This explorer presents supplied pipeline outputs; it does not perform a new genomic analysis. Runtime assets are embedded, with no telemetry or external requests.</p>
+<h3>Asset licences and attribution</h3><p>Lucide icons: ISC, with Feather portions under MIT. Inter and JetBrains Mono: SIL Open Font License 1.1. Workflow artwork and brand motifs are original CholeraFlow illustrations.</p>
+{% for licence in assets.licences %}<details class="cf-disclosure"><summary>{{ licence.file }}</summary><pre class="cf-pre">{{ licence.text }}</pre></details>{% endfor %}
+{{ page_footer(page) }}

@@ -1,0 +1,56 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['overview'] -%}
+{%- set m = model -%}
+<div class="cf-hero">
+<svg class="cf-hero-art" viewBox="0 0 240 190" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M30 134C23 95 45 43 104 31" stroke-width="18" stroke-linecap="round"/><path d="M104 31c26-8 20-25 44-17s21 24 46 12"/><path d="M62 160h42v-35h38v-32h54M104 160h57v14h35"/><circle cx="62" cy="160" r="4"/><circle cx="196" cy="93" r="4"/><circle cx="196" cy="174" r="4"/><path d="M151 47v25m-10-15h20m-61 35v17m-8-9h17" opacity=".5"/></g></svg>
+  <div class="cf-hero-text">
+    <p class="cf-hero-eyebrow">CholeraFlow</p>
+    <h1 class="cf-hero-title">Genomic Surveillance Explorer</h1>
+    <p class="cf-hero-subtitle">Interactive genomic characterisation and outbreak investigation report for <em>Vibrio cholerae</em></p>
+    <ul class="cf-hero-meta" aria-label="Report identity">
+      <li>{{ icon('package') }}<span>Pipeline <strong>{{ run.version }}</strong></span></li>
+      <li>{{ icon('calendar') }}<span>Generated <strong>{{ run.generated_at or run.date }}</strong></span></li>
+      <li>{{ icon('workflow') }}<span>Mode <strong>{{ run.mode }}</strong></span></li>
+      {% if run.run_id %}<li>{{ icon('hash') }}<span>Run <strong class="cf-mono">{{ run.run_id }}</strong></span></li>{% endif %}
+      <li>{{ icon('users') }}<span>Cohort <strong>{{ m.sample_count }}</strong> sample identifiers</span></li>
+      <li>{{ icon('wifi-off') }}<span>Offline, self-contained</span></li>
+      {% if demo|default(false) %}<li class="is-demo">{{ icon('flask-conical') }}<span><strong>Synthetic demonstration</strong></span></li>{% endif %}
+    </ul>
+  </div>
+</div>
+{{ page_header(page, 'Headline results with their denominators, records that need review and which analyses supplied results. Every card links to its evidence.') }}
+<div class="cf-metric-grid" role="list">
+  {% for metric in m.metrics if metric.primary %}<div role="listitem">{{ metric_card(metric) }}</div>{% endfor %}
+</div>
+<details class="cf-disclosure cf-metric-secondary"><summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>More cohort measures</span></summary>
+  <div class="cf-metric-grid cf-metric-grid--compact" role="list">{% for metric in m.metrics if not metric.primary %}<div role="listitem">{{ metric_card(metric, 'cf-metric--compact') }}</div>{% endfor %}</div>
+</details>
+<div class="cf-grid">
+  <div class="cf-span-4" id="overview-findings">{% call panel('Reported findings', 'clipboard-list', 'Summaries of existing outputs, with their denominators.') %}
+    <ul class="cf-finding-list">{% for item in m.findings.reported %}<li class="cf-finding cf-finding--{{ item.tone }}">{{ icon(item.icon) }}<a href="{{ item.href }}">{{ item.text }}</a></li>{% else %}<li class="cf-finding">No analysis outputs were supplied.</li>{% endfor %}</ul>
+  {% endcall %}</div>
+  <div class="cf-span-4" id="overview-review">{% call panel('Records requiring review', 'git-compare', 'Conflicting or unexpected source records. Nothing is reconciled automatically.') %}
+    <ul class="cf-finding-list">{% for item in m.findings.review %}<li class="cf-finding cf-finding--review">{{ icon(item.icon) }}<a href="{{ item.href }}">{{ item.text }}</a></li>{% else %}<li class="cf-finding cf-finding--pass">{{ icon('circle-check') }}<span>No cross-source discrepancies were detected in the supplied records.</span></li>{% endfor %}</ul>
+    {% set flagged = m.samples|selectattr('flags')|list %}
+    {% if flagged %}<details class="cf-disclosure"><summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>Review details by sample</span><span class="cf-disclosure-count">{{ flagged|length }}</span></summary><div class="cf-disclosure-body">
+      {% for item in flagged %}<div class="cf-review-item"><p>{{ sample_id(item.id) }}</p><ul>{% for flag in item.flags %}<li><strong>{{ flag.title }}.</strong> {{ flag.message }}</li>{% endfor %}</ul></div>{% endfor %}
+    </div></details>{% endif %}
+  {% endcall %}</div>
+  <div class="cf-span-4" id="overview-coverage">{% call panel('Analysis coverage and limitations', 'layers', 'What was and was not available to this report.') %}
+    <ul class="cf-finding-list">{% for item in m.findings.coverage %}<li class="cf-finding cf-finding--{{ item.tone }}">{{ icon(item.icon) }}<a href="{{ item.href }}">{{ item.text }}</a></li>{% endfor %}</ul>
+  {% endcall %}</div>
+</div>
+<div id="overview-availability">{% call panel('Analysis availability', 'layers', 'Report-file availability for this run. A non-empty results file is not proof that an analysis completed successfully or that its results are biologically valid.') %}
+  <div class="cf-availability" role="list">
+    {% for row in m.availability %}<a class="cf-availability-item" href="#{{ row.page }}" role="listitem" data-state="{{ row.state }}">
+      <span class="cf-availability-name">{{ row.label }}</span>{{ status_badge(row.state) }}
+      <span class="cf-availability-detail">{% if row.coverage %}{{ row.coverage[0] }} of {{ row.coverage[1] }} samples{% else %}{{ row.file_status }}{% endif %}{% if row.note %} · {{ row.note }}{% endif %}</span>
+    </a>{% endfor %}
+  </div>
+  <details class="cf-disclosure"><summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>What the availability states mean</span></summary><div class="cf-disclosure-body"><dl class="cf-kv">{% for key, state in m.availability_states.items() %}<div><dt>{{ status_badge(key) }}</dt><dd>{{ state.description }}</dd></div>{% endfor %}</dl></div></details>
+{% endcall %}</div>
+{{ page_footer(page) }}

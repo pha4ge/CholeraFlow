@@ -1,0 +1,9 @@
+/* Connect exact source identifiers, never category labels, to sample selection. */
+CF.module("chart-linking", () => {
+ CF.qsa("[data-cf-source-label]").forEach(node=>{
+  const id=CF.resolve(node.dataset.cfSourceLabel); if(!id)return;
+  node.dataset.cfSample=id; node.dataset.cfSelect=id;
+  node.setAttribute("aria-label","Inspect sample "+node.dataset.cfSourceLabel);
+  const figure=node.closest("figure"); if(figure)figure.dataset.scope="filterable";
+ });
+});

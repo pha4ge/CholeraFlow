@@ -1,0 +1,22 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['cgmlst'] -%}
+{{ page_header(page, 'Validated pairwise cgMLST allele differences from the supplied matrix. NA is an unavailable comparison, not zero distance.') }}
+{%- from 'partials/distance_map.html.j2' import distance_map -%}
+{% if views.distances.cgmlst %}{% call figure('cgmlst-heatmap', 'The pairwise cgMLST landscape', 'Each tile is one supplied comparison. Zero distance and unavailable comparisons remain distinct.', scope='fixed', exports=('svg','png'), caption='Sequential colour indicates greater distance; the diagonal is the supplied self-comparison. This display does not establish direct transmission.') %}
+{{ distance_map(views.distances.cgmlst, 'cgmlst') }}
+{% endcall %}{% endif %}
+{{ chart_grid(charts.distances[1:]) }}
+{% if cgmlst.heatmap %}
+  <details class="cf-disclosure"><summary>Accessible cgMLST matrix · original numeric values</summary>
+  <p class="muted">Showing {{ cgmlst.heatmap.shown_samples }} of {{ cgmlst.heatmap.total_samples }} samples. NA means no available pairwise comparison, not zero distance. The complete included matrix is available in Downloads.</p>
+  <p class="muted">Scale: 0 to {{ cgmlst.heatmap.max }} allele differences. Light to dark: increasing distance. Hatched NA: unavailable.</p>
+  <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
+    <tr><th scope="col">Sample</th>{% for sample in cgmlst.heatmap.samples %}<th scope="col">{{ sample }}</th>{% endfor %}</tr>
+    {% for row in cgmlst.heatmap.rows %}<tr><th scope="row">{{ row.sample }}</th>{% for cell in row.cells %}<td class="cf-distance-tone cf-distance-{{ cell.tone }}" style="text-align:center">{{ cell.text }}</td>{% endfor %}</tr>{% endfor %}
+  </table></div></details>
+{% else %}<div class="not-performed">Analysis not performed — no cgMLST distance matrix was supplied.</div>{% endif %}
+{{ page_footer(page) }}

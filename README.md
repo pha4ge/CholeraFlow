@@ -128,6 +128,12 @@ This project tracks database revisions and checksums in a local manifest for tra
 
 After a successful outbreak run, open the generated report at `results/reports/outbreak_report.html`.
 
+This is the same report design as the synthetic example: the pipeline and demo
+use the same generator, templates, fonts, styles, interactive controls and chart
+renderers. Your run supplies the actual sample results and provenance. Analyses
+that did not run show an explicit unavailable state. Set `--outdir` to change the
+output root; the report is always published under `<outdir>/reports/`.
+
 The output layout is structured like this:
 
 ```text
@@ -147,39 +153,45 @@ These directories appear only when the relevant analysis ran. `not_run` placehol
 
 ## Report structure
 
-The HTML report is self-contained and contains no external CSS, JavaScript,
-or font dependencies.
+The report, *CholeraFlow · Genomic Surveillance Explorer*, is one
+self-contained HTML file: styles, scripts, fonts, icons and all report data are
+embedded. It opens by double-clicking (it works from `file://` with no web
+server, internet connection or login), makes no network requests, and keeps all
+scientific content readable when JavaScript is disabled or the report is printed.
 
-The dashboard includes rectangular and circular trees, a GrapeTree-style
-cgMLST distance network, 22 data-chart panels when their inputs are available,
-SNP/cgMLST heatmaps, searchable sample records, CSV/SVG exports, and a print/PDF
-view. The network supports metadata coloring, sample search, zoom, drag and
-keyboard inspection. It displays a deterministic minimum spanning forest of
-supplied distances; GrapeTree/MSTreeV2 is not run. See
-[report controls](docs/output.md#exploring-the-html-report) and the explicitly
-labelled [synthetic example](examples/reports/outbreak_report.html).
+It is organised as an application with six navigation groups and 25 pages:
 
-Both rectangular and circular trees have country/year/lineage/MLST/plasmid
-metadata tracks. Existing MLST output is collected from Bactopia automatically;
-lineage and plasmid tracks use explicitly supplied classifier records with
-scheme, method and reference provenance. See the [dummy cohort](examples/dummy/README.md)
-for samplesheet generation and a clearly labelled demonstration.
+| Group | Pages |
+| --- | --- |
+| Overview | Executive overview, Pipeline workflow, Run information |
+| Sample analytics | Sample explorer, Cohort metadata, Quality control |
+| Genomic characterisation | Species and typing, Virulence, Antimicrobial resistance, Reported classifications |
+| Comparative genomics | Phylogenetic explorer, SNP distances, cgMLST distances, Distance network, Global context |
+| Outbreak intelligence | Reported genomic clusters, Interpretation, Limitations, Recommended follow-up |
+| Documentation | Methods, Software versions, Provenance, Downloads, Interpretation guide, About |
 
-The report contains these sections in order:
+Highlights: headline measures with explicit denominators and links to their
+evidence; records whose sources disagree are flagged for review with both values
+shown, never reconciled; a unified sample explorer and details drawer; linked
+selection and display-only filters across tables, trees, heatmaps and the
+network; annotated rectangular and circular trees drawn from the supplied Newick
+without rerooting or inference; SNP and cgMLST heatmaps that keep missing
+comparisons distinct from zero; a deterministic minimum-spanning-forest view of
+supplied allele distances (GrapeTree/MSTreeV2 is not run); light, dark and
+presentation modes; SVG/PNG/CSV figure exports and a download centre; and a
+dedicated print/PDF layout. Skipped analyses are always shown as explicitly
+unavailable rather than silently omitted, and the mandatory limitations are
+never collapsed.
 
-1. Run summary
-2. QC summary
-3. Cholera characterisation
-4. Virulence summary
-5. AMR summary
-6. Phylogenetic summary
-7. Global context
-8. Outbreak interpretation
-9. Limitations
-10. Next steps
-11. Methods
-
-This structure is important for public-health review and ensures that skipped analyses are explicitly flagged instead of silently omitted.
+See the [report user guide](docs/REPORT_USER_GUIDE.md), the
+[design system and architecture](docs/REPORT_DESIGN_SYSTEM.md), the
+[implementation and validation record](REPORT_REDESIGN_SUMMARY.md), the
+[output guide](docs/output.md#exploring-the-html-report) and the explicitly
+labelled [synthetic example](examples/reports/outbreak_report.html). Existing
+MLST output is collected from Bactopia automatically; lineage and plasmid
+annotations use explicitly supplied classifier records with scheme, method and
+reference provenance. See the [dummy cohort](examples/dummy/README.md) for
+samplesheet generation and a clearly labelled demonstration.
 
 ## Validation and development
 

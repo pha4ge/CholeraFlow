@@ -36,9 +36,9 @@ def test_unassigned_source_records_never_become_metadata_assignments():
         [{'sample': 'DEMO_A', 'scheme': 'DEMO_LINEAGE', 'lineage': 'na', 'status': 'unassigned'}],
         [{'sample': 'DEMO_A', 'scheme': 'DEMO_PLASMID', 'cluster_id': 'n/a', 'status': 'unassigned'}],
     )
-    assert all(entry == {'value': 'Not available', 'color': '#cbd5df'}
+    assert all(entry == {'value': 'Not available', 'color': '#cbd5df', 'token': 'na', 'dark': '#3a4b61'}
                for entry in annotations['samples']['DEMO_A'].values())
-    assert all(legend == [{'value': 'Not available', 'color': '#cbd5df', 'count': 1}]
+    assert all(legend == [{'value': 'Not available', 'color': '#cbd5df', 'token': 'na', 'dark': '#3a4b61', 'count': 1}]
                for legend in annotations['legends'].values())
 
 

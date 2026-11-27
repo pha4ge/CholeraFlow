@@ -29,6 +29,20 @@ from report_annotations import annotate_tree, annotate_network
 from report_network import build_distance_network
 from report_classification import load_classifications
 from report_charts import categories
+from report_model import build_model
+from report_palette import css_tokens, tone_tokens
+from report_assets import font_faces
+from report_overview import build_overview_view
+from report_workflow import build_workflow_view
+from report_samples import build_samples_view
+from report_qc import build_qc_view
+from report_metadata import build_metadata_view
+from report_markers import build_markers_view
+from report_phylogeny import build_phylogeny_view
+from report_distances import build_distances_view
+from report_clusters import build_clusters_view
+from report_documentation import build_documentation_view
+from report_geo import build_geo_view
 
 # Fixed Limitations text — PIPELINE_SPEC.md Section 6 Step 13. Mandatory, verbatim.
 LIMITATIONS = [
@@ -47,6 +61,66 @@ REFERENCE_GENOME = {
 }
 
 NOT_RUN_TOKENS = ("not_run", "no_schema", "not_performed")
+
+# Report information architecture: (group id, group title, [(page id, title, icon, legacy anchor)]).
+# Legacy anchors s1–s11 keep deep links from earlier report versions working.
+NAVIGATION = [
+    ("overview-group", "Overview", [
+        ("overview", "Executive overview", "layout-dashboard", None),
+        ("workflow", "Pipeline workflow", "workflow", None),
+        ("run", "Run information", "info", "s1"),
+    ]),
+    ("samples-group", "Sample analytics", [
+        ("samples", "Sample explorer", "table-2", None),
+        ("metadata", "Cohort metadata", "map-pin", None),
+        ("qc", "Quality control", "shield-check", "s2"),
+    ]),
+    ("characterisation-group", "Genomic characterisation", [
+        ("typing", "Species and typing", "microscope", "s3"),
+        ("virulence", "Virulence", "dna", "s4"),
+        ("amr", "Antimicrobial resistance", "pill", "s5"),
+        ("classifications", "Reported classifications", "tags", None),
+    ]),
+    ("comparative-group", "Comparative genomics", [
+        ("phylogeny", "Phylogenetic explorer", "network", "s6"),
+        ("snp", "SNP distances", "grid-3x3", None),
+        ("cgmlst", "cgMLST distances", "layout-grid", None),
+        ("network", "Distance network", "waypoints", None),
+        ("global", "Global context", "globe", "s7"),
+    ]),
+    ("outbreak-group", "Outbreak intelligence", [
+        ("clusters", "Reported genomic clusters", "orbit", None),
+        ("interpretation", "Interpretation", "message-square-text", "s8"),
+        ("limitations", "Limitations", "triangle-alert", "s9"),
+        ("follow-up", "Recommended follow-up", "list-checks", "s10"),
+    ]),
+    ("documentation-group", "Documentation", [
+        ("methods", "Methods", "flask-conical", "s11"),
+        ("software", "Software versions", "package", None),
+        ("provenance", "Provenance", "fingerprint", None),
+        ("downloads", "Downloads", "download", None),
+        ("guide", "Interpretation guide", "circle-help", None),
+        ("about", "About CholeraFlow", "book-open", None),
+    ]),
+]
+
+
+def navigation():
+    """Flatten NAVIGATION into page dicts with group titles and prev/next links."""
+    pages = []
+    for group_id, group_title, items in NAVIGATION:
+        for page_id, title, icon, legacy in items:
+            pages.append({"id": page_id, "title": title, "icon": icon, "legacy": legacy,
+                          "group": group_id, "group_title": group_title})
+    links = [{"id": page["id"], "title": page["title"], "icon": page["icon"]} for page in pages]
+    for index, page in enumerate(pages):
+        page["prev"] = links[index - 1] if index else None
+        page["next"] = links[index + 1] if index + 1 < len(pages) else None
+    groups = [{"id": group_id, "title": group_title,
+               "pages": [page for page in pages if page["group"] == group_id]}
+              for group_id, group_title, _ in NAVIGATION]
+    return {"groups": groups, "pages": {page["id"]: page for page in pages},
+            "order": [page["id"] for page in pages]}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -147,12 +221,18 @@ def build_qc(genome_qc):
     n_total = len(genome_qc)
     passed = [r for r in genome_qc if r.get("overall_status") in ("pass", "warn")]
     excluded = [r for r in genome_qc if r.get("overall_status") == "fail"]
+    strict = [r for r in genome_qc if r.get("overall_status") == "pass"]
+    warned = [r for r in genome_qc if r.get("overall_status") == "warn"]
     return {
         "status": "ok",
         "rows": genome_qc,
         "n_total": n_total,
+        # n_pass keeps its historical meaning (pass + warn); strict counts are separate.
         "n_pass": len(passed),
+        "n_strict_pass": len(strict),
+        "n_warn": len(warned),
         "n_excluded": len(excluded),
+        "n_other": n_total - len(passed) - len(excluded),
         "excluded": excluded,
     }
 
@@ -344,41 +424,82 @@ def build_outbreak(cluster_rows, cluster_summary, pairs):
 # the underlying data supports it.
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_sentences(qc, characterisation, virulence, amr, outbreak):
+def _assessed(rows, column):
+    return [r for r in rows if str(r.get(column, "")).strip()
+            and str(r.get(column, "")).strip().lower() not in NOT_RUN_TOKENS]
+
+
+def build_sentences(qc, characterisation, virulence, amr, outbreak, sample_total=None):
+    """Data-backed summary sentences with explicit denominators and sources.
+
+    Each sentence names the output it summarises; denominators are the samples
+    actually assessed by that output, never the whole cohort by assumption.
+    """
     sentences = []
 
-    # QC inclusion
+    # QC inclusion — warnings are reported separately from strict passes.
     if qc["status"] == "ok":
         sentences.append(
-            "{X} of {Y} samples passed genome QC. Phylogenetic inclusion also depends on mapping and sequence QC.".format(
-                X=qc["n_pass"], Y=qc["n_total"]))
+            "{X} of {Y} samples passed genome QC ({P} pass, {W} with warnings); {F} failed. "
+            "Phylogenetic inclusion also depends on mapping and sequence QC.".format(
+                X=qc["n_pass"], Y=qc["n_total"], P=qc.get("n_strict_pass", qc["n_pass"]),
+                W=qc.get("n_warn", 0), F=qc["n_excluded"]))
 
-    # Species confirmation
+    # Characterisation (species, serogroup/biotype, CTX) — characterised denominators.
     if characterisation["status"] == "ok":
         rows = characterisation["rows"]
-        y = len(rows)
-        confirmed = sum(1 for r in rows if r.get("species_confirmation") == "confirmed")
+        species_rows = _assessed(rows, "species_confirmation")
+        y = len(species_rows)
+        confirmed = sum(1 for r in species_rows
+                        if str(r.get("species_confirmation", "")).strip().lower() == "confirmed")
         if y:
+            coverage = ""
+            if sample_total and y != sample_total:
+                coverage = (" Characterisation records are available for {} of {} samples in this "
+                            "report.".format(y, sample_total))
             sentences.append(
-                "{N} of {Y} samples were confirmed as Vibrio cholerae by species screening.".format(
-                    N=confirmed, Y=y))
-        # O1 El Tor
-        o1_eltor = sum(1 for r in rows
+                "{N} of {Y} characterised samples were confirmed as Vibrio cholerae by species "
+                "screening.{C}".format(N=confirmed, Y=y, C=coverage))
+        typed = [r for r in rows if r in _assessed(rows, "serogroup") and r in _assessed(rows, "biotype")]
+        o1_eltor = sum(1 for r in typed
                        if str(r.get("serogroup", "")).startswith("O1")
                        and "el tor" in str(r.get("biotype", "")).lower())
         if o1_eltor:
-            word = "All samples" if o1_eltor == y else "{} samples".format(o1_eltor)
-            sentences.append("{} were classified as O1 El Tor.".format(word))
-        # Toxigenic (ctx operon)
-        ctx_pos = sum(1 for r in rows if str(r.get("ctx_prophage", "")).startswith("present"))
+            sentences.append(
+                "{N} of {Y} characterised samples were classified as O1 El Tor (reported serogroup O1 "
+                "and biotype El Tor).".format(N=o1_eltor, Y=len(typed)))
+        ctx_rows = _assessed(rows, "ctx_prophage")
+        ctx_pos = sum(1 for r in ctx_rows if str(r.get("ctx_prophage", "")).strip().lower().startswith("present"))
         if ctx_pos:
             sentences.append(
-                "{N} samples carry the ctx operon and are predicted toxigenic.".format(N=ctx_pos))
+                "{N} of {Y} samples with a CTX prophage call carry ctx prophage markers (CTX prophage "
+                "reported present by the characterisation output) and are predicted toxigenic.".format(
+                    N=ctx_pos, Y=len(ctx_rows)))
 
-    # Outbreak clusters (per cluster of size >= 2)
+    # VirulenceFinder ctxA/ctxB detections, reported separately with their own denominator.
+    if virulence.get("status") == "ok":
+        grid = virulence["grid"]
+        for marker in ("ctxA", "ctxB"):
+            assessed = [s for s in virulence["samples"] if grid[s].get(marker) in ("present", "absent")]
+            if assessed:
+                present = sum(1 for s in assessed if grid[s][marker] == "present")
+                sentences.append(
+                    "VirulenceFinder reports {M} in {N} of {Y} assessed samples.".format(
+                        M=marker, N=present, Y=len(assessed)))
+
+    # Outbreak clusters (connected components; singletons reported separately).
     if outbreak["status"] == "ok":
         summary = outbreak["summary"]
         thr = summary.get("snp_threshold_used", 5)
+        components = {cid: members for cid, members in outbreak["clusters"].items()
+                      if str(cid) not in ("NA", "unassigned", "not_run", "")}
+        multi = sum(1 for members in components.values() if len(members) >= 2)
+        singles = sum(1 for members in components.values() if len(members) == 1)
+        if components:
+            sentences.append(
+                "Connected-component clustering at a linkage threshold of at most {T} SNPs reported "
+                "{M} multi-sample cluster(s) and {S} singleton component(s).".format(
+                    T=thr, M=multi, S=singles))
         for cid, members in sorted(outbreak["clusters"].items(),
                                    key=lambda kv: str(kv[0])):
             if cid in ("NA", "unassigned") or len(members) < 2:
@@ -389,28 +510,51 @@ def build_sentences(qc, characterisation, virulence, amr, outbreak):
                 "epidemiological confirmation is required.".format(
                     N=len(members), C=cid, T=thr))
 
-    # AMR resistance markers per drug class
+    # AMR resistance markers per drug class, among AMR-assessed samples.
     if amr["status"] == "ok":
+        assessed_rows = [r for r in amr["rows"]
+                         if str(r.get("status", "")).strip().lower() not in NOT_RUN_TOKENS]
         for col, genes_col, label in AMR_CLASSES:
-            carriers = [(r.get("sample", ""), r.get(genes_col, ""))
-                        for r in amr["rows"]
-                        if _truthy(r.get(col)) and (r.get(genes_col) or "").strip()]
+            carriers = [r for r in assessed_rows if _truthy(r.get(col))]
             if carriers:
-                genes = sorted({g for _, gl in carriers for g in gl.split(";") if g})
+                genes = sorted({g.strip() for r in carriers
+                                for g in (r.get(genes_col) or "").split(";") if g.strip()})
                 sentences.append(
-                    "{N} samples carry resistance markers to {cls}: {genes}.".format(
-                        N=len(carriers), cls=label, genes=", ".join(genes)))
-        # SXT
+                    "{N} of {A} AMR-assessed samples carry reported resistance markers to {cls}{genes}.".format(
+                        N=len(carriers), A=len(assessed_rows), cls=label,
+                        genes=(": " + ", ".join(genes)) if genes else " (gene names not reported)"))
+        # SXT-associated MDR marker pattern (a marker co-occurrence call, not the element itself).
         if amr["sxt_samples"]:
+            sxt_assessed = [r for r in assessed_rows
+                            if str(r.get("sxt_mdr", "")).strip().lower() in ("yes", "true", "no", "false", "1", "0")]
             sentences.append(
-                "SXT integrative conjugative element detected in {N} samples, indicating "
-                "potential multi-drug resistance.".format(N=len(amr["sxt_samples"])))
+                "An SXT-associated multi-drug-resistance marker pattern was reported in {N} of {A} assessed "
+                "samples, indicating potential multi-drug resistance. This is a co-occurrence of "
+                "SXT-associated resistance genes reported by the AMR output, not direct detection of the "
+                "integrative conjugative element.".format(
+                    N=len(amr["sxt_samples"]), A=len(sxt_assessed) or len(assessed_rows)))
 
     # Always present — final caveat.
     sentences.append(
         "These findings require integration with epidemiological and clinical data before "
         "public health conclusions can be drawn.")
     return sentences
+
+
+def review_sentences(model):
+    """Neutral review notices for conflicting or unexpected source records."""
+    out = []
+    grouped = {}
+    for item in model["samples"]:
+        for flag in item["flags"]:
+            grouped.setdefault(flag["code"], (flag["title"], []))[1].append(item["id"])
+    for code in sorted(grouped):
+        title, ids = grouped[code]
+        ids = list(dict.fromkeys(ids))
+        out.append("Records requiring review — {}: {} sample(s) ({}). Source values are shown side by "
+                   "side; no source is preferred.".format(title, len(ids), ", ".join(ids[:8])
+                                                          + (" …" if len(ids) > 8 else "")))
+    return out
 
 
 def build_next_steps(amr, outbreak, global_ctx):
@@ -496,6 +640,7 @@ def build_context(args):
     distance_network = build_distance_network(cgmlst_matrix)
     distance_network['annotations'] = annotate_network(distance_network, metadata, mlst, lineages, plasmids)
 
+    global_tree_view = None
     qc = build_qc(genome_qc)
     characterisation = build_characterisation(typing)
     virulence_s = build_virulence(virulence)
@@ -512,6 +657,7 @@ def build_context(args):
     sample_count = args.sample_count
     if sample_count is None:
         sample_count = len(metadata) or (len(genome_qc) if genome_qc else 0)
+    global_tree_view = global_ctx.get('tree_view') if global_ctx.get('status') == 'ok' else None
 
     params = {
         "SNP outbreak threshold": (cluster_summary or {}).get("snp_threshold_used", args.snp_threshold),
@@ -549,7 +695,7 @@ def build_context(args):
         "global": global_ctx,
         "outbreak": outbreak,
         "summary": build_summary(qc, characterisation, virulence_s, amr_s, outbreak, phylo),
-        "sentences": build_sentences(qc, characterisation, virulence_s, amr_s, outbreak),
+        "sentences": build_sentences(qc, characterisation, virulence_s, amr_s, outbreak, sample_count or None),
         "limitations": LIMITATIONS,
         "next_steps": build_next_steps(amr_s, outbreak, global_ctx),
         "methods": build_methods(software_versions, params, args.run_date),
@@ -585,9 +731,92 @@ def build_context(args):
         ctx['methods']['reference'] = {
             'name': 'Mapping reference as configured (identity must be verified)',
             'fasta_accession': 'See pipeline_info/run_provenance.json for checksums',
-            'genbank_accession': args.reference,
+            # Basename only: the report must not expose private absolute paths.
+            'genbank_accession': os.path.basename(str(args.reference).rstrip('/\\')) or 'Not recorded',
         }
+    ctx['run'].update(
+        run_id=getattr(args, 'run_id', None) or None,
+        generated_at=getattr(args, 'generated_at', None) or None,
+        revision=getattr(args, 'pipeline_revision', None) or None,
+        nextflow_version=getattr(args, 'nextflow_version', None) or None,
+        demo=ctx['demo'],
+    )
+    raw = {
+        'metadata': metadata, 'genome_qc': genome_qc, 'seq_qc': sequence_qc, 'typing': typing,
+        'virulence': virulence, 'amr': amr, 'mlst': mlst, 'lineage': lineages, 'plasmid': plasmids,
+        'cluster': cluster_rows, 'cluster_summary': cluster_summary, 'pairs': pairs,
+        'snp_matrix': matrix, 'cgmlst_matrix': cgmlst_matrix, 'newick': newick,
+        'tree_view': phylo.get('tree_view') if newick else None,
+        'tree': phylo.get('tree_view') if newick else None,
+        'global_newick': global_tree, 'global_view': global_tree_view,
+        'network': distance_network, 'software_versions': software_versions,
+    }
+    run_info = {key: ctx['run'].get(key) for key in (
+        'version', 'date', 'generated_at', 'mode', 'run_id', 'revision', 'nextflow_version',
+        'sample_count', 'runtime', 'demo')}
+    model = build_model(ctx, raw, run_info)
+    ctx['model'] = model
+    # All cohort views reuse the same category colours, including partial views.
+    distance_network['annotations'] = annotate_network(
+        distance_network, metadata, mlst, lineages, plasmids, palettes=model['palettes'])
+    for tree in (phylo, global_ctx):
+        if tree.get('tree_view'):
+            tree['tree_view']['annotations'] = annotate_tree(
+                tree['tree_view'], metadata, mlst, lineages, plasmids, palettes=model['palettes'])
+    for chart in ctx['charts']['metadata']:
+        field = {'countries': 'country', 'specimens': 'specimen_type'}.get(chart['id'])
+        if field:
+            colours = model['palettes'].get(field, {}).get('values', {})
+            for row in chart['rows']:
+                colour = colours.get(row['label'])
+                row['color'] = 'var(--cf-{})'.format(colour['token']) if colour else 'var(--cf-na)'
+
+    model['inputs'] = [dict(item) for item in ctx['input_inventory']]
+    # Keep the original Newick text for local downloads, including whitespace.
+    # The parsed/rendered tree uses the existing loader and scientific rules.
+    model['newick_sources'] = {}
+    for kind, argument in (('cohort', 'treefile'), ('global', 'global_tree')):
+        source_path = getattr(args, argument, None)
+        if source_path:
+            try:
+                with open(source_path, encoding='utf-8', newline='') as handle:
+                    model['newick_sources'][kind] = handle.read()
+            except (OSError, UnicodeError):
+                pass
+
+    model['parameters'] = {str(key): value for key, value in params.items()}
+    nav = navigation()
+    ctx['nav'] = nav
+    model['navigation'] = [{'id': page_id, 'title': nav['pages'][page_id]['title'],
+                            'group': nav['pages'][page_id]['group_title'],
+                            'icon': nav['pages'][page_id]['icon']} for page_id in nav['order']]
+    review = review_sentences(model)
+    if review:
+        ctx['sentences'][-1:-1] = review
+    ctx['raw_sources'] = raw
+    ctx['palette'] = {'css': css_tokens(), 'tones': tone_tokens()}
+    ctx['views'] = {}
+    for name, builder in (('overview', build_overview_view), ('workflow', build_workflow_view),
+                          ('samples', build_samples_view), ('qc', build_qc_view),
+                          ('metadata', build_metadata_view), ('markers', build_markers_view),
+                          ('phylogeny', build_phylogeny_view), ('distances', build_distances_view),
+                          ('clusters', build_clusters_view), ('documentation', build_documentation_view),
+                          ('geo', build_geo_view)):
+        ctx['views'][name] = builder(ctx, model, raw)
     return ctx
+
+
+def json_safe(value):
+    """Recursively convert to JSON-compatible values; non-finite floats become null."""
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, float) and not (value == value and value not in (float('inf'), float('-inf'))):
+        return None
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
 
 
 def render(ctx, template_path, output_path):
@@ -603,7 +832,12 @@ def render(ctx, template_path, output_path):
         autoescape=True,
         trim_blocks=True, lstrip_blocks=True,
     )
+    # Preserve model ordering; |tojson still escapes <, >, & and ' for HTML.
+    env.policies['json.dumps_kwargs'] = {'sort_keys': False, 'allow_nan': False}
+    env.filters['json_safe'] = json_safe
     template = env.get_template(os.path.basename(template_path))
+    ctx = dict(ctx)
+    ctx.setdefault('assets', font_faces(tmpl_dir))
     html = template.render(**ctx)
     with open(output_path, "w", encoding="utf-8") as fh:
         fh.write(html)
@@ -621,6 +855,10 @@ def main():
     p.add_argument("--mode", default="outbreak")
     p.add_argument("--sample-count", type=int, default=None)
     p.add_argument("--runtime", default=None)
+    p.add_argument("--run-id", default=None, help="Workflow run identifier (for example the Nextflow run name)")
+    p.add_argument("--generated-at", default=None, help="Report generation timestamp (ISO 8601)")
+    p.add_argument("--pipeline-revision", default=None, help="Pipeline source revision (for example a Git commit)")
+    p.add_argument("--nextflow-version", default=None, help="Nextflow version that ran the workflow")
     p.add_argument("--snp-threshold", default=5)
     p.add_argument("--cgmlst-threshold", default=10)
     p.add_argument("--max-missing", default=50)

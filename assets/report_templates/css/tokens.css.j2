@@ -1,0 +1,150 @@
+/* ── CholeraFlow design tokens ──────────────────────────────────────────────
+   Light is the default. Dark is designed separately (not an inversion) and is
+   applied by [data-theme="dark"] on <html>. Contrast checked for body text
+   (>= 4.5:1) and UI marks (>= 3:1) against each theme's surfaces. */
+:root {
+  color-scheme: light;
+  /* Brand */
+  --cf-navy: #102a43;
+  --cf-navy-2: #183a5a;
+  --cf-teal-deep: #087f8c;
+  --cf-teal: #0d9488;
+  --cf-teal-soft: #e6f5f3;
+  --cf-emerald: #059669;
+  --cf-indigo: #4f46e5;
+  --cf-blue: #2563eb;
+  --cf-violet: #7c3aed;
+  --cf-amber: #d97706;
+  --cf-red: #dc2626;
+
+  /* Surfaces & ink */
+  --cf-bg: #f5f7fa;
+  --cf-surface: #ffffff;
+  --cf-surface-2: #f8fafc;
+  --cf-surface-3: #eef2f6;
+  --cf-sunken: #f1f4f8;
+  --cf-border: #e2e8f0;
+  --cf-border-strong: #cbd5e1;
+  --cf-text: #14213d;
+  --cf-text-2: #5b6b80;
+  --cf-text-3: #7b8a9e;
+  --cf-link: #087f8c;
+  --cf-focus: #f59e0b;
+  --cf-accent: #087f8c;
+  --cf-accent-soft: #e6f5f3;
+  --cf-accent-ink: #065e68;
+
+  /* Sidebar */
+  --cf-side-bg: #102a43;
+  --cf-side-bg-2: #163655;
+  --cf-side-text: #c9d6e3;
+  --cf-side-muted: #8fa6bd;
+  --cf-side-active: #1d4567;
+  --cf-side-accent: #2dd4bf;
+
+  /* Status (ink on soft background; marks use --cf-s-* fills) */
+  --cf-pass-ink: #047857;  --cf-pass-bg: #ecfdf5;  --cf-pass-line: #a7f3d0;
+  --cf-warn-ink: #b45309;  --cf-warn-bg: #fffbeb;  --cf-warn-line: #fcd34d;
+  --cf-fail-ink: #b91c1c;  --cf-fail-bg: #fef2f2;  --cf-fail-line: #fecaca;
+  --cf-na-ink: #475569;    --cf-na-bg: #f1f5f9;    --cf-na-line: #cbd5e1;
+  --cf-missing-ink: #5b6b80; --cf-missing-bg: #f8fafc; --cf-missing-line: #cbd5e1;
+  --cf-review-ink: #4338ca; --cf-review-bg: #eef2ff; --cf-review-line: #c7d2fe;
+  --cf-brand-ink: #065e68; --cf-brand-bg: #e6f5f3;  --cf-brand-line: #99d8d0;
+  --cf-demo-ink: #92400e;  --cf-demo-bg: #fff7ed;   --cf-demo-line: #fdba74;
+
+  /* Chart chrome */
+  --cf-chart-surface: #ffffff;
+  --cf-chart-ink: #14213d;
+  --cf-chart-ink-2: #5b6b80;
+  --cf-chart-grid: #edf1f5;
+  --cf-chart-axis: #c3ccd7;
+  --cf-chart-mark: #0d9488;
+  --cf-chart-mark-2: #2563eb;
+  --cf-chart-muted: #b6c2d0;
+  --cf-hatch-bg: #f1f5f9;
+  --cf-hatch-line: #c3ccd7;
+
+  /* Typography */
+  --cf-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --cf-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --cf-text-xs: 11px;
+  --cf-text-sm: 12px;
+  --cf-text-md: 13px;
+  --cf-text-base: 14px;
+  --cf-text-lg: 16px;
+  --cf-text-xl: 20px;
+  --cf-text-2xl: 26px;
+  --cf-text-3xl: 34px;
+  --cf-leading: 1.55;
+
+  /* Space, shape, depth */
+  --cf-space-1: 4px; --cf-space-2: 8px; --cf-space-3: 12px; --cf-space-4: 16px;
+  --cf-space-5: 20px; --cf-space-6: 24px; --cf-space-8: 32px; --cf-space-10: 40px;
+  --cf-radius-sm: 6px;
+  --cf-radius: 10px;
+  --cf-radius-lg: 14px;
+  --cf-shadow-1: 0 1px 2px rgba(16, 42, 67, .05), 0 1px 1px rgba(16, 42, 67, .03);
+  --cf-shadow-2: 0 4px 14px rgba(16, 42, 67, .08);
+  --cf-shadow-3: 0 18px 48px rgba(16, 42, 67, .18);
+  --cf-sidebar-w: 272px;
+  --cf-sidebar-rail: 72px;
+  --cf-toolbar-h: 60px;
+  --cf-drawer-w: 460px;
+  --cf-content-max: 1480px;
+  --cf-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --cf-navy: #e2e8f0;
+  --cf-teal-deep: #2dd4bf;
+  --cf-teal: #2bb3a6;
+  --cf-teal-soft: #0f3a3f;
+
+  --cf-bg: #0b1726;
+  --cf-surface: #102235;
+  --cf-surface-2: #13283d;
+  --cf-surface-3: #183049;
+  --cf-sunken: #0d1d2e;
+  --cf-border: #22384f;
+  --cf-border-strong: #2f4a66;
+  --cf-text: #e6edf5;
+  --cf-text-2: #9fb0c4;
+  --cf-text-3: #8193a8;
+  --cf-link: #5eead4;
+  --cf-focus: #fbbf24;
+  --cf-accent: #2dd4bf;
+  --cf-accent-soft: #0f3a3f;
+  --cf-accent-ink: #99f6e4;
+
+  --cf-side-bg: #08121e;
+  --cf-side-bg-2: #0e1c2c;
+  --cf-side-text: #c3d0de;
+  --cf-side-muted: #7f93a9;
+  --cf-side-active: #15304a;
+  --cf-side-accent: #2dd4bf;
+
+  --cf-pass-ink: #6ee7b7;  --cf-pass-bg: #0b2e26;  --cf-pass-line: #136048;
+  --cf-warn-ink: #fcd34d;  --cf-warn-bg: #33250b;  --cf-warn-line: #6b4a0f;
+  --cf-fail-ink: #fca5a5;  --cf-fail-bg: #3a1417;  --cf-fail-line: #7f1d1d;
+  --cf-na-ink: #b6c3d2;    --cf-na-bg: #1a2b3e;    --cf-na-line: #33475e;
+  --cf-missing-ink: #9fb0c4; --cf-missing-bg: #132537; --cf-missing-line: #33475e;
+  --cf-review-ink: #c7d2fe; --cf-review-bg: #1d2150; --cf-review-line: #3f46a0;
+  --cf-brand-ink: #99f6e4; --cf-brand-bg: #0f3a3f;  --cf-brand-line: #1c6b66;
+  --cf-demo-ink: #fdba74;  --cf-demo-bg: #36200d;   --cf-demo-line: #7c4310;
+
+  --cf-chart-surface: #102235;
+  --cf-chart-ink: #e6edf5;
+  --cf-chart-ink-2: #9fb0c4;
+  --cf-chart-grid: #1b3047;
+  --cf-chart-axis: #3a5068;
+  --cf-chart-mark: #2dd4bf;
+  --cf-chart-mark-2: #60a5fa;
+  --cf-chart-muted: #3f5670;
+  --cf-hatch-bg: #142a40;
+  --cf-hatch-line: #36506b;
+
+  --cf-shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --cf-shadow-2: 0 6px 18px rgba(0, 0, 0, .35);
+  --cf-shadow-3: 0 18px 48px rgba(0, 0, 0, .55);
+}

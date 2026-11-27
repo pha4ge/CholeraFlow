@@ -1,0 +1,13 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['software'] -%}
+{{ page_header(page, 'Software versions recorded for this run. Missing versions are never filled in.') }}
+  {% if methods.tools_available %}
+    <div class="scroll"><table><tr><th>Tool</th><th>Version</th></tr>{% for t in methods.tools %}<tr><td>{{ t.tool }}</td><td>{{ t.version }}</td></tr>{% endfor %}</table></div>
+  {% else %}
+    <p class="muted">Software versions file not available — see pipeline_info/software_versions.yml in the results directory once produced.</p>
+  {% endif %}
+{{ page_footer(page) }}

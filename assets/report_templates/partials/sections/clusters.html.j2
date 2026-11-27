@@ -1,0 +1,24 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['clusters'] -%}
+{{ page_header(page, 'Cluster assignments supplied by the outbreak clustering step: connected components at the configured SNP linkage threshold.') }}
+<div class="cf-grid cf-component-cards">{% for group in views.clusters.groups %}<div class="cf-span-4">{% call panel(('Cluster ' if group.kind == 'multi_sample' else 'Singleton component ') ~ group.id, 'network', cls='cf-component-card') %}<p><strong>{{ group.members|length }}</strong> sample(s) · {{ 'Multi-sample component' if group.kind == 'multi_sample' else 'Singleton; not a multi-sample cluster' }}</p><ul>{% for member in group.members %}<li>{{ sample_id(member) }}</li>{% endfor %}</ul>{% endcall %}</div>{% endfor %}</div>
+<p class="muted">{{ views.clusters.unassigned }} report identifiers lack an available component assignment. Connected-component linkage does not require every within-component pair to be within the threshold. Genomic clustering does not prove transmission.</p>
+  {{ chart_grid(charts.clusters) }}
+  {% if outbreak.status == 'not_performed' %}
+    <div class="not-performed">Analysis not performed — {{ outbreak.reason }}</div>
+  {% else %}
+    <h3>Cluster assignments</h3>
+    <div class="scroll"><table>
+      <tr><th>Sample</th><th>Cluster</th><th>SNP category</th><th>cgMLST category</th><th>Country</th><th>Collection date</th><th>Specimen</th></tr>
+      {% for r in outbreak.rows %}<tr><td>{{ r.sample }}</td><td>{{ r.cluster_id }}</td><td>{{ r.snp_category }}</td><td>{{ r.cgmlst_category }}</td><td>{{ r.country }}</td><td>{{ r.collection_date }}</td><td>{{ r.specimen_type }}</td></tr>{% endfor %}
+    </table></div>
+    {% if outbreak.pairs %}<details class="source-details"><summary>Reported within-threshold pairs ({{ outbreak.pairs|length }})</summary><div class="scroll"><table aria-label="Reported within-threshold pairs">
+      <tr>{% for field in outbreak.pairs[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+      {% for row in outbreak.pairs %}<tr>{% for field in outbreak.pairs[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+    </table></div></details>{% endif %}
+  {% endif %}
+{{ page_footer(page) }}

@@ -1,0 +1,56 @@
+{#- Phylogenetic tree macros (phylogeny slice). -#}
+{%- from 'partials/icons.html.j2' import icon -%}
+{% macro tree_panel(view, newick, panel_id, layout='rectangular', explorer=none) -%}
+{% set shape = view.circular if layout == 'circular' else view %}
+<figure class="tree-panel" id="{{ panel_id }}">
+  <div class="chart-heading"><h3 id="{{ panel_id }}-title">{{ layout|capitalize }} tree</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
+  {% if view.status == 'ok' %}
+  <div class="tree-controls" hidden>
+    <label>Zoom <input class="tree-zoom" type="range" min="60" max="1000" step="10" value="100" aria-label="Tree zoom"></label>
+    <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
+    <span class="tree-match-count" aria-live="polite"></span>
+  </div>
+  <p class="muted">{{ view.tip_count }} tips · {{ view.layout }}. Input order and topology are preserved; this display does not infer or change rooting.</p>
+  <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
+  <svg class="tree-svg {{ 'tree-circular' if layout == 'circular' else 'tree-rectangular' }}" viewBox="{{ '0 0 1200 900' if layout == 'circular' and explorer else '0 0 ' ~ explorer.svg.plot_width ~ ' ' ~ explorer.svg.plot_height if explorer else view.annotations.circular_viewbox if layout == 'circular' else '0 0 ' ~ view.annotations.rect_width ~ ' ' ~ view.height }}" role="img" aria-labelledby="{{ panel_id }}-title {{ panel_id }}-description">
+    <desc id="{{ panel_id }}-description">A tree rendered directly from the supplied Newick file. {{ view.layout }}. Internal labels are shown as supplied and are not reinterpreted.</desc>
+    {% if explorer and explorer.status == 'ok' %}
+    {% if layout == 'rectangular' %}{% set g=explorer.svg %}
+    <path class="tree-branch" d="{{ g.branches }}"/>
+    {% for column in g.columns %}<text class="tree-track-heading" x="{{ column.cx }}" y="{{ g.header_y-6 }}" transform="rotate(-55 {{ column.cx }} {{ g.header_y-6 }})"><title>{{ column.full }}</title>{{ column.title }}</text>{% endfor %}
+    {% for tip in explorer.tips %}{% set t=tip.g %}<g{% if tip.sample %} data-cf-sample="{{ tip.sample }}" data-cf-select="{{ tip.sample }}"{% endif %}><title>{{ tip.tooltip }}</title>
+    {% if t.leader %}<line class="tree-leader" x1="{{ t.leader[0] }}" x2="{{ t.leader[1] }}" y1="{{ t.y }}" y2="{{ t.y }}"/>{% endif %}<circle class="tree-terminal" cx="{{ t.x }}" cy="{{ t.y }}" r="4"/>
+    {% for cell in t.cells if not cell.blank %}<rect class="metadata-cell cf-tone-{{ cell.token }}" x="{{ cell.x }}" y="{{ t.cell_y }}" width="{{ g.cell }}" height="{{ g.cell_h }}" rx="2"/>{% endfor %}
+    <text class="tree-tip" data-tip-label="{{ tip.label }}" x="{{ t.label_x }}" y="{{ t.y+4 }}" font-size="{{ g.font }}">{{ tip.display }}</text>{% if tip.flags %}<circle class="tree-review-dot" cx="{{ t.review_x }}" cy="{{ t.y }}" r="3"/>{% endif %}</g>{% endfor %}
+    {% for label in g.node_labels %}<text class="tree-internal-label" x="{{ label.x }}" y="{{ label.y }}"><title>{{ label.full }}</title>{{ label.text }}</text>{% endfor %}
+    {% if g.scale %}<line class="tree-scale" x1="{{ g.scale.x1 }}" x2="{{ g.scale.x2 }}" y1="{{ g.scale.y }}" y2="{{ g.scale.y }}"/><text class="tree-scale-label" x="{{ g.scale.x1 }}" y="{{ g.scale.y+20 }}">{{ g.scale.text }} {{ g.scale.units }}</text>{% endif %}
+    {% else %}{% set g=explorer.circular %}
+    {% for path in g.branches %}<path class="tree-branch" d="{{ path }}"/>{% endfor %}
+    {% for node in g.internal %}<text class="tree-internal-label" x="{{ node.x }}" y="{{ node.y }}">{{ node.text }}</text>{% endfor %}
+{% for cell in g.cells %}<path class="metadata-cell cf-tone-{{ cell.token }}" d="{{ cell.path }}"><title>{{ cell.tip }}</title></path>{% endfor %}
+    {% for tip in g.tips %}<g{% if tip.sample %} data-cf-sample="{{ tip.sample }}" data-cf-select="{{ tip.sample }}"{% endif %}><title>{{ tip.tooltip }}</title><line class="tree-leader" x1="{{ tip.x }}" x2="{{ tip.ex }}" y1="{{ tip.y }}" y2="{{ tip.ey }}"/><circle class="tree-terminal" cx="{{ tip.x }}" cy="{{ tip.y }}" r="4"/><text class="tree-tip" data-tip-label="{{ tip.label }}" x="{{ tip.lx }}" y="{{ tip.ly+4 }}" text-anchor="{{ tip.anchor }}" transform="rotate({{ tip.rotation }} {{ tip.lx }} {{ tip.ly }})" font-size="{{ g.font }}">{{ tip.display }}</text></g>{% endfor %}
+    {% if g.scale %}<line class="tree-scale" x1="{{ g.scale.x1 }}" x2="{{ g.scale.x2 }}" y1="{{ g.scale.y }}" y2="{{ g.scale.y }}"/><text class="tree-scale-label" x="{{ g.scale.x1 }}" y="{{ g.scale.y+20 }}">{{ g.scale.text }} supplied branch-length units</text>{% endif %}
+    {% endif %}
+    {% else %}    {% for edge in shape.branches %}{% if edge.kind == 'arc' %}<path d="{{ edge.path }}" fill="none" stroke="#355a6a" stroke-width="1.5"/>{% else %}<line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#355a6a" stroke-width="1.5"/>{% endif %}{% endfor %}
+    {% if layout == 'circular' %}{% for cell in view.annotations.circular_cells %}<path class="metadata-cell" d="{{ cell.path }}" fill="var(--cf-{{ cell.token }})"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></path>{% endfor %}
+    {% else %}{% for column in view.annotations.columns %}<text x="{{ column.x + 40 }}" y="13" text-anchor="middle" font-size="9" fill="#354f61">{{ column.label }}</text>{% endfor %}
+    {% for cell in view.annotations.rect_cells %}<rect class="metadata-cell" x="{{ cell.x }}" y="{{ cell.y }}" width="{{ cell.width }}" height="{{ cell.height }}" fill="var(--cf-{{ cell.token }})"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></rect>{% endfor %}{% endif %}
+    {% for node in shape.nodes %}
+      {% if node.leaf %}<circle cx="{{ node.x }}" cy="{{ node.y }}" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="{{ node.label }}" x="{{ node.label_x if layout == 'circular' else node.x + 8 }}" y="{{ node.label_y if layout == 'circular' else node.y + 4 }}" {% if layout == 'circular' %}text-anchor="{{ node.text_anchor }}" transform="rotate({{ node.label_rotation }} {{ node.label_x }} {{ node.label_y }})"{% endif %} fill="#172a3c" font-size="{{ shape.font_size if layout == 'circular' else 12 }}"><title>{{ node.label }} · Supplied branch length: {{ node.branch_length_text if node.branch_length_text is not none else 'Not provided' }}</title>{{ node.label|truncate(18 if layout == 'circular' else 46, true) }}</text>
+      {% elif node.label %}<text x="{{ node.x + 3 }}" y="{{ node.y - 5 }}" fill="#536779" font-size="10">{{ node.label }}</text>{% endif %}
+    {% endfor %}
+    {% if shape.scale %}<line x1="{{ shape.scale.x1 }}" y1="{{ shape.scale.y }}" x2="{{ shape.scale.x2 }}" y2="{{ shape.scale.y }}" stroke="#355a6a" stroke-width="2"/><text x="{{ shape.scale.x1 }}" y="{{ shape.scale.y + 17 }}" fill="#536779" font-size="10">{{ shape.scale.label }}</text>{% endif %}
+{% endif %}
+  </svg>
+  </div>
+  {% if view.note %}<figcaption class="muted">{{ view.note }} Dashed leaders align labels and metadata; only solid branches carry the branch-length scale.</figcaption>{% endif %}
+  <p class="muted">{{ view.annotations.mapping_note }} Circular rings follow the same ordered metadata fields as the visible legend.</p>
+{% if explorer %}<div class="tree-legends">{% for track in explorer.tracks %}<div class="tree-legend-block"><strong>{{ track.title }}</strong><div class="metadata-legend">{% for entry in track.entries %}<span><i class="cf-bg-{{ entry.token }}"></i>{{ entry.label }} <small>{{ entry.count }}</small></span>{% endfor %}</div></div>{% endfor %}</div><p class="muted tree-guide">Dashed leaders align labels and metadata; they are not branches. Branch-length scale applies to solid branches only. Violet dots identify source records requiring review.</p>{% endif %}
+  <details class="source-details"><summary>Metadata colors and tip mapping</summary>
+    {% for legend in view.annotations.legends %}<h4>{{ legend.label }}</h4><div class="metadata-legend">{% for entry in legend.entries %}<span><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>{% endfor %}
+    <div class="scroll"><table aria-label="{{ layout }} tree metadata"><tr><th>Tip</th><th>Matched sample</th><th>Match method</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for row in view.annotations.rows %}<tr><td>{{ row.tip_label }}</td><td>{{ row.sample }}</td><td>{{ row.match_method }}</td>{% for column in view.annotations.columns %}<td>{{ row['values'][column.key] }}</td>{% endfor %}</tr>{% endfor %}</table></div>
+  </details>
+  {% else %}<div class="not-performed">Tree view unavailable — {{ view.reason }}</div>{% endif %}
+  {% if newick %}<details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">{{ newick }}</pre></details>{% endif %}
+</figure>
+{%- endmacro %}

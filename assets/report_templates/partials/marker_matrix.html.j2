@@ -1,0 +1,12 @@
+{%- from 'partials/macros.html.j2' import sample_id -%}
+{% macro marker_matrix(v, kind) %}
+<div class="cf-marker-summary"><div><strong>{{ v.records }}<small>/ {{ v.total }}</small></strong><span>with source records</span></div><div><strong>{{ v.assessed }}</strong><span>with assessed calls</span></div><div><strong>{{ v.positive }}</strong><span>with a reported detection</span></div></div>
+{% if v.columns %}
+<div class="cf-marker-legend"><span><i class="cf-marker-symbol is-detected">●</i> Marker detected</span><span><i class="cf-marker-symbol is-absent">○</i> Assessed, absent</span><span><i class="cf-marker-symbol is-na">/</i> Not assessed / unavailable</span><span>Header = detections / assessed samples</span></div>
+<div class="scroll cf-marker-wrap" data-cf-filter-scope><table class="cf-marker-table cf-table--sticky-first" data-cf-table="{{ kind }}-matrix" aria-label="Reported {{ kind }} marker matrix"{% if kind == 'amr' %} data-amr-table{% endif %}>
+<thead><tr><th scope="col">Sample / source evidence</th>{% for col in v.columns %}<th scope="col"><span>{{ col.label }}</span><small>{{ col.detected }} / {{ col.assessed }} assessed</small></th>{% endfor %}</tr></thead><tbody>
+{% for row in v.rows %}<tr data-cf-sample="{{ row.id }}"><th scope="row">{{ sample_id(row.id) }}{% if row.flags %}<span class="cf-marker-review" title="Source records require review">Review {{ row.flags|length }}</span>{% endif %}</th>
+{% for cell in row.cells %}<td class="cf-marker-cell cf-marker--{{ cell.state }}" data-export="{{ cell.state }}{{ ': ' ~ cell.genes|join('; ') if cell.genes else '' }}" title="{{ row.id }} · {{ v.columns[loop.index0].label }}: {{ cell.state|replace('_',' ') }}{{ ' · ' ~ cell.genes|join('; ') if cell.genes else '' }}"><span class="cf-marker-symbol {{ 'is-detected' if cell.detected else 'is-absent' if cell.assessed else 'is-na' }}" aria-hidden="true">{{ '●' if cell.detected else '○' if cell.assessed else '/' }}</span><span class="sr-only">{{ cell.state|replace('_',' ') }}</span>{% if cell.genes %}<small>{{ cell.genes|join('; ') }}</small>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+<p class="muted">{{ v.total-v.assessed }} report samples have no assessed calls in this matrix. Missing results are never counted as negative. All supplied fields remain in the sample source records.</p>
+{% else %}<div class="not-performed">Analysis not performed — no marker calls were supplied.</div>{% endif %}
+{% endmacro %}

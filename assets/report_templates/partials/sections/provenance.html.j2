@@ -1,0 +1,13 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['provenance'] -%}
+{{ page_header(page, 'Checksums of the files this report was generated from.') }}
+  <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
+  <div class="scroll"><table aria-label="Report input provenance">
+    <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
+    {% for item in input_inventory %}<tr><td>{{ item.source }}</td><td>{{ item.file }}</td><td>{{ item.status }}</td><td>{{ item.bytes if item.bytes is not none else '—' }}</td><td class="checksum">{{ item.sha256 or '—' }}</td></tr>{% endfor %}
+  </table></div>
+{{ page_footer(page) }}

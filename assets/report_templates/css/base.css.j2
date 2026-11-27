@@ -1,0 +1,56 @@
+/* ── Base: reset, typography, focus, utilities ─────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: calc(var(--cf-toolbar-h) + 16px); }
+body { margin: 0; background: var(--cf-bg); color: var(--cf-text); font: 400 var(--cf-text-base)/var(--cf-leading) var(--cf-font-sans); font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, h5 { margin: 0; color: var(--cf-text); font-weight: 650; letter-spacing: -.01em; line-height: 1.3; }
+h3 { font-size: var(--cf-text-lg); }
+h4 { font-size: var(--cf-text-base); }
+p { margin: 0 0 var(--cf-space-3); }
+p:last-child { margin-bottom: 0; }
+a { color: var(--cf-link); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+em { font-style: italic; }
+small { font-size: var(--cf-text-sm); }
+code, kbd, pre, samp, .cf-mono { font-family: var(--cf-font-mono); font-size: .92em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+svg { overflow: visible; }
+img, svg { max-width: 100%; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--cf-focus); outline-offset: 2px; border-radius: 4px; }
+::selection { background: color-mix(in srgb, var(--cf-teal) 26%, transparent); }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.skip-link { position: fixed; left: 16px; top: -80px; z-index: 100; padding: 10px 16px; background: var(--cf-surface); color: var(--cf-text); border-radius: var(--cf-radius-sm); box-shadow: var(--cf-shadow-2); font-weight: 600; }
+.skip-link:focus { top: 12px; }
+.cf-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.cf-hatch-bg { fill: var(--cf-hatch-bg); }
+.cf-hatch-line { stroke: var(--cf-hatch-line); stroke-width: 2; }
+.cf-icon { width: 18px; height: 18px; flex: none; vertical-align: -3px; }
+.cf-muted, .muted { color: var(--cf-text-2); }
+.cf-small { font-size: var(--cf-text-sm); }
+.cf-num, .num { font-variant-numeric: tabular-nums; }
+.cf-id { font-family: var(--cf-font-mono); font-size: 12.5px; font-weight: 500; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.cf-id--link { display: inline; padding: 0; border: 0; background: none; color: var(--cf-link); text-align: left; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--cf-link) 35%, transparent); text-underline-offset: 3px; }
+.cf-id--link:hover { text-decoration-color: currentColor; }
+.cf-kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--cf-border-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--cf-surface); color: var(--cf-text-2); font: 500 11px/1 var(--cf-font-mono); }
+.cf-anchor { display: block; position: relative; top: calc(-1 * var(--cf-toolbar-h)); visibility: hidden; height: 0; }
+
+/* Category / status tones: one token per supplied category (see report_palette.py). */
+{% for tone in palette.tones %}.cf-swatch.cf-tone-{{ tone }}, .cf-cell.cf-tone-{{ tone }}, .cf-bg-{{ tone }} { background-color: var(--cf-{{ tone }}); }
+svg .cf-tone-{{ tone }} { fill: var(--cf-{{ tone }}); }
+svg .cf-stroke-{{ tone }} { stroke: var(--cf-{{ tone }}); }
+{% endfor %}
+{% for ramp in ('snp', 'cgmlst') %}{% for step in range(9) %}.cf-seq-{{ ramp }}-{{ step }} { background-color: var(--cf-{{ ramp }}-{{ step }}); }
+svg .cf-seq-{{ ramp }}-{{ step }} { fill: var(--cf-{{ ramp }}-{{ step }}); }
+{% endfor %}{% endfor %}
+.cf-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .12); }
+.cf-swatch.cf-tone-na, .cf-cell.cf-tone-na { background-image: repeating-linear-gradient(45deg, transparent 0 3px, var(--cf-hatch-line) 3px 4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  .cf-swatch, .cf-badge, .cf-metric, .cf-panel, .cf-figure { forced-color-adjust: auto; border: 1px solid CanvasText; }
+}
+/* Programmatic focus targets (page titles, drawer title) are not controls. */
+[tabindex="-1"]:focus { outline: none; }

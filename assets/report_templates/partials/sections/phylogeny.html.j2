@@ -1,0 +1,14 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['phylogeny'] -%}
+{{ page_header(page, 'The supplied tree, drawn without rerooting, pruning or inferring relationships.') }}
+{% if phylogenetics.tree_view.status == 'ok' %}
+  {{ tree_panel(phylogenetics.tree_view, phylogenetics.newick, 'cohort-tree', explorer=views.phylogeny.cohort) }}
+  {{ tree_panel(phylogenetics.tree_view, none, 'cohort-tree-circular', 'circular', explorer=views.phylogeny.cohort) }}
+{% elif phylogenetics.newick %}<div class="not-performed">Tree view unavailable — {{ phylogenetics.tree_view.reason }}</div>
+{% else %}<div class="not-performed">Analysis not performed — no phylogenetic tree was supplied.</div>{% endif %}
+{% if tree_diagnostics %}<details class="source-details"><summary>Original IQ-TREE inference diagnostics</summary><pre class="diagnostics">{{ tree_diagnostics }}</pre></details>{% endif %}
+{{ page_footer(page) }}

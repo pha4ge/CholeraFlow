@@ -1,0 +1,21 @@
+/* Download centre and local checksum copy controls. */
+CF.module("documentation",()=>{
+ const centre=doc.querySelector("[data-cf-download-centre]");
+ const refresh=()=>{
+  centre.replaceChildren();
+  CF.exports.list().forEach(item=>{
+   const status=CF.exports.status(item);const button=CF.el("button",{type:"button",class:"cf-btn",disabled:!status.ok},CF.icon(item.icon||"download"),item.label);
+   button.addEventListener("click",()=>CF.exports.run(item.id));
+   centre.append(CF.el("div",{class:"cf-download-item"},button,CF.el("p",{class:"cf-muted"},status.ok?item.description||item.group:status.reason)));
+  });
+ };
+ if(centre){CF.on("exports",refresh);CF.on("filters",refresh);CF.on("page",({id})=>{if(id==="downloads")refresh();});refresh();}
+ CF.qsa("td.checksum").forEach(cell=>{
+  const value=cell.textContent.trim();if(!/^[a-f0-9]{64}$/.test(value))return;
+  const button=CF.el("button",{type:"button",class:"cf-btn cf-btn--sm","aria-label":"Copy checksum"},"Copy");
+  button.addEventListener("click",async()=>{
+   try{await navigator.clipboard.writeText(value);CF.announce("Checksum copied");}
+   catch(error){const selection=getSelection();const range=doc.createRange();range.selectNodeContents(cell);selection.removeAllRanges();selection.addRange(range);CF.announce("Checksum selected. Use your browser copy command.");}
+  });cell.append(" ",button);
+ });
+});

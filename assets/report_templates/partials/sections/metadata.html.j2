@@ -1,0 +1,40 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['metadata'] -%}
+{{ page_header(page, 'Recorded sample metadata only: sampling records, not disease incidence.') }}
+{% set v=views.metadata %}
+<div class="cf-metadata-ledger"><div><span>Report cohort</span><strong>{{ model.sample_count }}</strong><small>sample identifiers</small></div><div><span>Recorded countries</span><strong>{{ v.countries }}</strong><small>sampling categories</small></div><div><span>Valid display dates</span><strong>{{ v.dated }}</strong><small>of {{ model.sample_count }} records</small></div><div><span>Unavailable dates</span><strong>{{ v.undated }}</strong><small>never imputed</small></div></div>
+<div class="charts-grid">{% for block in v.composition %}{% set c=block.chart %}
+{% call figure(c.id, block.title, 'One marker represents one submitted record for small cohorts; larger cohorts show counts.', scope='fixed', exports=('svg','png'), caption=c.records ~ ' sample records · ' ~ c.categories ~ ' supplied categories. These are sampling records, not disease incidence.') %}
+{% if c.form != 'empty' %}<div class="cf-figure-viewport" tabindex="0" role="region" aria-label="{{ block.title }}"><svg class="cf-svg cf-composition" viewBox="0 0 {{ c.width }} {{ c.height+28 }}" role="img" aria-label="{{ block.title }} composition">
+{% for row in c.rows %}<text class="cf-chart-label" x="{{ c.label_w-12 }}" y="{{ row.label_y+12 }}" text-anchor="end">{{ row.key|truncate(30,true) }}</text>
+{% if c.form == 'units' %}{% for mark in row.marks %}<g data-cf-sample="{{ mark.id }}" data-cf-select="{{ mark.id }}"><circle class="cf-tone-{{ mark.token }} cf-unit-dot" cx="{{ mark.x }}" cy="{{ mark.y+12 }}" r="5"><title>{{ mark.id }} · {{ row.key }}</title></circle>{% if row.labelled %}<text class="cf-chart-mono cf-chart-label" x="{{ mark.label_x }}" y="{{ mark.y+16 }}">{{ mark.id }}</text>{% endif %}</g>{% endfor %}
+{% else %}<rect class="cf-chart-track" x="{{ row.x }}" y="{{ row.bar_y+12 }}" width="{{ c.width-c.label_w-88 }}" height="{{ row.bar_h }}" rx="3"/><rect class="cf-tone-{{ row.token }}" x="{{ row.x }}" y="{{ row.bar_y+12 }}" width="{{ row.w }}" height="{{ row.bar_h }}" rx="3"/>{% endif %}
+<text class="cf-chart-value" x="{{ c.width-8 }}" y="{{ row.label_y+12 }}" text-anchor="end">{{ row.value }}</text>{% endfor %}</svg></div>{% else %}{{ empty_state('No recorded categories','No sample metadata were supplied.') }}{% endif %}
+{% endcall %}{% endfor %}</div>
+{% set t=v.timeline %}
+{% call figure('collection-timeline', 'Collection through time', 'Recorded collection dates, coloured by recorded country.', scope='filterable' if t.form != 'months' else 'fixed', exports=('svg','png'), caption=v.dated ~ ' dated records · ' ~ v.undated ~ ' dates unavailable or outside the display calendar. No temporal trend or transmission direction is inferred.') %}
+{% if t.form != 'empty' %}<div class="cf-figure-viewport" tabindex="0" role="region" aria-label="Collection dates"><svg class="cf-svg cf-timeline" viewBox="0 0 {{ t.width }} {{ t.height+24 }}" role="img" aria-label="Sample collection timeline">
+{% if t.form == 'rows' %}{% for row in t.rows %}<line class="cf-chart-gridline" x1="{{ t.x0 }}" x2="{{ t.x1 }}" y1="{{ row.y+12 }}" y2="{{ row.y+12 }}"/><g data-cf-sample="{{ row.id }}" data-cf-select="{{ row.id }}"><text class="cf-chart-label cf-chart-mono" x="{{ t.label_w }}" y="{{ row.y+16 }}" text-anchor="end">{{ row.id|truncate(30,true) }}</text><circle class="cf-tone-{{ row.token }} cf-unit-dot" cx="{{ row.x }}" cy="{{ row.y+12 }}" r="6"><title>{{ row.id }} · {{ row.date }} · {{ row.category }}</title></circle><text class="cf-chart-tick" x="{{ t.width-12 }}" y="{{ row.y+16 }}" text-anchor="end">{{ row.date }}</text></g>{% endfor %}
+{% elif t.form == 'swarm' %}{% for mark in t.marks %}<circle class="cf-tone-{{ mark.token }} cf-unit-dot" data-cf-sample="{{ mark.id }}" data-cf-select="{{ mark.id }}" cx="{{ mark.x }}" cy="{{ mark.y+12 }}" r="5"><title>{{ mark.id }} · {{ mark.date }} · {{ mark.category }}</title></circle>{% endfor %}
+{% else %}{% for col in t.columns %}{% for segment in col.segments %}<rect class="cf-tone-{{ segment.token }}" x="{{ col.x }}" y="{{ segment.y+12 }}" width="{{ col.w }}" height="{{ segment.h }}" rx="2"><title>{{ col.month }} · {{ segment.category }}: {{ segment.count }} records</title></rect>{% endfor %}{% endfor %}{% endif %}
+{% set ay=t.base if t.form == 'months' else t.axis_y %}<line class="cf-chart-axis" x1="{{ t.x0 }}" x2="{{ t.x1 }}" y1="{{ ay+12 }}" y2="{{ ay+12 }}"/>{% for tick in t.ticks %}<text class="cf-chart-tick" x="{{ tick.pos }}" y="{{ ay+34 }}" text-anchor="middle">{{ tick.text }}</text>{% endfor %}
+</svg></div>
+{{ legend(model.palettes.country['values'].values()|list, 'Recorded country', counts=false) }}
+{% else %}{{ empty_state('No collection timeline','Valid collection dates were not supplied. No dates are inferred from identifiers.') }}{% endif %}
+{% endcall %}
+{% call panel('Metadata coverage', 'clipboard-list', 'Recorded fields across the report cohort; blanks remain missing.') %}
+{% for field in v.completeness %}<div class="cf-completeness-row"><span>{{ field.label }}</span><div class="cf-completeness-track"><i style="width:{{ 100*field.count/(field.total or 1) }}%"></i></div><strong>{{ field.count }} / {{ field.total }}</strong></div>{% endfor %}
+<details class="cf-disclosure"><summary>Country × collection year · sample counts</summary><div class="scroll"><table aria-label="Country by collection year"><tr><th>Country</th><th>Year</th><th>Sample records</th></tr>{% for row in v.country_year %}<tr><td>{{ row.country }}</td><td>{{ row.year }}</td><td>{{ row.count }}</td></tr>{% endfor %}</table></div></details>
+{% endcall %}
+{% if metadata_rows %}
+  <details class="source-details"><summary>Recorded metadata ({{ metadata_rows|length }} rows)</summary><div class="scroll"><table aria-label="Recorded sample metadata">
+    <tr>{% for field in metadata_rows[0] %}<th>{{ field }}</th>{% endfor %}</tr>
+    {% for row in metadata_rows %}<tr>{% for field in metadata_rows[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
+  </table></div></details>
+{% else %}<div class="not-performed">Sample metadata was not supplied. Geographic, specimen and collection-date graphs are unavailable.</div>{% endif %}
+{% if views.geo and views.geo.status == 'ok' %}{% include 'partials/geo_map.html.j2' %}{% endif %}
+{{ page_footer(page) }}

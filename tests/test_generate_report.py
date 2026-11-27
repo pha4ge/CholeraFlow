@@ -85,10 +85,18 @@ LINEAGES = 'sample\tlineage\tscheme\treference\tmethod\nVC_HAITI_001\tDEMO_A\tDE
 PLASMIDS = 'sample\tcluster_id\tscheme\treference\tmethod\nVC_HAITI_001\tDEMO_P1\tDEMO_PLASMID\ttest-fixture\tsynthetic-only\nVC_KENYA_003\tDEMO_P1\tDEMO_PLASMID\ttest-fixture\tsynthetic-only\n'
 
 SECTION_HEADINGS = [
-    "Run summary", "QC summary", "Cholera characterisation", "Virulence summary",
-    "AMR summary", "Phylogenetic summary", "Global context",
-    "Outbreak interpretation", "Limitations", "Next steps", "Methods",
+    "Executive overview", "Pipeline workflow", "Run information", "Sample explorer",
+    "Cohort metadata", "Quality control", "Species and typing", "Virulence",
+    "Antimicrobial resistance", "Reported classifications", "Phylogenetic explorer",
+    "SNP distances", "cgMLST distances", "Distance network", "Global context",
+    "Reported genomic clusters", "Interpretation", "Limitations", "Recommended follow-up",
+    "Methods", "Software versions", "Provenance", "Downloads", "Interpretation guide",
+    "About CholeraFlow",
 ]
+PAGE_IDS = ["overview", "workflow", "run", "samples", "metadata", "qc", "typing", "virulence",
+            "amr", "classifications", "phylogeny", "snp", "cgmlst", "network", "global",
+            "clusters", "interpretation", "limitations", "follow-up", "methods", "software",
+            "provenance", "downloads", "guide", "about"]
 
 
 def _write(d, name, content):
@@ -226,11 +234,17 @@ class TestRender(unittest.TestCase):
             ctx['amr']['rows'].append(unavailable)
             html = gr.render(ctx, TEMPLATE, os.path.join(d, 'mixed.html'))
             parser = Cells()
-            parser.feed(html.split('<section id="s5">')[1].split('</section>')[0])
+            parser.feed(html.split('<section class="cf-page" id="amr"')[1].split('<section class="cf-page"')[0])
+            # The first table row naming the sample is its AMR record; its status
+            # cell keeps the supplied value and every class/SXT cell is labelled
+            # as not assessed — never as a negative ("no marker") result.
             start = parser.values.index('UNAVAILABLE')
-            cells = [value.strip() for value in parser.values[start:]]
-            self.assertEqual(cells[1], 'not_run')
-            self.assertEqual(cells[2:], ['not run'] * (len(ctx['amr']['classes']) + 1))
+            width = len(ctx['amr']['classes']) + 3
+            cells = [' '.join(value.split()) for value in parser.values[start:start + width]]
+            self.assertIn('not_run', cells[1].replace(' ', '_').lower())
+            for cell in cells[2:]:
+                self.assertRegex(cell.lower(), r'not (run|assessed)')
+                self.assertNotRegex(cell.lower(), r'no marker|^—$|^no$|not detected|absent')
 
     def test_metadata_and_newick_cannot_inject_active_html(self):
         with tempfile.TemporaryDirectory() as d:
@@ -244,23 +258,37 @@ class TestRender(unittest.TestCase):
             self.assertIn('&lt;script&gt;', html)
             self.assertIn('&lt;img src=x', html)
 
-    def test_all_11_sections_present(self):
+    def test_all_report_pages_present_in_navigation_order(self):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             html = gr.render(ctx, TEMPLATE, os.path.join(d, "r.html"))
             for heading in SECTION_HEADINGS:
                 self.assertIn(heading, html, "Missing section heading: %s" % heading)
+            positions = [html.index('<section class="cf-page" id="%s"' % page) for page in PAGE_IDS]
+            self.assertEqual(positions, sorted(positions), "Pages out of navigation order")
+            self.assertEqual(ctx["nav"]["order"], PAGE_IDS)
+            for page in PAGE_IDS:  # every page is reachable from the sidebar without JavaScript
+                self.assertIn('href="#%s" data-page="%s"' % (page, page), html)
 
-    def test_summary_cards_render(self):
+    def test_summary_cards_render_with_denominators(self):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             html = gr.render(ctx, TEMPLATE, os.path.join(d, "r.html"))
-            for label in ("Samples", "QC pass", "Confirmed", "Clusters", "SXT MDR"):
+            for label in ("Samples in this report", "Passed genome QC", "Reported species confirmation",
+                          "Reported multi-sample clusters", "SXT-associated MDR marker pattern",
+                          "AMR-marker-positive samples", "In the supplied phylogeny"):
                 self.assertIn(label, html, "Missing summary card label: %s" % label)
+            metrics = {metric["key"]: metric for metric in ctx["model"]["metrics"]}
+            # Strict passes are counted separately from warnings; denominators are assessed samples.
+            self.assertEqual((metrics["qc_pass"]["value"], metrics["qc_pass"]["denominator"]), (2, 3))
+            self.assertEqual((metrics["species"]["value"], metrics["species"]["denominator"]), (2, 2))
+            self.assertEqual((metrics["sxt"]["value"], metrics["sxt"]["denominator"]), (1, 2))
+            self.assertEqual(metrics["clusters"]["value"], 1)
+            self.assertIn("1 singleton component", metrics["clusters"]["note"])
 
     def test_section_order(self):
-        # Order by the unambiguous section id anchors (id="s1".."s11"), which
-        # only appear on the <section> elements, in document order.
+        # Legacy anchors (id="s1".."s11") keep deep links from earlier report
+        # versions working and must remain in their original order.
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             html = gr.render(ctx, TEMPLATE, os.path.join(d, "r.html"))
@@ -281,15 +309,27 @@ class TestRender(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             ctx = gr.build_context(_full(d))
             s = " ".join(ctx["sentences"])
-            self.assertIn("2 of 3 samples passed genome QC", s)          # 2 pass, 1 fail
-            self.assertIn("2 of 2 samples were confirmed as Vibrio cholerae", s)
-            self.assertIn("classified as O1 El Tor", s)
-            self.assertIn("carry the ctx operon", s)
+            self.assertIn("2 of 3 samples passed genome QC (2 pass, 0 with warnings); 1 failed", s)
+            self.assertIn("2 of 2 characterised samples were confirmed as Vibrio cholerae", s)
+            # Characterisation covers 2 of 3 report samples; never an unqualified "All samples".
+            self.assertIn("Characterisation records are available for 2 of 3 samples", s)
+            self.assertIn("2 of 2 characterised samples were classified as O1 El Tor", s)
+            self.assertNotIn("All samples were classified", s)
+            self.assertIn("carry ctx prophage markers (CTX prophage reported present by the characterisation output)", s)
+            self.assertIn("VirulenceFinder reports ctxA in 1 of 2 assessed samples", s)
+            self.assertIn("1 multi-sample cluster(s) and 1 singleton component(s)", s)
             self.assertIn("form cluster 1, connected by pairwise links of at most 5 SNPs", s)
             self.assertIn("Some pairs may exceed this threshold", s)
             self.assertNotIn("were included in phylogenetic analysis", s)
-            self.assertIn("SXT integrative conjugative element detected in 1 samples", s)
-            self.assertIn("require integration with epidemiological", s)
+            # The AMR SXT call is a marker co-occurrence pattern, not detection of the element.
+            self.assertIn("SXT-associated multi-drug-resistance marker pattern was reported in 1 of 2", s)
+            self.assertIn("not direct detection of the integrative conjugative element", s)
+            self.assertNotIn("SXT integrative conjugative element detected", s)
+            # Conflicting source records are surfaced for review, never reconciled.
+            self.assertIn("CTX calls differ between sources: 1 sample(s) (VC_KENYA_003)", s)
+            self.assertIn("SXT-related calls differ between sources: 1 sample(s) (VC_HAITI_001)", s)
+            self.assertIn("Failed genome QC but present in comparative outputs: 1 sample(s) (VC_MALAWI_002)", s)
+            self.assertIn("require integration with epidemiological", ctx["sentences"][-1])
 
     def test_amr_drug_class_sentence_has_genes(self):
         with tempfile.TemporaryDirectory() as d:

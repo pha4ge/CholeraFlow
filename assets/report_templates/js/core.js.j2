@@ -1,0 +1,264 @@
+/* CholeraFlow report runtime — core.
+ * Progressive enhancement only: every result is readable without this script.
+ * Security: supplied values are only ever inserted with textContent or
+ * setAttribute (never innerHTML); the script performs no network requests. */
+"use strict";
+const doc = document;
+const root = doc.documentElement;
+root.classList.remove("no-js");
+root.classList.add("js");
+
+const CF = window.CF = {};
+/* Fallbacks for engines without CSS.escape / requestAnimationFrame (e.g. test DOMs). */
+CF.cssEscape = (window.CSS && typeof window.CSS.escape === "function")
+  ? value => window.CSS.escape(String(value))
+  : value => String(value).replace(/[\0-\x1f\x7f"'\\\[\]#.:()>+~*^$|=,\s]/g, character => "\\" + character.charCodeAt(0).toString(16) + " ");
+CF.raf = typeof window.requestAnimationFrame === "function" ? window.requestAnimationFrame.bind(window) : callback => setTimeout(callback, 16);
+CF.scrollTo = (node, options) => { if (node && typeof node.scrollIntoView === "function") node.scrollIntoView(options || {block: "start"}); };
+CF.modules = [];
+/** Register a feature. options.page: initialise lazily when that page is first shown. */
+CF.module = (name, init, options) => { CF.modules.push({name, init, options: options || {}, done: false}); };
+
+/* ── DOM helpers (safe by construction) ─────────────────────────────────── */
+const SVG_NS = "http://www.w3.org/2000/svg";
+function applyAttrs(node, attrs) {
+  if (!attrs) return node;
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === "class") node.setAttribute("class", value);
+    else if (key === "text") node.textContent = value;
+    else if (key === "dataset") Object.entries(value).forEach(([k, v]) => { node.dataset[k] = v; });
+    else if (key.startsWith("on") && typeof value === "function") node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? "" : String(value));
+  }
+  return node;
+}
+function appendChildren(node, children) {
+  children.flat(Infinity).forEach(child => {
+    if (child === null || child === undefined || child === false) return;
+    node.append(child instanceof Node ? child : doc.createTextNode(String(child)));
+  });
+  return node;
+}
+CF.el = (tag, attrs, ...children) => appendChildren(applyAttrs(doc.createElement(tag), attrs), children);
+CF.svg = (tag, attrs, ...children) => appendChildren(applyAttrs(doc.createElementNS(SVG_NS, tag), attrs), children);
+CF.icon = (name, className) => {
+  const template = doc.getElementById("cf-icon-templates");
+  const source = template && (template.content.querySelector('[data-icon="' + CF.cssEscape(name) + '"]')
+    || template.content.querySelector('[data-icon="circle-dashed"]'));
+  const icon = source ? source.cloneNode(true) : doc.createElementNS(SVG_NS, "svg");
+  icon.removeAttribute("data-icon");
+  if (className) icon.classList.add(...className.split(" "));
+  return icon;
+};
+CF.qs = (selector, scope) => (scope || doc).querySelector(selector);
+CF.qsa = (selector, scope) => Array.from((scope || doc).querySelectorAll(selector));
+CF.bySample = (id, scope) => CF.qsa('[data-cf-sample="' + CF.cssEscape(id) + '"]', scope);
+
+/* ── Formatting ─────────────────────────────────────────────────────────── */
+CF.collator = new Intl.Collator(undefined, {numeric: true, sensitivity: "base"});
+CF.fmt = {
+  num(value, digits) {
+    if (value === null || value === undefined || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    const places = digits === undefined ? (Number.isInteger(number) ? 0 : Math.abs(number) < 10 ? 2 : 1) : digits;
+    return number.toLocaleString(undefined, {maximumFractionDigits: places, minimumFractionDigits: 0});
+  },
+  pct(numerator, denominator) {
+    return denominator ? (100 * numerator / denominator).toLocaleString(undefined, {maximumFractionDigits: 1}) + "%" : "—";
+  },
+  bytes(value) {
+    if (!Number.isFinite(value)) return "—";
+    const units = ["B", "KB", "MB", "GB"]; let index = 0; let size = value;
+    while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; }
+    return (index ? size.toFixed(1) : String(size)) + " " + units[index];
+  },
+  plural(count, singular, plural) { return count + " " + (count === 1 ? singular : (plural || singular + "s")); },
+};
+
+/* ── Downloads (Blob URLs; offline-safe) ─────────────────────────────────── */
+// Quoting alone does not stop spreadsheet formula execution on CSV import.
+CF.csvCell = value => {
+  let text = value === null || value === undefined ? "" : String(value).trim();
+  if (/^[=+\-@\t\r\n]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+};
+CF.csv = rows => "﻿" + rows.map(row => row.map(CF.csvCell).join(",")).join("\r\n") + "\r\n";
+CF.tsvCell = value => String(value === null || value === undefined ? "" : value).replace(/[\t\r\n]+/g, " ");
+CF.safeName = text => String(text || "export").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "export";
+CF.download = (content, filename, type) => {
+  const blob = content instanceof Blob ? content : new Blob([content], {type: type || "text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const link = CF.el("a", {href: url, download: filename});
+  doc.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  CF.announce("Downloaded " + filename);
+};
+
+/* ── Preferences (per-browser conveniences only) ────────────────────────── */
+CF.store = {
+  get(key, fallback) {
+    try { const value = localStorage.getItem("choleraflow:" + key); return value === null ? fallback : JSON.parse(value); }
+    catch (error) { return fallback; }
+  },
+  set(key, value) { try { localStorage.setItem("choleraflow:" + key, JSON.stringify(value)); } catch (error) { /* storage unavailable */ } },
+};
+
+/* ── Live region and events ─────────────────────────────────────────────── */
+CF.announce = message => {
+  const live = doc.getElementById("cf-live");
+  if (!live) return;
+  live.textContent = "";
+  setTimeout(() => { live.textContent = message; }, 30);
+};
+const listeners = {};
+CF.on = (type, handler) => { (listeners[type] = listeners[type] || []).push(handler); };
+CF.emit = (type, detail) => {
+  (listeners[type] || []).forEach(handler => {
+    try { handler(detail); } catch (error) { console.error("CholeraFlow: " + type + " handler failed", error); }
+  });
+};
+
+/* ── Report model ───────────────────────────────────────────────────────── */
+let model = {samples: [], palettes: {}, availability: [], metrics: [], navigation: [], matrices: {}};
+try {
+  const node = doc.getElementById("cf-data");
+  if (node) model = Object.assign(model, JSON.parse(node.textContent));
+} catch (error) {
+  console.error("CholeraFlow: embedded report data could not be read; static content remains available.", error);
+}
+CF.data = model;
+CF.samples = new Map(model.samples.map(sample => [sample.id, sample]));
+CF.sampleIds = model.samples.map(sample => sample.id);
+CF.aliases = new Map();
+model.samples.forEach(sample => {
+  CF.aliases.set(sample.id, sample.id);
+  (sample.labels || []).forEach(entry => { if (!CF.aliases.has(entry.label)) CF.aliases.set(entry.label, sample.id); });
+});
+/** Canonical sample id for an exact id or a recorded alias label (no fuzzy matching). */
+CF.resolve = label => (label === null || label === undefined) ? null : (CF.aliases.get(String(label)) || null);
+CF.annotation = (id, field) => {
+  const sample = CF.samples.get(id);
+  return sample && sample.annotations && sample.annotations[field] ? sample.annotations[field] : {value: "Not available", token: "na"};
+};
+
+/* ── Shared state: selection and filters (display only) ─────────────────── */
+CF.state = {selected: null, pair: null, filters: {}, page: null, layout: "paged", theme: "light"};
+
+function paintSelection() {
+  CF.qsa(".is-selected[data-cf-sample]").forEach(node => node.classList.remove("is-selected"));
+  if (!CF.state.selected) return;
+  CF.bySample(CF.state.selected).forEach(node => node.classList.add("is-selected"));
+}
+/** Select a sample everywhere; opens the detail drawer unless options.open === false. */
+CF.select = (label, options) => {
+  const opts = options || {};
+  const id = CF.samples.has(label) ? label : CF.resolve(label);
+  if (!id) { CF.announce("No report record matches " + label); return; }
+  CF.state.selected = id;
+  CF.state.pair = null;
+  paintSelection();
+  CF.emit("select", {id, source: opts.source || null});
+  if (opts.open !== false && CF.drawer) CF.drawer.openSample(id, opts.trigger || doc.activeElement);
+};
+CF.selectPair = (detail, options) => {
+  CF.state.pair = detail;
+  CF.emit("pair", detail);
+  if (CF.drawer && (!options || options.open !== false)) CF.drawer.openPair(detail, (options && options.trigger) || doc.activeElement);
+};
+CF.clearSelection = () => {
+  CF.state.selected = null;
+  CF.state.pair = null;
+  paintSelection();
+  CF.emit("select", {id: null});
+};
+CF.paintSelection = paintSelection;
+
+CF.filterFields = () => Object.entries(model.palettes || {})
+  .filter(([, palette]) => Object.keys(palette.counts || {}).some(value => value !== "Not available"))
+  .map(([key, palette]) => ({key, label: palette.label, kind: palette.kind, counts: palette.counts, values: palette.values}));
+CF.activeFilters = () => Object.entries(CF.state.filters).filter(([, values]) => values && values.size);
+CF.matches = id => CF.activeFilters().every(([field, values]) => values.has(CF.annotation(id, field).value));
+/** Set of sample ids passing the global filters, or null when no filter is active. */
+CF.filteredIds = () => CF.activeFilters().length ? new Set(CF.sampleIds.filter(CF.matches)) : null;
+CF.setFilter = (field, values) => {
+  const set = values instanceof Set ? values : new Set(values || []);
+  if (set.size) CF.state.filters[field] = set; else delete CF.state.filters[field];
+  CF.applyFilters();
+};
+CF.toggleFilter = (field, value) => {
+  const set = new Set(CF.state.filters[field] || []);
+  if (set.has(value)) set.delete(value); else set.add(value);
+  CF.setFilter(field, set);
+};
+CF.clearFilters = () => { CF.state.filters = {}; CF.applyFilters(); };
+
+function updateScopes(ids) {
+  const total = CF.sampleIds.length;
+  CF.qsa("[data-cf-scope]").forEach(badge => {
+    const figure = badge.closest("[data-scope]");
+    const scope = figure ? figure.dataset.scope : "fixed";
+    const label = badge.querySelector("span") || badge;
+    badge.classList.toggle("is-filtered", Boolean(ids) && scope === "filterable");
+    if (scope === "filterable") {
+      label.textContent = ids ? "Filtered subset · " + ids.size + " of " + total : "All samples · " + total;
+    } else {
+      label.textContent = ids ? "Full cohort · not filtered" : "Full cohort";
+    }
+    badge.title = scope === "filterable"
+      ? "Marks for samples outside the active filters are dimmed or hidden; values are unchanged."
+      : "Full-cohort aggregate from the supplied outputs. It is never recalculated in the browser.";
+  });
+}
+/** Apply global filters to every linked view; analytical values are never recomputed. */
+CF.applyFilters = () => {
+  const ids = CF.filteredIds();
+  CF.qsa("[data-cf-filter-scope] [data-cf-sample], [data-scope=\"filterable\"] [data-cf-sample], [data-cf-filterable] [data-cf-sample]").forEach(node => {
+    const out = Boolean(ids) && !ids.has(node.dataset.cfSample);
+    if (node.tagName === "TR") node.classList.toggle("cf-hide-filter", out);
+    else node.classList.toggle("is-filtered-out", out);
+  });
+  updateScopes(ids);
+  CF.emit("filters", {ids});
+  const active = CF.activeFilters();
+  CF.announce(active.length ? (ids.size + " of " + CF.sampleIds.length + " samples match the active filters") : "Filters cleared");
+};
+
+/* ── Export registry (toolbar menu + download centre) ───────────────────── */
+const exportItems = [];
+CF.exports = {
+  /** item: {id, label, group, icon, description, available() → true | "reason", run()} */
+  register(item) {
+    const index = exportItems.findIndex(existing => existing.id === item.id);
+    if (index >= 0) exportItems.splice(index, 1, item); else exportItems.push(item);
+    CF.emit("exports", {id: item.id});
+  },
+  list() { return exportItems.slice(); },
+  status(item) {
+    try { const state = item.available ? item.available() : true; return state === true ? {ok: true} : {ok: false, reason: String(state || "Not available in this report.")}; }
+    catch (error) { return {ok: false, reason: "Not available in this report."}; }
+  },
+  run(id) {
+    const item = exportItems.find(entry => entry.id === id);
+    if (!item) return;
+    const status = CF.exports.status(item);
+    if (!status.ok) { CF.announce(status.reason); return; }
+    try { item.run(); } catch (error) { console.error(error); CF.announce("Export failed: " + item.label); }
+  },
+};
+
+/* ── Lazy page initialisation ───────────────────────────────────────────── */
+CF.runModule = entry => {
+  if (entry.done) return;
+  entry.done = true;
+  try { entry.init(); }
+  catch (error) {
+    console.error("CholeraFlow: module '" + entry.name + "' failed; its static content remains visible.", error);
+    const page = entry.options.page && doc.getElementById(entry.options.page);
+    if (page) page.dataset.cfError = entry.name;
+  }
+};
+CF.initPage = pageId => CF.modules.filter(entry => entry.options.page === pageId).forEach(CF.runModule);
+CF.initAll = () => CF.modules.forEach(CF.runModule);

@@ -1,0 +1,41 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['workflow'] -%}
+{{ page_header(page, 'How CholeraFlow turns reads or assemblies into this report, and which stages supplied results to this run.') }}
+{% call notice('Architecture and supplied evidence are separate.', 'info') %}<p>Lines describe the intended workflow, not execution progress. Availability badges below describe files consumed by this report. Assembly-only inputs do not enter the short-read mapping route. The outbreak reporting branch runs in outbreak mode.</p>{% endcall %}
+{% call figure('pipeline-schematic', 'From sequence inputs to reviewed evidence', 'Three stages; select a stop to inspect its report section.', caption='Schematic only. No runtime status or biological validity is inferred. SNP distances use all masked polymorphic sites; tree inference uses the retained PIS alignment. cgMLST is optional.') %}
+<div class="cf-workflow-scroll" tabindex="0" role="region" aria-label="Pipeline architecture">
+<svg class="cf-svg cf-workflow" viewBox="0 0 1100 560" role="img" aria-labelledby="workflow-svg-title workflow-svg-desc">
+<title id="workflow-svg-title">CholeraFlow pipeline architecture</title><desc id="workflow-svg-desc">Validated inputs pass through Bactopia and genome QC. Characterisation, mapping and optional cgMLST supply reported outputs for clustering, interpretation and the final offline report. This is architecture, not execution status.</desc>
+<rect class="cf-wf-stage" x="12" y="20" width="290" height="520" rx="12"/><rect class="cf-wf-stage" x="320" y="20" width="460" height="520" rx="12"/><rect class="cf-wf-stage" x="798" y="20" width="290" height="520" rx="12"/>
+<text x="32" y="55" class="cf-wf-heading">01  INPUT &amp; BACKBONE QC</text><text x="340" y="55" class="cf-wf-heading">02  CHARACTERISATION &amp; COMPARISON</text><text x="818" y="55" class="cf-wf-heading">03  REVIEW &amp; REPORT</text>
+<path class="cf-wf-line cf-wf-backbone" d="M55 130 V390 H275"/>
+<path class="cf-wf-line cf-wf-characterisation" d="M275 390 C310 390 300 145 350 145 H770 C800 145 800 250 835 250 H1040"/>
+<path class="cf-wf-line cf-wf-phylogeny" d="M275 390 C320 390 310 285 350 285 H835"/>
+<path class="cf-wf-line cf-wf-cgmlst" d="M275 390 C310 390 310 430 350 430 H770 C800 430 800 325 835 325 H1040"/>
+<path class="cf-wf-line cf-wf-backbone" d="M1040 250 V455 H850"/>
+{% set stops = [
+(55,130,'Samplesheet + metadata','FASTQ / FASTA','metadata','Validated submission; metadata are optional.'),
+(55,235,'Input validation','Host Python','run','Validate paths, identifiers and supported input modes.'),
+(55,330,'Bactopia backbone','Assembly + annotation','software','Bactopia-backed per-sample processing.'),
+(190,390,'Genome QC','Recorded thresholds','qc','Genome QC is distinct from mapping-sequence QC.'),
+(370,145,'Species & typing','Marker calls','typing','Reported species, serogroup, biotype, CTX and SXT calls.'),
+(590,145,'Virulence / AMR','Supplied markers','amr','Optional marker screening; genotype is not phenotype.'),
+(365,285,'Reference mapping','Snippy + sequence QC','qc','Short reads only, configured mapping reference; no change to N16961.'),
+(560,285,'Mask + infer','Gubbins / IQ-TREE2','phylogeny','Distances use masked polymorphic sites; trees use retained PIS sites.'),
+(730,285,'SNPs','Matrix','snp','Validated supplied SNP distances.'),
+(390,430,'Optional cgMLST','chewBBACA','cgmlst','EnteroBase Vibrio v1: 1,128 core loci; requires a prepared schema.'),
+(650,430,'Allele distances','Matrix + forest','network','Observed allele distances; network edges do not imply transmission.'),
+(870,250,'Reported clusters','Connected components','clusters','Existing SNP connected components; no browser reclustering.'),
+(870,325,'Interpretation','Methods + limitations','interpretation','Review genomic evidence together with epidemiological data.'),
+(870,455,'Offline HTML','Source records + exports','downloads','Single-file report, no server or internet connection required.')
+] %}
+{% for x,y,title,detail,target,note in stops %}<a href="#{{ target }}" aria-label="{{ title }}: {{ note }}"><title>{{ note }}</title><circle class="cf-wf-stop" cx="{{ x }}" cy="{{ y }}" r="8"/><text class="cf-wf-label" x="{{ x - 8 if 700 < x < 800 else x + 15 }}" y="{{ y - 20 }}"{% if 700 < x < 800 %} text-anchor="end"{% endif %}>{{ title }}</text><text class="cf-wf-detail" x="{{ x - 8 if 700 < x < 800 else x + 15 }}" y="{{ y + 28 }}"{% if 700 < x < 800 %} text-anchor="end"{% endif %}>{{ detail }}</text></a>{% endfor %}
+</svg></div>
+<div class="cf-legend"><span>Backbone: navy</span><span>Characterisation: teal</span><span>Phylogenetics: emerald</span><span>Optional cgMLST: blue</span></div>
+{% endcall %}
+{% call panel('Evidence available to this report', 'layers') %}<div class="cf-availability">{% for row in model.availability %}<a class="cf-availability-item" href="#{{ row.page }}"><strong>{{ row.label }}</strong>{{ status_badge(row.state) }}<small>{{ row.note or row.file_status }}</small></a>{% endfor %}</div>{% endcall %}
+{{ page_footer(page) }}

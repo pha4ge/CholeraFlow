@@ -1,0 +1,34 @@
+{#- Distance-network macros (distances/network slice). -#}
+{%- from 'partials/icons.html.j2' import icon -%}
+{% macro network_panel(view) -%}
+<figure class="chart-card network-panel" id="allele-network">
+  <div class="chart-heading"><div><p class="eyebrow">Explore cgMLST relationships</p><h3 id="allele-network-title">Observed allele-distance forest</h3></div><button class="button js-svg-export" type="button" hidden aria-label="Download distance network as SVG">Download SVG</button></div>
+  {% if view.status == 'ok' %}
+  <div class="network-summary"><span><b>{{ view.nodes|length }}</b> samples</span><span><b>{{ view.edges|length }}</b> observed edges</span><span><b>{{ view.component_count }}</b> components</span><span><b>{{ view.omitted_pairs }}</b> unavailable/invalid pairs</span></div>
+  <div class="network-controls" hidden>
+    <label>Color by <select class="network-color" aria-label="Color network by metadata">{% for column in view.annotations.columns %}<option value="{{ column.key }}">{{ column.label }}</option>{% endfor %}</select></label>
+    <label>Find sample <input class="network-find" type="search" placeholder="Sample identifier" aria-label="Find a network sample"></label>
+    <label>Zoom <input class="network-zoom" type="range" min="100" max="400" step="25" value="100" aria-label="Network zoom"></label>
+    <label><input class="network-labels" type="checkbox" {% if view.nodes|length <= 30 %}checked{% endif %}> Sample labels</label>
+    <label><input class="network-distances" type="checkbox" checked> Edge distances</label>
+    <button class="button network-reset" type="button">Reset view</button>
+  </div>
+  <p class="network-feedback" aria-live="polite">One node per sample · colors show supplied country metadata.</p>
+  <div class="network-viewport" tabindex="0" role="region" aria-label="Distance network; scroll to explore when zoomed">
+  {% if view.nodes|length <= 12 %}{% set minx=view.nodes|map(attribute='x')|min %}{% set maxx=view.nodes|map(attribute='x')|max %}{% set miny=view.nodes|map(attribute='y')|min %}{% set maxy=view.nodes|map(attribute='y')|max %}{% set fitw=[maxx-minx+280,520]|max %}{% set fith=[maxy-miny+170,280]|max %}{% endif %}
+  <svg class="report-network{% if view.nodes|length > 30 %} hide-node-labels{% endif %}" viewBox="{{ ((minx+maxx-fitw)/2) ~ ' ' ~ ((miny+maxy-fith)/2) ~ ' ' ~ fitw ~ ' ' ~ fith if view.nodes|length <= 12 else '0 0 ' ~ view.width ~ ' ' ~ view.height }}" role="img" aria-labelledby="allele-network-title allele-network-description">
+    <desc id="allele-network-description">Minimum spanning forest from observed pairwise allele distances. One vertex per sample; equal-sized nodes. Edge labels show distances; line lengths are layout-only. Colors show supplied country metadata.</desc>
+    {% for edge in view.edges %}<g class="network-edge"><title>{{ edge.sample_1 }} ↔ {{ edge.sample_2 }}: {{ edge.distance }} allele differences</title><line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#96aab6" stroke-width="1.8"/><text class="network-distance" x="{{ edge.label_x }}" y="{{ edge.label_y }}" text-anchor="middle" font-size="11" fill="#536779">{{ edge.distance }}</text></g>{% endfor %}
+    {% for node in view.nodes %}{% set meta = view.annotations.samples[node.sample] %}<g class="network-node" data-sample="{{ node.sample }}" data-metadata="{{ meta|tojson|forceescape }}">
+      <title>{{ node.sample }} · Country: {{ meta.country.value }} · one sample</title><circle cx="{{ node.x }}" cy="{{ node.y }}" r="7" fill="{{ meta.country.color }}" stroke="var(--cf-surface)" stroke-width="2"/><text class="network-sample-label" x="{{ node.x + node.label_dx }}" y="{{ node.y + node.label_dy }}" text-anchor="{{ node.label_anchor }}" font-size="12" fill="#172a3c">{{ node.sample|truncate(24,true) }}</text>
+    </g>{% endfor %}
+  </svg>
+  </div>
+  <div class="network-legend metadata-legend" aria-label="Network color legend">{% for entry in view.annotations.legends.country %}<span data-value="{{ entry.value }}" data-color="{{ entry.color }}" data-count="{{ entry.count }}"><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>
+  <p class="network-selection" aria-live="polite">Sample metadata and observed edges are available in the tables below.</p>
+  <figcaption class="muted">Display method: deterministic minimum spanning forest (Kruskal, ties by sample ID). {{ view.note }} GrapeTree-style describes the presentation; GrapeTree/MSTreeV2 is not run.</figcaption>
+  <details class="chart-data"><summary>Sample metadata ({{ view.nodes|length }} samples)</summary><div class="scroll"><table aria-label="Distance network sample metadata"><tr><th>Sample</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for node in view.nodes %}<tr><td>{{ node.sample }}</td>{% for column in view.annotations.columns %}<td>{{ view.annotations.samples[node.sample][column.key].value }}</td>{% endfor %}</tr>{% endfor %}</table></div></details>
+  <details class="chart-data"><summary>Observed network edges ({{ view.edges|length }})</summary><div class="scroll"><table aria-label="Distance network observed edges"><tr><th>Sample 1</th><th>Sample 2</th><th>Allele differences</th></tr>{% for edge in view.edges %}<tr><td>{{ edge.sample_1 }}</td><td>{{ edge.sample_2 }}</td><td>{{ edge.distance }}</td></tr>{% endfor %}</table></div></details>
+  {% else %}<div class="not-performed">{{ view.reason }}</div>{% endif %}
+</figure>
+{%- endmacro %}
