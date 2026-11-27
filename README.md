@@ -10,7 +10,6 @@
 
 CholeraFlow is a Nextflow DSL2 pipeline for *Vibrio cholerae* genomic surveillance. It builds a Bactopia-backed backbone for assembly and QC, then runs downstream species/virulence characterisation, AMR screening, reference mapping, phylogenetic comparison, optional cgMLST, outbreak clustering, and a self-contained high-quality HTML report for public-health review.
 
-The browser GUI in `reference_gui.html` is a prototype; the supported execution path is the command line and the Nextflow workflow beginning at `main.nf`.
 
 <p align="center">
   <img src="assets/images/choleraflow-workflow.png" width="1000" alt="CholeraFlow workflow: validated sequence inputs and Bactopia QC feed characterisation, SNP and optional cgMLST comparisons, followed by an offline outbreak report." />
