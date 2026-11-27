@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render a clearly labelled software-test demonstration, never a live analysis."""
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import tempfile
@@ -17,9 +18,14 @@ def main():
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='choleraflow-demo-') as temporary:
-        context = fixtures.gr.build_context(fixtures._full(temporary))
-        context['demo'] = True
-        context['run']['version'] = 'synthetic demonstration'
+        arguments = fixtures._full(temporary)
+        arguments.demo = True
+        arguments.pipeline_version = 'synthetic demonstration'
+        now = datetime.now(timezone.utc)
+        arguments.run_date = now.date().isoformat()
+        arguments.generated_at = now.isoformat(timespec='seconds')
+        arguments.run_id = 'synthetic-demo'
+        context = fixtures.gr.build_context(arguments)
         fixtures.gr.render(context, fixtures.TEMPLATE, str(output))
     print(f'SYNTHETIC DEMONSTRATION ONLY: {output.resolve()}')
 

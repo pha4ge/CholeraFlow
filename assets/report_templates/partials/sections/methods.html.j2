@@ -1,0 +1,17 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['methods'] -%}
+{{ page_header(page, 'Reference genome, key parameters and how this report was produced.') }}
+  <h3>Reference genome</h3>
+  <table class="kv">
+    <tr><td>Reference</td><td>{{ methods.reference.name }}</td></tr>
+    <tr><td>Assembly</td><td>{{ methods.reference.fasta_accession }}</td></tr>
+    <tr><td>Annotation</td><td>{{ methods.reference.genbank_accession }}</td></tr>
+  </table>
+  <h3>Key parameters</h3>
+  <table class="kv">{% for k, v in methods.params.items() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}</table>
+  <p class="muted">Report generated {{ methods.date }} by CholeraFlow {{ run.version }}.</p>
+{{ page_footer(page) }}

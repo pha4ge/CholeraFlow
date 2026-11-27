@@ -1,444 +1,182 @@
-{% from 'visuals.html.j2' import chart_grid, chart_card, tree_panel, network_panel %}
+{%- from 'partials/macros.html.j2' import badge, notice -%}
+{%- from 'partials/icons.html.j2' import icon, icon_templates -%}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
-<title>CholeraFlow Outbreak Report</title>
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="generator" content="CholeraFlow {{ run.version }}">
+<meta name="description" content="CholeraFlow Genomic Surveillance Explorer: offline report for Vibrio cholerae genomic characterisation and outbreak investigation.">
+<title>CholeraFlow · Genomic Surveillance Explorer{% if demo|default(false) %} (synthetic demonstration){% endif %}</title>
 <style>
+{{ assets.css|safe }}
+:root { {{ palette.css.light|safe }} }
+:root[data-theme="dark"] { {{ palette.css.dark|safe }} }
 {% include 'report.css.j2' %}
 </style>
 </head>
-<body>
+<body class="cf-body{% if demo|default(false) %} is-demo{% endif %}">
 <a class="skip-link" href="#main-content">Skip to report content</a>
-<div class="wrap">
+<svg class="cf-defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="cf-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="cf-hatch-bg"/><line x1="0" y1="0" x2="0" y2="6" class="cf-hatch-line"/></pattern>
+  </defs>
+</svg>
+<div class="cf-app" id="cf-app">
 
-<header class="report">
-  <div class="report-topline">
-  <div>
-  <p class="eyebrow">CholeraFlow / Analysis report</p>
-  <h1>Outbreak Investigation Report</h1>
-  <div class="sub">
-    <em>Vibrio cholerae</em> genomic surveillance &middot;
-    Mode: {{ run.mode }} &middot; Generated: {{ run.date }}
+<aside class="cf-sidebar" id="cf-sidebar" aria-label="Report navigation">
+  <div class="cf-brand">
+    <svg class="cf-brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <rect width="40" height="40" rx="10" class="cf-brand-tile"/>
+      <path d="M11.5 27.5c-.6-7.4 4.4-13.4 12.6-14.2" class="cf-brand-rod"/>
+      <path d="M24.1 13.3c2.4-.5 3.3-2.6 5.4-2.3 1.9.3 2.1 2.2 3.9 2" class="cf-brand-flagellum"/>
+      <circle cx="11.5" cy="27.5" r="1.1" class="cf-brand-dot"/>
+      <path d="M8 33h7m-3.5 0v-3m9 3h6m-3 0v-2.2" class="cf-brand-tree"/>
+    </svg>
+    <div class="cf-brand-text">
+      <span class="cf-brand-name">CholeraFlow</span>
+      <span class="cf-brand-caption">Genomic Surveillance Explorer</span>
+    </div>
+    <button class="cf-icon-btn cf-sidebar-collapse" type="button" data-cf-action="collapse-sidebar" aria-label="Collapse navigation" aria-pressed="false" hidden>{{ icon('panel-left-close') }}</button>
   </div>
-  </div>
-  <div class="report-actions">
-    <button id="print-report" class="button" type="button" hidden>Print / Save PDF</button>
-    <span class="offline-tag">Self-contained · Offline</span>
-  </div>
-  </div>
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="label">Samples</span>
-      <span class="value">{{ summary.samples }}</span>
-    </div>
-    <div class="stat-card">
-      <span class="label">QC pass</span>
-      <span class="value">{{ summary.passed_qc }}</span>
-    </div>
-    <div class="stat-card">
-      <span class="label">Confirmed</span>
-      <span class="value">{{ summary.confirmed_species }}</span>
-    </div>
-    <div class="stat-card">
-      <span class="label">Clusters</span>
-      <span class="value">{{ summary.clusters }}</span>
-    </div>
-    <div class="stat-card">
-      <span class="label">SXT MDR</span>
-      <span class="value">{{ summary.sxt_samples }}</span>
-    </div>
-    <div class="stat-card">
-      <span class="label">Phylogeny</span>
-      <span class="value">{{ summary.phylo_status }}</span>
-    </div>
-  </div>
-  <div class="overview" aria-label="Analysis availability">
-    {% for label, module in [('Genome QC', qc), ('Characterisation', characterisation), ('Virulence', virulence), ('AMR', amr), ('Phylogenetics', phylogenetics), ('Global context', global), ('Outbreak', outbreak)] %}
-    <span class="overview-item {{ 'unavailable' if module.status == 'not_performed' else '' }}"><b>{{ label }}</b> · <span class="state">{{ 'Not performed' if module.status == 'not_performed' else 'Results available' }}</span></span>
+  {% if demo|default(false) %}<p class="cf-sidebar-demo">{{ icon('flask-conical') }}<span>Synthetic demonstration</span></p>{% endif %}
+  <nav class="cf-nav" aria-label="Report sections">
+    {% for group in nav.groups %}
+    <details class="cf-nav-group" open>
+      <summary class="cf-nav-group-title">{{ group.title }}{{ icon('chevron-down', 'cf-nav-chevron') }}</summary>
+      <ul>
+        {% for page in group.pages %}
+        <li><a class="cf-nav-link" href="#{{ page.id }}" data-page="{{ page.id }}" title="{{ page.title }}">{{ icon(page.icon) }}<span>{{ page.title }}</span></a></li>
+        {% endfor %}
+      </ul>
+    </details>
     {% endfor %}
+  </nav>
+  <div class="cf-sidebar-footer">
+    <p>{{ icon('lock') }}<span>Offline · self-contained file</span></p>
+    <p class="cf-sidebar-meta">CholeraFlow {{ run.version }}<br>Generated {{ run.generated_at or run.date }}</p>
   </div>
-</header>
+</aside>
+<div class="cf-scrim" data-cf-action="close-sidebar" hidden></div>
 
-<nav class="toc" aria-label="Report sections">
-  <div class="nav-brand"><span class="brand-mark" aria-hidden="true">◈</span>CholeraFlow</div>
-  <div class="nav-caption">Genomic surveillance report</div>
-  <strong class="nav-heading">Report contents</strong>
-  <ol>
-    <li><a href="#s1">Run summary</a></li>
-    <li><a href="#s2">QC summary</a></li>
-    <li><a href="#s3">Cholera characterisation</a></li>
-    <li><a href="#s4">Virulence summary</a></li>
-    <li><a href="#s5">AMR summary</a></li>
-    <li><a href="#s6">Phylogenetic summary</a></li>
-    <li><a href="#s7">Global context</a></li>
-    <li><a href="#s8">Outbreak interpretation</a></li>
-    <li><a href="#s9">Limitations</a></li>
-    <li><a href="#s10">Next steps</a></li>
-    <li><a href="#s11">Methods</a></li>
-  </ol>
-  <div class="nav-footer">Version {{ run.version }}<br>Generated {{ run.date }}<br>All report data stays in this file.</div>
-</nav>
+<div class="cf-shell">
+  <header class="cf-toolbar" role="banner">
+    <button class="cf-icon-btn cf-menu-btn" type="button" data-cf-action="toggle-sidebar" aria-controls="cf-sidebar" aria-expanded="false" aria-label="Open navigation" hidden>{{ icon('menu') }}</button>
+    <div class="cf-toolbar-title">
+      <nav class="cf-breadcrumb" aria-label="Breadcrumb"><ol><li>CholeraFlow</li><li data-cf-crumb-group>Report</li><li aria-current="page" data-cf-crumb-page>All sections</li></ol></nav>
+      <p class="cf-toolbar-heading">Genomic Surveillance Explorer{% if demo|default(false) %} {{ badge('Synthetic', 'demo', 'flask-conical') }}{% endif %}</p>
+    </div>
+    <div class="cf-toolbar-search" data-cf-search hidden>
+      <label class="cf-search">
+        {{ icon('search') }}
+        <span class="sr-only">Search samples and report sections</span>
+        <input type="search" id="cf-search-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cf-search-results" autocomplete="off" spellcheck="false" placeholder="Search samples or sections">
+        <kbd class="cf-kbd" aria-hidden="true">/</kbd>
+      </label>
+      <ul class="cf-search-results" id="cf-search-results" role="listbox" aria-label="Search results" hidden></ul>
+    </div>
+    <div class="cf-toolbar-actions" data-cf-toolbar-actions hidden>
+      <button class="cf-btn cf-btn--ghost" type="button" data-cf-action="open-filters" aria-haspopup="dialog" aria-expanded="false" aria-controls="cf-filter-panel">{{ icon('filter') }}<span class="cf-btn-label">Filters</span><span class="cf-count-pill" data-cf-filter-count hidden>0</span></button>
+      <div class="cf-menu-wrap">
+        <button class="cf-icon-btn" type="button" data-cf-menu="cf-display-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Display options">{{ icon('sliders-horizontal') }}</button>
+        <div class="cf-menu" id="cf-display-menu" role="menu" aria-label="Display options" hidden>
+          <p class="cf-menu-label" id="cf-theme-label">Theme</p>
+          <div role="group" aria-labelledby="cf-theme-label">
+            <button type="button" role="menuitemradio" aria-checked="true" data-cf-theme="light">{{ icon('sun') }}<span>Light</span></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-cf-theme="dark">{{ icon('moon') }}<span>Dark</span></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-cf-theme="system">{{ icon('monitor') }}<span>Match system</span></button>
+          </div>
+          <p class="cf-menu-label" id="cf-layout-label">Layout</p>
+          <div role="group" aria-labelledby="cf-layout-label">
+            <button type="button" role="menuitemradio" aria-checked="true" data-cf-layout="paged">{{ icon('layout-dashboard') }}<span>One section at a time</span></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-cf-layout="continuous">{{ icon('list') }}<span>Continuous report</span></button>
+          </div>
+          <div class="cf-menu-sep" role="separator"></div>
+          <button type="button" role="menuitem" data-cf-action="presentation">{{ icon('presentation') }}<span>Presentation mode</span></button>
+        </div>
+      </div>
+      <button class="cf-icon-btn" type="button" data-cf-action="help" aria-haspopup="dialog" aria-label="Help and interpretation guide">{{ icon('circle-help') }}</button>
+      <button class="cf-icon-btn" type="button" data-cf-action="print" aria-label="Print or save as PDF">{{ icon('printer') }}</button>
+      <div class="cf-menu-wrap">
+        <button class="cf-btn cf-btn--primary" type="button" data-cf-menu="cf-export-menu" aria-haspopup="menu" aria-expanded="false">{{ icon('download') }}<span class="cf-btn-label">Export</span>{{ icon('chevron-down') }}</button>
+        <div class="cf-menu cf-menu--wide" id="cf-export-menu" role="menu" aria-label="Export" hidden></div>
+      </div>
+    </div>
+  </header>
 
-<main id="main-content" tabindex="-1">
-{% if demo|default(false) %}
-<div class="caveat" style="margin:0 0 22px"><strong>Synthetic demonstration.</strong> All sample values below are software test fixtures. They are not validated surveillance results and must not be used for public health decisions.</div>
-{% endif %}
-{# ── 1. Run summary ──────────────────────────────────────────────────────── #}
-<section id="s1">
-  <h2><span class="num">1.</span> Run summary</h2>
-  <table class="kv">
-    <tr><td>Pipeline version</td><td>CholeraFlow {{ run.version }}</td></tr>
-    <tr><td>Report generated</td><td>{{ run.date }}</td></tr>
-    <tr><td>Analysis mode</td><td>{{ run.mode }}</td></tr>
-    <tr><td>Samples submitted</td><td>{{ run.sample_count }}</td></tr>
-    <tr><td>Runtime</td><td>{{ run.runtime }}</td></tr>
-    {% for k, v in run.params.items() %}
-    <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+  <div class="cf-filterbar" id="cf-filterbar" role="region" aria-label="Active filters" hidden>
+    <span class="cf-filterbar-label">{{ icon('filter') }}<span data-cf-filter-summary>Filtered view</span></span>
+    <ul class="cf-chips" data-cf-filter-chips></ul>
+    <button class="cf-btn cf-btn--ghost cf-btn--sm" type="button" data-cf-action="clear-filters">{{ icon('x') }}<span>Clear all</span></button>
+  </div>
+
+  <main id="main-content" class="cf-main" tabindex="-1">
+    {% if demo|default(false) %}
+    {% call notice('Synthetic demonstration — not validated surveillance results.', 'demo', cls='cf-demo-banner') %}
+      <p>All sample values in this report are software test fixtures. They are not validated surveillance results and must not be used for public health decisions.</p>
+    {% endcall %}
+    {% endif %}
+    <noscript><div class="cf-noscript">{{ icon('info') }}<p>Scripting is disabled, so every section is shown in sequence. All results, tables and figures remain readable; interactive filtering, search and exports need JavaScript.</p></div></noscript>
+    {% for page_id in nav.order %}
+    {% set page = nav.pages[page_id] %}
+    <section class="cf-page" id="{{ page.id }}" data-group="{{ page.group }}" aria-labelledby="{{ page.id }}-title">
+      {% include 'partials/sections/' ~ page.id ~ '.html.j2' %}
+    </section>
     {% endfor %}
-  </table>
-  <h3>Cohort metadata overview</h3>
-  {% if metadata_rows %}{{ chart_grid(charts.metadata) }}
-  <details class="source-details"><summary>Recorded metadata ({{ metadata_rows|length }} rows)</summary><div class="scroll"><table aria-label="Recorded sample metadata">
-    <tr>{% for field in metadata_rows[0] %}<th>{{ field }}</th>{% endfor %}</tr>
-    {% for row in metadata_rows %}<tr>{% for field in metadata_rows[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
-  </table></div></details>
-  {% else %}<div class="not-performed">Sample metadata was not supplied. Geographic, specimen and collection-date graphs are unavailable.</div>{% endif %}
-  <details class="sample-explorer source-details"><summary>Per-sample record explorer ({{ sample_details|length }} identifiers)</summary>
-    <p class="muted">All supplied source fields are retained below. Records are grouped only by exact identifiers; tool-specific suffixes remain visible.</p>
-    <label class="sample-filter-label" hidden>Find sample <input class="sample-filter" type="search" placeholder="Sample identifier" aria-label="Filter sample record explorer"></label>
-    <span class="sample-filter-count muted" aria-live="polite"></span>
-    {% for item in sample_details %}<details class="sample-record" data-sample="{{ item.sample }}"><summary>{{ item.sample }} <span class="muted">· {{ item.sources|length }} source record(s)</span></summary>
-      {% for record in item.sources %}<h4>{{ record.source }}</h4><dl class="record-fields">{% for field, value in record.fields.items() %}<div><dt>{{ field }}</dt><dd>{{ value if value else 'Not recorded' }}</dd></div>{% endfor %}</dl>{% endfor %}
-    </details>{% endfor %}
-  </details>
-</section>
-
-{# ── 2. QC summary ───────────────────────────────────────────────────────── #}
-<section id="s2">
-  <h2><span class="num">2.</span> QC summary</h2>
-  {% if qc.status == 'not_performed' %}
-    <div class="not-performed">Analysis not performed — {{ qc.reason }}</div>
-  {% else %}
-    <p class="muted">{{ qc.n_pass }} of {{ qc.n_total }} samples passed genome QC (including warnings);
-       {{ qc.n_excluded }} failed. Phylogenetic inclusion also depends on mapping and sequence QC.</p>
-    {% if qc.n_total > 0 %}
-    {% set pass_count = qc.rows|selectattr('overall_status', 'equalto', 'pass')|list|length %}
-    {% set warn_count = qc.rows|selectattr('overall_status', 'equalto', 'warn')|list|length %}
-    {% set fail_count = qc.rows|selectattr('overall_status', 'equalto', 'fail')|list|length %}
-    {% set qc_groups = [('Pass', pass_count, 'pass'), ('Warning', warn_count, 'warn'), ('Fail', fail_count, 'fail'), ('Other / unavailable', qc.n_total - pass_count - warn_count - fail_count, 'other')] %}
-    <figure class="qc-distribution" aria-label="Genome QC status distribution">
-      <div class="qc-bar" aria-hidden="true">
-        {% for label, count, state in qc_groups %}{% if count %}<span class="qc-segment {{ state }}" style="width:{{ (100 * count / qc.n_total)|round(3) }}%" title="{{ label }}: {{ count }}"></span>{% endif %}{% endfor %}
-      </div>
-      <figcaption class="qc-legend">{% for label, count, state in qc_groups %}<span><i class="qc-dot {{ state }}" aria-hidden="true"></i>{{ label }} <strong>{{ count }}</strong></span>{% endfor %}</figcaption>
-    </figure>
-    {% endif %}
-    {{ chart_grid(charts.qc) }}
-    <h3>Assembly QC table</h3>
-    <div class="scroll">
-    <table>
-      <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
-          <th>Largest contig (kb)</th><th>N50</th><th>Contigs</th><th>BUSCO</th><th>CheckM</th></tr>
-      {% for r in qc.rows %}
-      <tr>
-        <td>{{ r.sample }}</td>
-        <td><span class="pill {{ 'pass' if r.overall_status in ['pass'] else ('warn' if r.overall_status=='warn' else 'fail') }}">{{ r.overall_status }}</span></td>
-        <td>{{ r.genome_size_mb }}</td><td>{{ r.gc_percent }}</td>
-        <td>{{ r.largest_contig_kb }}</td><td>{{ r.n50 }}</td><td>{{ r.contig_count }}</td>
-        <td>{{ r.busco }}</td><td>{{ r.checkm }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    </div>
-    {% if qc.excluded %}
-      <h3>Excluded samples</h3>
-      <table aria-label="Excluded genome QC samples">
-        <tr><th>Sample</th><th>Reason</th></tr>
-        {% for r in qc.excluded %}
-        <tr><td>{{ r.sample }}</td><td>Failed QC thresholds ({{ r.overall_status }})</td></tr>
-        {% endfor %}
-      </table>
-    {% endif %}
-  {% endif %}
-<div class="sequence-panel">
-  <h3>Mapping-sequence QC details</h3>
-  {% if sequence_qc %}<div class="scroll"><table aria-label="Mapping-sequence QC">
-    <tr><th>Sample</th><th>Status</th><th>Sequences</th><th>Total aligned bp</th><th>N/gap bp</th><th>N/gap %</th><th>Reported reason</th></tr>
-    {% for row in sequence_qc %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.n_sequences }}</td><td>{{ row.total_bp }}</td><td>{{ row.gap_bp }}</td><td>{{ row.n_percentage }}</td><td>{{ row.reason }}</td></tr>{% endfor %}
-  </table></div>{% else %}<div class="not-performed">Mapping-sequence QC was not available for this report.</div>{% endif %}
+  </main>
+  <footer class="cf-footer">
+    <p><strong>CholeraFlow {{ run.version }}</strong> · Generated {{ run.generated_at or run.date }} · This report is a screening and communication aid; findings require integration with epidemiological and clinical data.</p>
+    <p class="cf-footer-meta">Self-contained offline file. No data leave this document. Report schema {{ model.schema }}.</p>
+  </footer>
 </div>
-</section>
 
-{# ── 3. Cholera characterisation ─────────────────────────────────────────── #}
-<section id="s3">
-  <h2><span class="num">3.</span> Cholera characterisation</h2>
-  {{ chart_grid(charts.typing) }}
-  {% if characterisation.status == 'not_performed' %}
-    <div class="not-performed">Analysis not performed — {{ characterisation.reason }}</div>
-  {% else %}
-    <div class="scroll">
-    <table>
-      <tr><th>Sample</th><th>Species confirmation</th><th>Serogroup</th><th>Biotype</th>
-          <th>CTX prophage</th><th>SXT element</th></tr>
-      {% for r in characterisation.rows %}
-      <tr>
-        <td>{{ r.sample }}</td>
-        <td>{{ r.species_confirmation if r.species_confirmation != 'not_run' else 'not run' }}</td>
-        <td>{{ r.serogroup if r.serogroup != 'not_run' else 'not run' }}</td>
-        <td>{{ r.biotype if r.biotype != 'not_run' else 'not run' }}</td>
-        <td>{{ r.ctx_prophage if r.ctx_prophage != 'not_run' else 'not run' }}</td>
-        <td>{{ r.sxt_element if r.sxt_element != 'not_run' else 'not run' }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+<aside class="cf-drawer" id="cf-drawer" role="dialog" aria-modal="false" aria-labelledby="cf-drawer-title" hidden>
+  <header class="cf-drawer-header">
+    <div>
+      <p class="cf-drawer-eyebrow" data-cf-drawer-eyebrow>Sample record</p>
+      <h2 class="cf-drawer-title" id="cf-drawer-title" data-cf-drawer-title>Record</h2>
     </div>
-  {% endif %}
-<div class="classification-panels">
-<h3>MLST typing</h3>{{ chart_grid(charts.mlst) }}
-{% if mlst %}<div class="scroll"><table aria-label="MLST typing with provenance"><tr><th>Sample</th><th>Status</th><th>Scheme</th><th>Sequence type</th><th>Exact allele profile</th><th>Source</th><th>SHA-256</th></tr>{% for row in mlst %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.scheme }}</td><td>{{ row.sequence_type }}</td><td>{{ row.allele_profile }}</td><td>{{ row.source_file }}</td><td>{{ row.source_sha256 }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">No existing MLST output was supplied. Sequence types are not inferred from other classifications.</p>{% endif %}
-<h3>Reported lineage classifications</h3>{{ chart_grid(charts.lineages) }}
-{% if lineages %}<div class="scroll"><table aria-label="Reported lineage classifications"><tr><th>Sample</th><th>Lineage</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr>{% for row in lineages %}<tr><td>{{ row.sample }}</td><td>{{ row.lineage }}</td><td>{{ row.scheme }}</td><td>{{ row.reference }}</td><td>{{ row.method }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">Lineage classification was not performed: a reviewed scheme/reference or existing assignment table has not been configured. MLST sequence type is not a lineage.</p>{% endif %}
-<h3>Reported plasmid clusters</h3>{{ chart_grid(charts.plasmids) }}
-{% if plasmids %}<div class="scroll"><table aria-label="Reported plasmid cluster memberships"><tr><th>Sample</th><th>Cluster</th><th>Scheme</th><th>Reference revision</th><th>Method</th></tr>{% for row in plasmids %}<tr><td>{{ row.sample }}</td><td>{{ row.cluster_id }}</td><td>{{ row.scheme }}</td><td>{{ row.reference }}</td><td>{{ row.method }}</td></tr>{% endfor %}</table></div>{% else %}<p class="not-performed">No plasmid-cluster classifier output was supplied. Clusters and transfer events are not inferred from resistance genes or MLST.</p>{% endif %}
+    <button class="cf-icon-btn" type="button" data-cf-action="close-drawer" aria-label="Close details panel">{{ icon('x') }}</button>
+  </header>
+  <div class="cf-drawer-body" data-cf-drawer-body></div>
+</aside>
+
+<div class="cf-popover cf-filter-panel" id="cf-filter-panel" role="dialog" aria-modal="false" aria-labelledby="cf-filter-title" hidden>
+  <header class="cf-popover-header"><h2 id="cf-filter-title">Filter samples</h2><button class="cf-icon-btn" type="button" data-cf-action="close-filters" aria-label="Close filters">{{ icon('x') }}</button></header>
+  <p class="cf-popover-note">Filters change which samples are highlighted or listed. They never change analytical results; full-cohort figures say so.</p>
+  <div class="cf-popover-body" data-cf-filter-fields></div>
 </div>
-</section>
 
-{# ── 4. Virulence summary ────────────────────────────────────────────────── #}
-<section id="s4">
-  <h2><span class="num">4.</span> Virulence summary</h2>
-  {{ chart_grid(charts.virulence) }}
-  {% if virulence.status == 'not_performed' %}
-    <div class="not-performed">Analysis not performed — {{ virulence.reason }}</div>
-  {% else %}
-    <p class="muted">
-      <span class="pill" style="background:#2f8f4e;color:#fff">present</span>
-      <span class="pill" style="background:var(--absent);color:#55607a">absent</span>
-      <span class="pill" style="background:#fff;color:#9aa4b6;border:1px solid var(--line)">not tested</span>
-    </p>
-    <div class="scroll">
-    <table>
-      <tr><th>Sample</th>{% for m in virulence.markers %}<th>{{ m }}</th>{% endfor %}</tr>
-      {% for s in virulence.samples %}
-      <tr>
-        <td>{{ s }}</td>
-        {% for m in virulence.markers %}
-          {% set state = virulence.grid[s][m] %}
-          <td class="{{ 'vir-present' if state=='present' else ('vir-absent' if state=='absent' else 'vir-nt') }}">
-            <span aria-hidden="true">{{ '✔' if state=='present' else ('—' if state=='absent' else 'n/t') }}</span><span class="sr-only">{{ state|replace('_', ' ') }}</span>
-          </td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </table>
-    </div>
-  {% endif %}
-</section>
-
-{# ── 5. AMR summary ──────────────────────────────────────────────────────── #}
-<section id="s5">
-  <h2><span class="num">5.</span> AMR summary</h2>
-  {{ chart_grid(charts.amr) }}
-  {% if amr.status == 'not_performed' %}
-    <div class="not-performed">Analysis not performed — {{ amr.reason }}</div>
-  {% else %}
-    {% if amr.sxt_samples %}
-      <div class="sxt-flag">⚠ SXT multi-drug resistance element detected in
-        {{ amr.sxt_samples|length }} sample(s): {{ amr.sxt_samples|join(', ') }}.
-        Review treatment guidelines and confirm with phenotypic testing.</div>
-    {% endif %}
-    <div class="scroll">
-    <table>
-      <tr><th>Sample</th><th>Status</th>
-        {% for col, genes_col, label in amr.classes %}<th>{{ label }}</th>{% endfor %}
-        <th>SXT-MDR</th></tr>
-      {% for r in amr.rows %}
-      <tr>
-        <td>{{ r.sample }}</td><td>{{ r.status }}</td>
-        {% for col, genes_col, label in amr.classes %}
-          <td>
-            {%- if r[col]|lower in ['yes','true','present'] -%}
-              <strong>{{ r[genes_col] if r[genes_col] else 'present' }}</strong>
-            {%- elif r[col]|lower in ['not_run', 'not_performed', 'no_schema', ''] -%}<span class="muted">not run</span>
-            {%- else -%}<span class="muted">—</span>{%- endif -%}
-          </td>
-        {% endfor %}
-        <td>{% if r.sxt_mdr|lower in ['yes','true'] %}<span class="pill fail">yes</span>{% elif r.sxt_mdr|lower in ['not_run', 'not_performed', 'no_schema', ''] %}<span class="muted">not run</span>{% else %}no{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    </div>
-  {% endif %}
-</section>
-
-{# ── 6. Phylogenetic summary ─────────────────────────────────────────────── #}
-<section id="s6">
-  <h2><span class="num">6.</span> Phylogenetic summary</h2>
-  {% if phylogenetics.status == 'not_performed' and not cgmlst.heatmap %}
-    <div class="not-performed">Analysis not performed — {{ phylogenetics.reason }}</div>
-  {% else %}
-    {{ tree_panel(phylogenetics.tree_view, phylogenetics.newick, 'cohort-tree') }}
-    {{ tree_panel(phylogenetics.tree_view, none, 'cohort-tree-circular', 'circular') }}
-    {{ chart_grid(charts.distances) }}
-
-    {% if phylogenetics.heatmap %}
-      <h3>SNP distance matrix</h3>
-      <p class="muted">Darker cells indicate greater pairwise SNP distance (max
-        {{ phylogenetics.heatmap.max }} SNPs in this view). Showing {{ phylogenetics.heatmap.shown_samples }} of {{ phylogenetics.heatmap.total_samples }} samples; the complete source matrix is published in phylogenetics/.</p>
-      <div class="scroll">
-      <table class="matrix-table" aria-label="Pairwise SNP distance matrix">
-        <tr><th scope="col">Sample</th>{% for s in phylogenetics.heatmap.samples %}<th scope="col">{{ s }}</th>{% endfor %}</tr>
-        {% for row in phylogenetics.heatmap.rows %}
-        <tr>
-          <th scope="row">{{ row.sample }}</th>
-          {% for c in row.cells %}
-          <td style="background:{{ c.bg }};color:{{ c.fg }};text-align:center">{{ c.text }}</td>
-          {% endfor %}
-        </tr>
-        {% endfor %}
-      </table>
-      </div>
-    {% endif %}
-
-    {% if cgmlst.heatmap %}
-      {{ network_panel(distance_network) }}
-      <h3>cgMLST distance heatmap</h3>
-      <p class="muted">Showing {{ cgmlst.heatmap.shown_samples }} of {{ cgmlst.heatmap.total_samples }} samples. NA means no available pairwise comparison, not zero distance. The complete matrix is published in cgmlst/.</p>
-      <div class="scroll"><table class="matrix-table" aria-label="Pairwise cgMLST distance matrix">
-        <tr><th scope="col">Sample</th>{% for sample in cgmlst.heatmap.samples %}<th scope="col">{{ sample }}</th>{% endfor %}</tr>
-        {% for row in cgmlst.heatmap.rows %}<tr><th scope="row">{{ row.sample }}</th>{% for cell in row.cells %}<td style="background:{{ cell.bg }};color:{{ cell.fg }};text-align:center">{{ cell.text }}</td>{% endfor %}</tr>{% endfor %}
-      </table></div>
-    {% endif %}
-    {% if tree_diagnostics %}<details class="source-details"><summary>Original IQ-TREE inference diagnostics</summary><pre class="diagnostics">{{ tree_diagnostics }}</pre></details>{% endif %}
-
-    {% if phylogenetics.clusters %}
-      <h3>Cluster assignments</h3>
-      <div class="scroll">
-      <table>
-        <tr><th>Sample</th><th>Cluster</th><th>SNP category</th><th>cgMLST category</th>
-            <th>Country</th><th>Collection date</th></tr>
-        {% for r in phylogenetics.clusters %}
-        <tr><td>{{ r.sample }}</td><td>{{ r.cluster_id }}</td><td>{{ r.snp_category }}</td>
-            <td>{{ r.cgmlst_category }}</td><td>{{ r.country }}</td><td>{{ r.collection_date }}</td></tr>
-        {% endfor %}
-      </table>
-      </div>
-    {% endif %}
-  {% endif %}
-</section>
-
-{# ── 7. Global context ───────────────────────────────────────────────────── #}
-<section id="s7">
-  <h2><span class="num">7.</span> Global context</h2>
-  {% if global.status == 'not_performed' %}
-    <div class="not-performed">{{ global.message }}</div>
-  {% else %}
-    {{ tree_panel(global.tree_view, global.newick, 'global-tree') }}
-    {{ tree_panel(global.tree_view, none, 'global-tree-circular', 'circular') }}
-  {% endif %}
-</section>
-
-{# ── 8. Outbreak interpretation ──────────────────────────────────────────── #}
-<section id="s8">
-  <h2><span class="num">8.</span> Outbreak interpretation</h2>
-  {{ chart_grid(charts.clusters) }}
-  {% if outbreak.status == 'not_performed' %}
-    <div class="not-performed">Analysis not performed — {{ outbreak.reason }}</div>
-  {% else %}
-    <h3>Cluster assignments</h3>
-    <div class="scroll">
-    <table>
-      <tr><th>Sample</th><th>Cluster</th><th>SNP category</th><th>cgMLST category</th>
-          <th>Country</th><th>Collection date</th><th>Specimen</th></tr>
-      {% for r in outbreak.rows %}
-      <tr><td>{{ r.sample }}</td><td>{{ r.cluster_id }}</td><td>{{ r.snp_category }}</td>
-          <td>{{ r.cgmlst_category }}</td><td>{{ r.country }}</td>
-          <td>{{ r.collection_date }}</td><td>{{ r.specimen_type }}</td></tr>
-      {% endfor %}
-    </table>
-    </div>
-
-    {% if outbreak.pairs %}<details class="source-details"><summary>Reported within-threshold pairs ({{ outbreak.pairs|length }})</summary><div class="scroll"><table aria-label="Reported within-threshold pairs">
-      <tr>{% for field in outbreak.pairs[0] %}<th>{{ field }}</th>{% endfor %}</tr>
-      {% for row in outbreak.pairs %}<tr>{% for field in outbreak.pairs[0] %}<td>{{ row[field] }}</td>{% endfor %}</tr>{% endfor %}
-    </table></div></details>{% endif %}
-
-    <h3>Interpretation</h3>
-    <ul class="sentences">
-      {% for s in sentences %}<li>{{ s }}</li>{% endfor %}
+<dialog class="cf-dialog" id="cf-help" aria-labelledby="cf-help-title">
+  <header class="cf-dialog-header"><h2 id="cf-help-title">{{ icon('circle-help') }}Using this report</h2><button class="cf-icon-btn" type="button" data-cf-action="close-help" aria-label="Close help">{{ icon('x') }}</button></header>
+  <div class="cf-dialog-body">
+    <h3>Reading states</h3>
+    <ul class="cf-help-states">
+      <li><span class="cf-badge cf-badge--pass">{{ icon('circle-check') }}<span>Pass / Present</span></span> reported by the source output.</li>
+      <li><span class="cf-badge cf-badge--neutral">{{ icon('circle-minus') }}<span>Absent / No marker reported</span></span> assessed, not detected. This is not phenotypic susceptibility.</li>
+      <li><span class="cf-badge cf-badge--na">{{ icon('ban') }}<span>Not assessed / Not performed</span></span> no assessment exists; never a negative call.</li>
+      <li><span class="cf-badge cf-badge--missing">{{ icon('circle-dashed') }}<span>Not available</span></span> the value is missing or invalid in the source.</li>
+      <li><span class="cf-badge cf-badge--review">{{ icon('git-compare') }}<span>Review</span></span> sources disagree; both values are shown and none is preferred.</li>
     </ul>
+    <h3>Keyboard</h3>
+    <ul class="cf-help-keys">
+      <li><kbd class="cf-kbd">/</kbd> search samples and sections</li>
+      <li><kbd class="cf-kbd">[</kbd> <kbd class="cf-kbd">]</kbd> previous / next section</li>
+      <li><kbd class="cf-kbd">Esc</kbd> close panels, menus and dialogs</li>
+      <li><kbd class="cf-kbd">?</kbd> open this guide</li>
+    </ul>
+    <p>Select a sample anywhere (table, tree tip, matrix cell or network node) to open its record without leaving the current view. Genomic clustering does not prove transmission, and AMR genotype does not establish phenotype.</p>
+    <p><a href="#guide" data-cf-action="close-help">Open the full interpretation guide</a></p>
+  </div>
+</dialog>
 
-    {% if outbreak.caveat %}
-      <div class="caveat"><strong>Interpretation caveat:</strong> {{ outbreak.caveat }}</div>
-    {% endif %}
-  {% endif %}
-</section>
-
-{# ── 9. Limitations (mandatory, prominent, never collapsed) ───────────────── #}
-<section id="s9" class="limitations">
-  <h2><span class="num">9.</span> Limitations</h2>
-  <p><strong>These limitations are integral to interpreting this report and must be read.</strong></p>
-  <ul>
-    {% for lim in limitations %}<li>{{ lim }}</li>{% endfor %}
-  </ul>
-</section>
-
-{# ── 10. Next steps ──────────────────────────────────────────────────────── #}
-<section id="s10">
-  <h2><span class="num">10.</span> Next steps</h2>
-  <ol>
-    {% for step in next_steps %}<li>{{ step }}</li>{% endfor %}
-  </ol>
-</section>
-
-{# ── 11. Methods ─────────────────────────────────────────────────────────── #}
-<section id="s11">
-  <h2><span class="num">11.</span> Methods</h2>
-  <h3>Reference genome</h3>
-  <table class="kv">
-    <tr><td>Reference</td><td>{{ methods.reference.name }}</td></tr>
-    <tr><td>Assembly</td><td>{{ methods.reference.fasta_accession }}</td></tr>
-    <tr><td>Annotation</td><td>{{ methods.reference.genbank_accession }}</td></tr>
-  </table>
-
-  <h3>Key parameters</h3>
-  <table class="kv">
-    {% for k, v in methods.params.items() %}
-    <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
-    {% endfor %}
-  </table>
-
-  <h3>Tool versions</h3>
-  {% if methods.tools_available %}
-    <div class="scroll">
-    <table>
-      <tr><th>Tool</th><th>Version</th></tr>
-      {% for t in methods.tools %}<tr><td>{{ t.tool }}</td><td>{{ t.version }}</td></tr>{% endfor %}
-    </table>
-    </div>
-  {% else %}
-    <p class="muted">Software versions file not available — see pipeline_info/software_versions.yml
-      in the results directory once produced.</p>
-  {% endif %}
-  <h3>Report input provenance</h3>
-  <p class="muted">These checksums identify the report's immediate source files. File presence does not establish biological validity or prove an analysis ran. Full workflow parameters and reference/database provenance are recorded separately in pipeline_info/.</p>
-  <div class="scroll"><table aria-label="Report input provenance">
-    <tr><th>Source</th><th>File</th><th>Status</th><th>Bytes</th><th>SHA-256</th></tr>
-    {% for item in input_inventory %}<tr><td>{{ item.source }}</td><td>{{ item.file }}</td><td>{{ item.status }}</td><td>{{ item.bytes if item.bytes is not none else '—' }}</td><td class="checksum">{{ item.sha256 or '—' }}</td></tr>{% endfor %}
-  </table></div>
-  <p class="muted">Report generated {{ methods.date }} by CholeraFlow {{ run.version }}.</p>
-</section>
-
-</main>
-<footer>
-  CholeraFlow {{ run.version }} &middot; This report is a screening aid and requires
-  integration with epidemiological and clinical data.
-</footer>
-
-</div>
+<div class="cf-tooltip" id="cf-tooltip" role="tooltip" hidden></div>
+<div class="sr-only" id="cf-live" aria-live="polite" aria-atomic="true"></div>
+{{ icon_templates() }}
+<script type="application/json" id="cf-data">{{ model|json_safe|tojson }}</script>
 <script>
 {% include 'report.js.j2' %}
 </script>

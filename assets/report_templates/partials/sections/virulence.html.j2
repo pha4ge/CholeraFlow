@@ -1,0 +1,14 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['virulence'] -%}
+{%- from 'partials/marker_matrix.html.j2' import marker_matrix -%}
+{{ page_header(page, 'Existing marker detections, with assessment coverage. Genomic presence does not establish expression or phenotypic virulence.') }}
+{% call panel('The reported marker landscape', 'table-2', 'One row per report sample. Calls remain tied to their original source.') %}
+{{ marker_matrix(views.markers.virulence, 'virulence') }}
+{% endcall %}
+<details class="cf-disclosure"><summary>Detection frequencies and assessment denominators</summary>{{ chart_grid(charts.virulence) }}</details>
+{% for sample in model.samples %}{% for flag in sample.flags if 'virulence' in flag.evidence %}{% call notice(flag.title, 'review') %}<p>{{ sample_id(sample.id) }} · {{ flag.message }}</p>{% endcall %}{% endfor %}{% endfor %}
+{{ page_footer(page) }}

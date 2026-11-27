@@ -1067,3 +1067,31 @@ each run and were never affected — only per-sample directories/files persist s
   manual testing (automated Nextflow work dirs are isolated, so this only affects manual runs)
 - `NXF_VER=24.10.5` must always be set for CholeraFlow runs; Bactopia uses Nextflow 26.04.4
   internally (separate Java process, no conflict in pipeline mode)
+
+## Reporting integration and offline QA — 2026-11-27
+
+Continued the existing `ai/report-upgrade` working tree while preserving concurrent
+local changes. Completed the offline workflow schematic, download centre, structured
+sample/pair inspection, sample controls and responsive fixes. Preserved conflicting
+source calls with explicit review notices, distinct singleton components and complete
+matrix/Newick downloads. Added reporting regressions and file-based browser checks.
+
+Python 3.11 validation: 466 passed, two expected fixture skips, 39 subtests passed.
+Nextflow 24.10.5 configuration, preview and synthetic integration workflows passed.
+Chromium passed all 25 pages offline at six viewport sizes, exports, themes and the
+JavaScript-disabled fallback. Firefox launch and WebKit installation were blocked by
+local environment/download failures, so those browsers remain unverified. No real
+biological/container validation or remote push was performed.
+
+See [REPORT_REDESIGN_SUMMARY.md](../REPORT_REDESIGN_SUMMARY.md) for exact commands,
+evidence paths, performance observations, limitations and the combined file manifest.
+
+
+### Scientific visual refinement — 2026-11-27
+
+Upgraded shared charts, metadata composition/timeline, consolidated QC, marker
+matrices, source-valued SVG heatmaps and annotated rectangular/circular trees.
+Preserved scientific calls and source records. Validation reached 470 passed,
+two expected fixture skips and 39 subtests; offline Chromium and synthetic
+Nextflow checks passed. See [REPORT_VISUAL_REFINEMENT.md](REPORT_VISUAL_REFINEMENT.md)
+for commands, evidence, file scope and limits. No push or merge.

@@ -1,0 +1,4 @@
+CF.module("workflow-export",()=>{
+ const figure=doc.getElementById("pipeline-schematic");
+ CF.exports.register({id:"workflow-svg",group:"Workflow",label:"Pipeline schematic (SVG)",description:"Architecture, not execution status",run:()=>CF.exportSvg(figure,"choleraflow-workflow.svg")});
+});

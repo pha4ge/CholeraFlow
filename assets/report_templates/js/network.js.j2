@@ -1,0 +1,20 @@
+/* Shared sample identity and palette; existing observed forest edges remain untouched. */
+CF.module("network-linking", () => {
+ const panel=doc.getElementById("allele-network");if(!panel)return;
+ const select=panel.querySelector(".network-color");if(!select)return;
+ const viewport=panel.querySelector('.network-viewport');
+ let pan=null;
+ viewport.addEventListener('pointerdown',event=>{if(event.target.closest('.network-node'))return;pan={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(event.pointerId);});
+ viewport.addEventListener('pointermove',event=>{if(!pan)return;viewport.scrollLeft=pan.left+pan.x-event.clientX;viewport.scrollTop=pan.top+pan.y-event.clientY;});
+ viewport.addEventListener('pointerup',()=>pan=null);viewport.addEventListener('pointercancel',()=>pan=null);
+ const nodes=CF.qsa(".network-node",panel);panel.dataset.scope="filterable";
+ const fields={year:"collection_year",mlst:"mlst",lineage:"lineage",plasmid:"plasmid_cluster",country:"country"};
+ const paint=()=>{
+  const field=fields[select.value]||select.value;const counts=new Map();
+  nodes.forEach(node=>{const id=CF.resolve(node.dataset.sample);if(!id)return;const a=CF.annotation(id,field);node.dataset.cfSample=id;node.dataset.cfSelect=id;const circle=node.querySelector("circle");circle.setAttribute("fill","var(--cf-"+a.token+")");counts.set(a.value,{...a,count:(counts.get(a.value)?.count||0)+1});});
+  const legend=panel.querySelector(".network-legend");legend.replaceChildren();counts.forEach(a=>{const swatch=CF.el("i");swatch.style.background="var(--cf-"+a.token+")";legend.append(CF.el("span",null,swatch,a.value+" ("+a.count+")"));});
+ };
+ select.addEventListener("change",paint);panel.querySelector(".network-reset").addEventListener("click",paint);paint();
+ const table=panel.querySelector('table[aria-label="Distance network observed edges"]');
+ CF.exports.register({id:"network-edges",group:"Distances",label:"Observed network edges (CSV)",description:"Supplied forest edges; no transmission inference",available:()=>Boolean(table)||"No observed edge table.",run:()=>CF.download(CF.csv(Array.from(table.rows).map(row=>Array.from(row.cells).map(cell=>cell.textContent))),"choleraflow-observed-forest-edges.csv","text/csv")});
+}, {page:"network"});

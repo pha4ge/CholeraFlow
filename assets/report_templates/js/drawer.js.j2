@@ -1,0 +1,47 @@
+/* Structured sample inspection. Original fields remain available in each source tab. */
+CF.module("sample-drawer", () => {
+  const kv = fields => {
+    const list = CF.el("dl", {class:"cf-kv"});
+    Object.entries(fields).forEach(([key,value]) => list.append(CF.el("div", null, CF.el("dt",null,key), CF.el("dd",null,value === null || value === undefined || value === "" ? "Not available" : String(value)))));
+    return list;
+  };
+  CF.renderers.sample = (id, container) => {
+    const s = CF.samples.get(id);
+    (s.flags || []).forEach(flag => container.append(CF.el("div", {class:"cf-notice cf-notice--review"}, CF.el("p",null,flag.message))));
+    const tabs = CF.el("div", {"data-cf-tabs":""});
+    const groups = [
+      ["Overview", null], ["Quality control", ["genome_qc","seq_qc"]],
+      ["Characterisation", ["typing","mlst","lineage","plasmid"]],
+      ["Marker results", ["virulence","amr"]], ["Comparative results", ["cluster"]], ["Provenance", []]
+    ];
+    groups.forEach(([label, sources], index) => {
+      const panel = CF.el("section", {class:"cf-tabpanel", id:"cf-sample-tab-"+index, "data-tab-title":label});
+      // enhanceTabs uses data-title, and headings remain readable without tab enhancement.
+      panel.dataset.title = label;
+      panel.append(CF.el("h3",null,label));
+      if (sources === null) panel.append(kv({Country:s.derived.country, "Collection date":s.derived.collection_date, Specimen:s.derived.specimen_type, "Genome QC":s.derived.qc_status, Sources:s.sources.map(key=>CF.data.sources[key]||key).join(", ")}));
+      else if (label === "Provenance") {
+        (s.labels||[]).forEach(alias=>panel.append(CF.el("p",null,"Source identifier: "+alias.label+" · "+alias.source+" · "+alias.method)));
+        (CF.data.inputs||[]).filter(input => s.sources.includes(({treefile:"tree",cluster_assignments:"cluster",lineage_assignments:"lineage",plasmid_results:"plasmid"})[input.source]||input.source)).forEach(input=>panel.append(kv(input)));
+        panel.append(CF.el("p",null,"Hashes identify report inputs; file presence does not establish biological validity."));
+      } else {
+        const records = s.records.filter(record=>sources.includes(record.source));
+        records.forEach(record=>panel.append(CF.el("h4",null,record.label),kv(record.fields)));
+        if (!records.length) panel.append(CF.el("p",{class:"cf-muted"},"No source records supplied for this category."));
+        if (label === "Comparative results") panel.append(kv({"Supplied tree tips":s.comparative.tree.join("; ")||"Not available", "SNP matrix label":s.comparative.snp_matrix, "cgMLST matrix label":s.comparative.cgmlst_matrix}));
+        if (label === "Marker results") panel.append(CF.el("p",{class:"cf-muted"},"Marker detection does not establish expression or phenotype. Missing results are not negative calls."));
+      }
+      tabs.append(panel);
+    });
+    container.append(tabs); CF.enhanceTabs(container);
+  };
+  CF.renderers.pair = (detail, container) => {
+    container.append(kv({"Sample A":detail.a,"Sample B":detail.b,"Supplied distance":String(detail.value)+" "+detail.unit,"Source":detail.source||"Supplied matrix"}));
+    [detail.a,detail.b].forEach(label=>{
+      const id=CF.resolve(label); if(!id)return;
+      const s=CF.samples.get(id); const button=CF.el("button",{type:"button",class:"cf-btn"},"Inspect "+label);
+      button.addEventListener("click",()=>CF.select(id)); container.append(button,kv({Country:s.derived.country,"Collection date":s.derived.collection_date,"QC":s.derived.qc_status}));
+    });
+    container.append(CF.el("p",{class:"cf-muted"},"A supplied genetic distance does not establish direct transmission. SNP differences and allele differences are separate metrics."));
+  };
+});

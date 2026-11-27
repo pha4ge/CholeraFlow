@@ -1,0 +1,26 @@
+.cf-marker-summary { display:flex; flex-wrap:wrap; gap:36px; border-bottom:1px solid var(--cf-border); padding:4px 0 20px; margin-bottom:18px; }
+.cf-marker-summary strong { display:block; font-size:32px; font-weight:600; letter-spacing:-.04em; }
+.cf-marker-summary strong small { font-size:15px; color:var(--cf-text-2); margin-left:6px; }
+.cf-marker-summary span { display:block; font-size:11px; color:var(--cf-text-2); }
+.cf-marker-legend { display:flex; flex-wrap:wrap; gap:12px 20px; font-size:11px; color:var(--cf-text-2); margin:10px 0 18px; align-items:center; }
+.cf-marker-symbol { display:inline-grid;place-items:center;font-size:17px;font-style:normal; }
+.cf-marker-symbol.is-detected { color:var(--cf-accent); } .cf-marker-symbol.is-absent { color:var(--cf-text-2); } .cf-marker-symbol.is-na { color:var(--cf-text-3); }
+.cf-marker-table thead th { min-width:94px; text-align:center !important; }
+.cf-marker-table thead th:first-child { min-width:200px;text-align:left !important; }
+.cf-marker-table th small { display:block;font-size:10px; color:var(--cf-text-2);font-weight:400;text-transform:none;letter-spacing:0;margin-top:7px; }
+.cf-marker-table tbody th { font-weight:400;font-size:12px;white-space:nowrap; }
+.cf-marker-cell { text-align:center !important; vertical-align:middle !important; }
+.cf-marker--present,.cf-marker--detected { background:var(--cf-accent-soft); }
+.cf-marker--not_tested,.cf-marker--not_assessed,.cf-marker--unavailable { background:repeating-linear-gradient(135deg,var(--cf-surface-2),var(--cf-surface-2) 5px,var(--cf-border) 5px,var(--cf-border) 6px); }
+.cf-marker-cell small { display:block;font:10px var(--cf-font-mono);max-width:130px;white-space:normal;overflow-wrap:anywhere;color:var(--cf-text);margin-top:3px; }
+.cf-marker-review { display:block;color:var(--cf-review-ink);font-size:9px;letter-spacing:.06em;text-transform:uppercase;margin-top:5px; }
+@media print{.cf-marker-table th,.cf-marker-table td{min-width:0;}}
+
+.cf-marker-table thead th { min-width:100px;max-width:135px;white-space:normal !important; }
+.cf-marker-table .cf-sort { display:block;white-space:normal;text-align:center;font-size:10px;line-height:1.5; }
+.cf-marker-table .cf-sort span { display:block; }
+.cf-marker-table th small { font-size:9px; }
+
+.cf-typing-profile { display:block; width:100%; min-width:950px; margin:10px 0; }
+.cf-typing-tile { fill:var(--cf-surface-2);stroke:var(--cf-border); }
+@media print{.cf-typing-profile{min-width:0;}}

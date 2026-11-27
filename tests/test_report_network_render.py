@@ -17,6 +17,7 @@ class _NetworkData(HTMLParser):
         self.edges = 0
         self.active_attributes = []
         self.scripts = 0
+        self.data_islands = 0
         self.feed(html)
 
     def handle_starttag(self, tag, attrs):
@@ -29,7 +30,12 @@ class _NetworkData(HTMLParser):
         self.active_attributes.extend((tag, key, value) for key, value in attrs
                                       if key.startswith('on'))
         if tag == 'script':
-            self.scripts += 1
+            # Only the report's own inline script may execute; the embedded
+            # report model is an inert application/json data island.
+            if attributes.get('type') == 'application/json':
+                self.data_islands += 1
+            else:
+                self.scripts += 1
 
 
 def _matrix(samples, rows):
@@ -83,6 +89,11 @@ def test_hostile_sample_and_metadata_labels_remain_inert_data(tmp_path):
     assert json.loads(node['data-metadata'])['country']['value'] == country
     assert parsed.active_attributes == []
     assert parsed.scripts == 1  # Only the report's own inline progressive enhancement.
+    assert parsed.data_islands == 1
+    island = html.split('<script type="application/json" id="cf-data">', 1)[1].split('</script>', 1)[0]
+    assert '<' not in island and '>' not in island  # hostile labels cannot close the data element
+    model = json.loads(island)
+    assert hostile in [sample['id'] for sample in model['samples']]
     assert '<script>alert(1)</script>' not in html
     assert '<img src=x onerror=alert(2)>' not in html
     assert hostile in [node['sample'] for node in context['distance_network']['nodes']]

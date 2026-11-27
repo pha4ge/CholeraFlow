@@ -1,0 +1,29 @@
+/* Sample table controls enhance the complete server-rendered records. */
+CF.module("samples",()=>{
+ const page=doc.getElementById("samples");const table=page.querySelector('#sx-table');if(!table)return;
+ const tools=page.querySelector('[data-sx-controls]');
+ if(tools){
+  tools.hidden=false;
+  const chooser=CF.el('details',{class:'cf-disclosure'},CF.el('summary',null,'Visible columns'));
+  const fields=CF.el('div',{class:'cf-cluster'});
+  Array.from(table.tHead.rows[0].cells).slice(1).forEach((header,index)=>{
+   const input=CF.el('input',{type:'checkbox',checked:!header.hidden});
+   input.addEventListener('change',()=>Array.from(table.rows).forEach(row=>{if(row.cells[index+1])row.cells[index+1].hidden=!input.checked;}));
+   fields.append(CF.el('label',null,input,' '+header.textContent));
+  });chooser.append(fields);
+  const qc=CF.el('select',{'aria-label':'Filter sample table by genome QC',class:'cf-select'},CF.el('option',{value:''},'All genome QC states'));
+  const palette=CF.data.palettes.qc_status;
+  Object.keys(palette?.counts||{}).forEach(value=>qc.append(CF.el('option',{value},value)));
+  qc.addEventListener('change',()=>CF.setFilter('qc_status',qc.value?[qc.value]:[]));
+  CF.on('filters',()=>{const values=CF.state.filters.qc_status;qc.value=values&&values.size===1?Array.from(values)[0]:'';});
+  tools.append(CF.el('label',{class:'cf-field'},'Genome QC',qc),chooser);
+ }
+ const recordTools=page.querySelector('[data-sx-rec-tools]');const records=CF.qsa('.sx-rec',page);
+ if(recordTools){
+  recordTools.hidden=false;
+  const input=recordTools.querySelector('[data-sx-rec-filter]');const count=recordTools.querySelector('[data-sx-rec-count]');
+  input.addEventListener('input',()=>{const q=input.value.trim().toLocaleLowerCase();records.forEach(record=>record.hidden=!record.dataset.sxSearch.toLocaleLowerCase().includes(q));const n=records.filter(r=>!r.hidden).length;count.textContent=n+' of '+records.length+' samples';page.querySelector('[data-sx-rec-empty]').hidden=n!==0;});
+  CF.qsa('[data-sx-rec-expand]',recordTools).forEach(button=>button.addEventListener('click',()=>records.filter(r=>!r.hidden).forEach(record=>record.open=button.dataset.sxRecExpand==='open')));
+ }
+ CF.qsa('.sx-rec-open',page).forEach(node=>node.hidden=false);
+}, {page:'samples'});

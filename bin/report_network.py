@@ -2,6 +2,13 @@
 
 The source matrix is never modified. The forest selects existing matrix pairs;
 it does not infer biological groups, phylogeny, or transmission relationships.
+
+Layout is display-only and never reads distance values: each multi-sample
+component is drawn at a natural size that grows with its sample count, the
+components are packed largest first, and samples without any usable pair
+(isolated vertices) share a compact labelled grid instead of each claiming a
+large empty region. Label and edge-label positions are derived from the drawn
+topology so labels sit away from incident edges.
 """
 
 import math
@@ -12,6 +19,12 @@ from decimal import Decimal, InvalidOperation
 MAX_NODES = 250
 WIDTH = 1000
 HEIGHT = 720
+MARGIN = 20.0
+MIN_HEIGHT = 300.0
+COMPONENT_GAP = 40.0
+ISOLATE_CELL = (124.0, 50.0)
+NODE_LABEL_OFFSET = 12.0
+EDGE_LABEL_OFFSET = 9.0
 NOTE = (
     "Edge labels are observed pairwise distances. Node positions and line lengths "
     "are layout-only and do not represent distance. This minimum spanning forest "
@@ -47,33 +60,17 @@ def _unavailable(reason):
     }
 
 
-def _component_boxes(components, bounds=(16.0, 16.0, WIDTH - 16.0, HEIGHT - 16.0)):
-    """Allocate disjoint rectangles, leaving larger trees room to branch.
+def _natural_box(count):
+    """Display box for a multi-sample component; grows with its sample count.
 
-    The small per-component allowance keeps isolated samples visible beside a
-    large tree. These are display areas only, never scientific group sizes.
+    A two-sample component gets a short edge instead of spanning the canvas,
+    and large components receive the full drawing width. These are display
+    areas only, never scientific group sizes; distances are not used.
     """
-    if len(components) == 1:
-        return [(components[0], bounds)]
-    weights = [len(members) + 4 for members in components]
-    total = sum(weights)
-    prefix, split = 0, 1
-    best = total
-    for index, weight in enumerate(weights[:-1], 1):
-        prefix += weight
-        difference = abs(total - 2 * prefix)
-        if difference < best:
-            best, split = difference, index
-    fraction = sum(weights[:split]) / total
-    x0, y0, x1, y1 = bounds
-    if x1 - x0 >= y1 - y0:
-        middle = x0 + (x1 - x0) * fraction
-        left, right = (x0, y0, middle, y1), (middle, y0, x1, y1)
-    else:
-        middle = y0 + (y1 - y0) * fraction
-        left, right = (x0, y0, x1, middle), (x0, middle, x1, y1)
-    return (_component_boxes(components[:split], left)
-            + _component_boxes(components[split:], right))
+    usable = WIDTH - 2 * MARGIN
+    width = min(usable, max(170.0, 96.0 * math.sqrt(count)))
+    height = min(HEIGHT - 2 * MARGIN, max(120.0, width * 0.7))
+    return width, height
 
 
 def _tree_seed(members, neighbours):
@@ -215,6 +212,101 @@ def _layout_component(members, neighbours, bounds):
     return placed
 
 
+def _pack(components, neighbours):
+    """Pack components on shelves (largest first) and isolates in a grid.
+
+    Returns (positions, component index per sample, label width per sample,
+    drawing height). Every sample keeps its own vertex; shelves are centred so
+    small cohorts sit in the middle of the drawing instead of its corners.
+    """
+    usable = WIDTH - 2 * MARGIN
+    multi = sorted((members for members in components if len(members) > 1),
+                   key=lambda members: (-len(members), members[0]))
+    isolates = sorted(members[0] for members in components if len(members) == 1)
+    positions, component_of, label_chars = {}, {}, {}
+    shelves, shelf, cursor_x, cursor_y, shelf_height = [], [], 0.0, 0.0, 0.0
+    for index, members in enumerate(multi):
+        width, height = _natural_box(len(members))
+        local = _layout_component(members, neighbours, (0.0, 0.0, width, height))
+        min_x = min(point[0] for point in local.values())
+        min_y = min(point[1] for point in local.values())
+        box_w = max(point[0] for point in local.values()) - min_x
+        box_h = max(point[1] for point in local.values()) - min_y
+        pad_x = max(0.0, min(64.0, (usable - box_w) / 2))
+        pad_y = 26.0
+        foot_w, foot_h = box_w + 2 * pad_x, box_h + 2 * pad_y
+        if shelf and cursor_x + foot_w > usable:
+            shelves.append((shelf, cursor_x - COMPONENT_GAP, cursor_y))
+            cursor_y += shelf_height + COMPONENT_GAP
+            shelf, cursor_x, shelf_height = [], 0.0, 0.0
+        shelf.append((members, local, cursor_x + pad_x - min_x, pad_y - min_y))
+        cursor_x += foot_w + COMPONENT_GAP
+        shelf_height = max(shelf_height, foot_h)
+        for sample in members:
+            component_of[sample] = index
+            label_chars[sample] = 28
+    if shelf:
+        shelves.append((shelf, cursor_x - COMPONENT_GAP, cursor_y))
+        cursor_y += shelf_height
+    for items, shelf_width, top in shelves:
+        offset = MARGIN + max(0.0, (usable - shelf_width) / 2)
+        for members, local, shift_x, shift_y in items:
+            for sample in members:
+                x, y = local[sample]
+                positions[sample] = (x + shift_x + offset, y + shift_y + top + MARGIN)
+    if isolates:
+        cell_w, cell_h = ISOLATE_CELL
+        columns = max(1, int(usable // cell_w))
+        if multi:
+            cursor_y += COMPONENT_GAP
+        used = min(columns, len(isolates))
+        offset = MARGIN + (usable - used * cell_w) / 2
+        for index, sample in enumerate(isolates):
+            row, column = divmod(index, columns)
+            positions[sample] = (offset + (column + 0.5) * cell_w, MARGIN + cursor_y + 14 + row * cell_h)
+            component_of[sample] = len(multi) + index
+            label_chars[sample] = max(6, int((cell_w - 10) / 6.6))
+        cursor_y += math.ceil(len(isolates) / columns) * cell_h
+    height = max(MIN_HEIGHT, cursor_y + 2 * MARGIN)
+    # Centre short drawings vertically so a small cohort is not pinned to the top.
+    lift = (height - (cursor_y + 2 * MARGIN)) / 2
+    positions = {sample: (round(x, 3), round(y + lift, 3)) for sample, (x, y) in positions.items()}
+    return positions, component_of, label_chars, round(height, 3)
+
+
+def _node_label(sample, positions, neighbours):
+    """Place a sample label in the widest angular gap between its drawn edges."""
+    x, y = positions[sample]
+    angles = sorted(math.atan2(positions[other][1] - y, positions[other][0] - x)
+                    for other in neighbours[sample])
+    if not angles:
+        theta = math.pi / 2
+    elif len(angles) == 1:
+        theta = angles[0] + math.pi
+    else:
+        gaps = [((angles[(index + 1) % len(angles)] - angles[index]) % (2 * math.pi)) or 2 * math.pi
+                for index in range(len(angles))]
+        widest = max(range(len(gaps)), key=lambda index: (round(gaps[index], 9), -index))
+        theta = angles[widest] + gaps[widest] / 2
+    cos, sin = math.cos(theta), math.sin(theta)
+    if cos > 0.38:
+        return round(NODE_LABEL_OFFSET * cos + 1, 2), round(NODE_LABEL_OFFSET * sin + 4, 2), "start"
+    if cos < -0.38:
+        return round(NODE_LABEL_OFFSET * cos - 1, 2), round(NODE_LABEL_OFFSET * sin + 4, 2), "end"
+    return 0.0, (NODE_LABEL_OFFSET + 9.0) if sin >= 0 else -(NODE_LABEL_OFFSET - 2.0), "middle"
+
+
+def _edge_label(x1, y1, x2, y2):
+    """Edge-label anchor beside the midpoint (never on top of the line)."""
+    dx, dy = x2 - x1, y2 - y1
+    length = math.hypot(dx, dy) or 1.0
+    nx, ny = -dy / length, dx / length
+    if ny > 0 or (abs(ny) < 1e-9 and nx < 0):
+        nx, ny = -nx, -ny
+    return (round((x1 + x2) / 2 + nx * EDGE_LABEL_OFFSET, 3),
+            round((y1 + y2) / 2 + ny * EDGE_LABEL_OFFSET + 3.5, 3))
+
+
 def _positions(components, selected):
     """Lay out the selected forest, retaining every sample as its own vertex."""
     neighbours = {sample: [] for members in components for sample in members}
@@ -223,10 +315,8 @@ def _positions(components, selected):
         neighbours[right].append(left)
     for values in neighbours.values():
         values.sort()
-    positions = {}
-    for members, bounds in _component_boxes(components):
-        positions.update(_layout_component(members, neighbours, bounds))
-    return positions
+    positions, component_of, label_chars, height = _pack(components, neighbours)
+    return positions, component_of, label_chars, height, neighbours
 
 
 def build_distance_network(matrix):
@@ -291,16 +381,30 @@ def build_distance_network(matrix):
     for sample in samples:
         members_by_root.setdefault(find(sample), []).append(sample)
     components = sorted(members_by_root.values())
-    positions = _positions(components, selected)
-    nodes = [{"sample": sample, "x": positions[sample][0], "y": positions[sample][1]}
-             for sample in samples]
-    edges = [{"sample_1": left, "sample_2": right,
-              "x1": positions[left][0], "y1": positions[left][1],
-              "x2": positions[right][0], "y2": positions[right][1],
-              "distance": distance}
-             for distance, left, right in selected]
+    positions, component_of, label_chars, height, neighbours = _positions(components, selected)
+    sizes = {}
+    for sample in samples:
+        sizes[component_of[sample]] = sizes.get(component_of[sample], 0) + 1
+    nodes = []
+    for sample in samples:
+        label_dx, label_dy, anchor = _node_label(sample, positions, neighbours)
+        nodes.append({"sample": sample, "x": positions[sample][0], "y": positions[sample][1],
+                      "label_dx": label_dx, "label_dy": label_dy, "label_anchor": anchor,
+                      "label_chars": label_chars[sample], "degree": len(neighbours[sample]),
+                      "component": component_of[sample],
+                      "component_size": sizes[component_of[sample]]})
+    edges = []
+    for distance, left, right in selected:
+        x1, y1 = positions[left]
+        x2, y2 = positions[right]
+        label_x, label_y = _edge_label(x1, y1, x2, y2)
+        edges.append({"sample_1": left, "sample_2": right, "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                      "label_x": label_x, "label_y": label_y, "distance": distance})
+    component_sizes = sorted(sizes.values(), reverse=True)
     return {
-        "status": "ok", "reason": None, "width": WIDTH, "height": HEIGHT,
+        "status": "ok", "reason": None, "width": WIDTH, "height": height,
         "nodes": nodes, "edges": edges, "component_count": len(components),
+        "component_sizes": component_sizes,
+        "isolated_count": sum(1 for size in component_sizes if size == 1),
         "omitted_pairs": omitted_pairs, "note": NOTE,
     }

@@ -1,0 +1,417 @@
+/* CholeraFlow report runtime — shared components. */
+
+/* ── Detail drawer (non-modal; Esc closes; focus returns to the trigger) ── */
+CF.renderers = CF.renderers || {};
+CF.drawer = (() => {
+  const panel = doc.getElementById("cf-drawer");
+  if (!panel) return {open() {}, close() {}, openSample() {}, openPair() {}, isOpen: () => false};
+  const body = panel.querySelector("[data-cf-drawer-body]");
+  const title = panel.querySelector("[data-cf-drawer-title]");
+  const eyebrow = panel.querySelector("[data-cf-drawer-eyebrow]");
+  let returnFocus = null;
+  title.tabIndex = -1;
+  function open(options) {
+    returnFocus = options.trigger || doc.activeElement;
+    eyebrow.textContent = options.eyebrow || "Details";
+    title.textContent = options.title || "";
+    body.replaceChildren();
+    try { options.render(body); }
+    catch (error) {
+      console.error(error);
+      body.append(CF.el("p", {class: "cf-muted"}, "These details could not be displayed. The record remains available in the Sample explorer."));
+    }
+    panel.hidden = false;
+    root.classList.add("cf-drawer-open");
+    body.scrollTop = 0;
+    title.focus({preventScroll: true});
+    CF.emit("drawer", {open: true});
+  }
+  function close() {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    root.classList.remove("cf-drawer-open");
+    CF.emit("drawer", {open: false});
+    if (returnFocus && doc.contains(returnFocus) && typeof returnFocus.focus === "function") returnFocus.focus({preventScroll: true});
+  }
+  function fallbackSample(id, container) {
+    const sample = CF.samples.get(id);
+    container.append(CF.el("p", {class: "cf-muted"}, "Sources: " + (sample.sources || []).map(key => (CF.data.sources || {})[key] || key).join(", ")));
+    (sample.records || []).forEach(record => {
+      container.append(CF.el("h3", {class: "cf-drawer-section"}, record.label));
+      const list = CF.el("dl", {class: "cf-kv"});
+      Object.entries(record.fields || {}).forEach(([key, value]) => list.append(CF.el("div", null, CF.el("dt", null, key), CF.el("dd", null, value === "" ? "Not recorded" : value))));
+      container.append(list);
+    });
+  }
+  return {
+    open, close,
+    isOpen: () => !panel.hidden,
+    openSample(id, trigger) {
+      const sample = CF.samples.get(id);
+      if (!sample) return;
+      open({eyebrow: "Sample record", title: id, trigger,
+            render: container => (CF.renderers.sample || fallbackSample)(id, container)});
+    },
+    openPair(detail, trigger) {
+      open({eyebrow: (detail.metricLabel || "Pairwise comparison"), title: detail.a + " · " + detail.b, trigger,
+            render: container => {
+              if (CF.renderers.pair) return CF.renderers.pair(detail, container);
+              container.append(CF.el("p", null, String(detail.value) + " " + (detail.unit || "")));
+            }});
+    },
+  };
+})();
+
+/* ── Tooltip: one floating element; data-tip text (\n = new line) ───────── */
+CF.tooltip = (() => {
+  const tip = doc.getElementById("cf-tooltip");
+  let current = null;
+  function textFor(node) {
+    if (node.dataset.tip) return node.dataset.tip;
+    const title = node.querySelector(":scope > title");
+    if (title) {
+      node.dataset.tip = title.textContent;
+      if (!node.getAttribute("aria-label")) node.setAttribute("aria-label", title.textContent);
+      title.remove();
+      return node.dataset.tip;
+    }
+    return "";
+  }
+  function place(x, y) {
+    const pad = 14; const rect = tip.getBoundingClientRect();
+    let left = x + pad; let top = y + pad;
+    if (left + rect.width > innerWidth - 8) left = x - rect.width - pad;
+    if (top + rect.height > innerHeight - 8) top = y - rect.height - pad;
+    tip.style.left = Math.max(8, left) + "px";
+    tip.style.top = Math.max(8, top) + "px";
+  }
+  function show(node, x, y) {
+    const text = textFor(node);
+    if (!text || !tip) return;
+    current = node;
+    tip.textContent = text;
+    tip.hidden = false;
+    if (x === undefined) { const box = node.getBoundingClientRect(); x = box.left + box.width / 2; y = box.bottom; }
+    place(x, y);
+  }
+  function hide() { if (tip) tip.hidden = true; current = null; }
+  function init() {
+    if (!tip) return;
+    doc.addEventListener("pointerover", event => {
+      const node = event.target.closest && event.target.closest("[data-tip], svg [data-cf-sample], svg .cf-has-tip");
+      if (node && (node.dataset.tip || node.querySelector(":scope > title"))) show(node, event.clientX, event.clientY);
+    });
+    doc.addEventListener("pointermove", event => { if (current && !tip.hidden) place(event.clientX, event.clientY); });
+    doc.addEventListener("pointerout", event => { if (current && (!event.relatedTarget || !current.contains(event.relatedTarget))) hide(); });
+    doc.addEventListener("focusin", event => {
+      const node = event.target.closest && event.target.closest("[data-tip], svg [data-cf-select]");
+      if (node) show(node); else hide();
+    });
+    doc.addEventListener("focusout", hide);
+    doc.addEventListener("keydown", event => { if (event.key === "Escape") hide(); });
+    window.addEventListener("scroll", hide, {passive: true, capture: true});
+  }
+  return {init, show, hide};
+})();
+
+/* ── Tabs (ARIA tablist built from .cf-tabpanel sections) ───────────────── */
+CF.enhanceTabs = scope => {
+  CF.qsa("[data-cf-tabs]:not(.is-enhanced)", scope).forEach(container => {
+    const panels = CF.qsa(":scope > .cf-tabpanel", container);
+    if (panels.length < 2) return;
+    const list = CF.el("div", {class: "cf-tablist", role: "tablist", "aria-label": container.dataset.label || "Views"});
+    const tabs = panels.map((panel, index) => {
+      const tab = CF.el("button", {type: "button", class: "cf-tab", role: "tab", id: panel.id + "-tab",
+        "aria-controls": panel.id, "aria-selected": index === 0 ? "true" : "false", tabindex: index === 0 ? "0" : "-1"},
+        panel.dataset.tabIcon ? CF.icon(panel.dataset.tabIcon) : null, CF.el("span", null, panel.dataset.tabTitle || "View " + (index + 1)));
+      panel.setAttribute("role", "tabpanel");
+      panel.setAttribute("aria-labelledby", tab.id);
+      panel.tabIndex = 0;
+      panel.hidden = index !== 0;
+      return tab;
+    });
+    const activate = (index, focus) => {
+      tabs.forEach((tab, position) => {
+        const selected = position === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        panels[position].hidden = !selected;
+      });
+      if (focus) tabs[index].focus();
+      CF.emit("tab", {container: container.id, panel: panels[index].id});
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => activate(index, false));
+      tab.addEventListener("keydown", event => {
+        const keys = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1};
+        if (keys[event.key]) { event.preventDefault(); activate((index + keys[event.key] + tabs.length) % tabs.length, true); }
+        else if (event.key === "Home") { event.preventDefault(); activate(0, true); }
+        else if (event.key === "End") { event.preventDefault(); activate(tabs.length - 1, true); }
+      });
+    });
+    list.append(...tabs);
+    container.prepend(list);
+    container.classList.add("is-enhanced");
+    container.cfActivate = panelId => { const index = panels.findIndex(panel => panel.id === panelId); if (index >= 0) activate(index, false); };
+  });
+};
+/** Reveal an element hidden inside an inactive tab panel (used by the router). */
+CF.revealInTabs = node => {
+  let panel = node && node.closest && node.closest(".cf-tabpanel");
+  while (panel) {
+    const container = panel.closest("[data-cf-tabs]");
+    if (container && container.cfActivate) container.cfActivate(panel.id);
+    panel = container && container.parentElement && container.parentElement.closest(".cf-tabpanel");
+  }
+};
+
+/* ── Tables: filter, numeric-aware sort, row counts, CSV of visible rows ── */
+const cellText = cell => {
+  if (!cell) return "";
+  if (cell.dataset && cell.dataset.export !== undefined) return cell.dataset.export;
+  const hidden = cell.querySelector(".sr-only");
+  return (hidden ? hidden.textContent : cell.textContent).replace(/\s+/g, " ").trim();
+};
+const sortValue = cell => {
+  if (!cell) return "";
+  if (cell.dataset && cell.dataset.sort !== undefined) return cell.dataset.sort;
+  return cellText(cell);
+};
+const compareValues = (a, b) => {
+  const numberA = a === "" ? NaN : Number(a); const numberB = b === "" ? NaN : Number(b);
+  const finiteA = Number.isFinite(numberA); const finiteB = Number.isFinite(numberB);
+  if (finiteA && finiteB) return numberA - numberB;
+  if (finiteA !== finiteB) return finiteA ? -1 : 1;  // missing values sort last
+  return CF.collator.compare(a, b);
+};
+CF.enhanceTable = (table, options) => {
+  if (!table || table.dataset.cfEnhanced) return;
+  const opts = options || {};
+  let head = table.tHead;
+  let body = table.tBodies[0];
+  if (!head) {
+    const rows = Array.from(table.rows);
+    if (rows.length < 2 || !rows[0].querySelector("th")) return;
+    head = doc.createElement("thead");
+    body = doc.createElement("tbody");
+    head.append(rows[0]);
+    rows.slice(1).forEach(row => body.append(row));
+    table.replaceChildren(...Array.from(table.children).filter(child => child.tagName === "CAPTION"), head, body);
+  }
+  if (!body || !head.rows.length) return;
+  table.dataset.cfEnhanced = "true";
+  table.classList.add("cf-table", "data-table");
+  const page = table.closest(".cf-page");
+  const title = table.getAttribute("aria-label") || (table.caption && table.caption.textContent) || (page && page.querySelector("h2") ? page.querySelector("h2").textContent.trim() : "Table");
+  table.setAttribute("aria-label", title);
+  let wrap = table.closest(".cf-table-wrap, .scroll");
+  if (!wrap) { wrap = CF.el("div", {class: "cf-table-wrap"}); table.before(wrap); wrap.append(table); }
+  wrap.tabIndex = 0;
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", title + " (scrollable table)");
+  const dataRows = () => Array.from(body.rows);
+  const index = new Map(dataRows().map(row => [row, Array.from(row.cells).map(cellText).join(" ").toLocaleLowerCase()]));
+  const count = CF.el("span", {class: "cf-table-count", "aria-live": "polite", "aria-atomic": "true"});
+  const noMatches = CF.el("p", {class: "cf-no-matches", hidden: true}, "No rows match. Clear the search or the global filters to show every row.");
+  const visibleRows = () => dataRows().filter(row => !row.classList.contains("cf-hide-text") && !row.classList.contains("cf-hide-filter") && !row.hidden);
+  const update = () => {
+    const visible = visibleRows().length;
+    const total = dataRows().length;
+    count.textContent = visible === total ? CF.fmt.plural(total, "row") : visible + " of " + total + " rows";
+    noMatches.hidden = visible !== 0;
+  };
+  if (!table.hasAttribute("data-cf-no-tools") && !opts.noTools) {
+    const tools = CF.el("div", {class: "cf-table-tools"});
+    const input = CF.el("input", {type: "search", placeholder: "Filter rows…", "aria-label": "Filter rows in " + title, autocomplete: "off"});
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      dataRows().forEach(row => row.classList.toggle("cf-hide-text", Boolean(query) && !index.get(row).includes(query)));
+      update();
+    });
+    const exportButton = CF.el("button", {type: "button", class: "cf-btn cf-btn--sm", "aria-label": "Export visible rows of " + title + " as CSV"}, CF.icon("file-spreadsheet"), CF.el("span", null, "Export CSV"));
+    exportButton.addEventListener("click", () => {
+      const rows = [Array.from(head.rows[head.rows.length - 1].cells).map(cellText)].concat(visibleRows().map(row => Array.from(row.cells).map(cellText)));
+      const name = "choleraflow-" + CF.safeName(table.dataset.cfTable || (page ? page.id : "table") + "-" + title) + ".csv";
+      CF.download(CF.csv(rows), name, "text/csv;charset=utf-8");
+    });
+    tools.append(CF.el("label", {class: "cf-search"}, CF.icon("search"), input), count, exportButton);
+    if (opts.extraTools) tools.append(...opts.extraTools);
+    wrap.before(tools);
+  }
+  wrap.after(noMatches);
+  const headerRow = head.rows[head.rows.length - 1];
+  Array.from(headerRow.cells).forEach((cell, column) => {
+    if (cell.hasAttribute("data-no-sort") || cell.colSpan > 1) return;
+    cell.scope = "col";
+    cell.setAttribute("aria-sort", "none");
+    const button = CF.el("button", {type: "button", class: "cf-sort sort-button"});
+    button.append(...Array.from(cell.childNodes));
+    button.addEventListener("click", () => {
+      const descending = cell.getAttribute("aria-sort") === "ascending";
+      Array.from(headerRow.cells).forEach(other => { if (other.hasAttribute("aria-sort")) other.setAttribute("aria-sort", "none"); });
+      cell.setAttribute("aria-sort", descending ? "descending" : "ascending");
+      dataRows().sort((a, b) => compareValues(sortValue(a.cells[column]), sortValue(b.cells[column])) * (descending ? -1 : 1))
+        .forEach(row => body.append(row));
+    });
+    cell.replaceChildren(button);
+  });
+  CF.on("filters", update);
+  update();
+  table.cfUpdate = update;
+};
+
+/* ── Figures: SVG / PNG / CSV export and focus mode ─────────────────────── */
+let exportCssCache = null;
+CF.exportCss = () => {
+  if (exportCssCache) return exportCssCache;
+  const parts = [];
+  const pattern = /(^|,\s*)(svg|\.report-|\.tree-|\.network-|\.cf-tone-|\.cf-seq-|\.cf-stroke-|\.cf-svg|\.cf-chart|\.cf-hatch|\.cf-track|\.cf-wf-|\.cf-qc-|\.cf-distance-|\.cf-unit-)/;
+  Array.from(doc.styleSheets).forEach(sheet => {
+    let rules = [];
+    try { rules = Array.from(sheet.cssRules); } catch (error) { rules = []; }
+    rules.forEach(rule => {
+      if (rule.type !== 1) return;
+      const selector = rule.selectorText || "";
+      if (selector === ":root" || pattern.test(selector)) parts.push(rule.cssText);
+    });
+  });
+  parts.push("svg{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:#fff}");
+  exportCssCache = parts.join("\n");
+  return exportCssCache;
+};
+function figureSvg(figure) {
+  return figure.querySelector("svg[data-cf-export]") || CF.qsa(".cf-figure-body svg, .chart-viewport svg, .tree-viewport svg, .network-viewport svg, svg.report-chart", figure)
+    .find(svg => !svg.classList.contains("cf-icon") && !svg.closest("[hidden]")) || null;
+}
+function legendItems(figure) {
+  return CF.qsa(".cf-legend-item, .metadata-legend span, .network-legend span", figure).filter(item => !item.closest("[hidden]")).map(item => {
+    const swatch = item.querySelector(".cf-swatch, i");
+    let color = swatch ? getComputedStyle(swatch).backgroundColor : "#888";
+    // Exports use the light palette even when the document is currently dark.
+    const tokenClass = swatch && Array.from(swatch.classList).find(name=>/^cf-(tone|bg)-/.test(name));
+    const inlineToken = swatch && (swatch.getAttribute('style')||'').match(/var\((--cf-[A-Za-z0-9-]+)\)/);
+    const property = tokenClass ? '--cf-'+tokenClass.replace(/^cf-(tone|bg)-/,'') : inlineToken ? inlineToken[1] : null;
+    if(property)Array.from(doc.styleSheets).forEach(sheet=>{try{Array.from(sheet.cssRules).forEach(rule=>{if(rule.selectorText===':root'&&rule.style.getPropertyValue(property))color=rule.style.getPropertyValue(property).trim();});}catch(error){/* inaccessible sheets are not used */}});
+    return {label: item.textContent.replace(/\s+/g, " ").trim(), color};
+  });
+}
+/** Standalone SVG (string) with title, legend, caption and inlined light styles. */
+CF.buildFigureSvg = (figure, sourceSvg) => {
+  const source = sourceSvg || figureSvg(figure);
+  if (!source) return null;
+  const svg = source.cloneNode(true);
+  const box = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+  const rect = source.getBoundingClientRect();
+  const [x0, y0, width, height] = box.length === 4 && box.every(Number.isFinite) ? box : [0, 0, rect.width || 800, rect.height || 600];
+  const titleText = (figure.querySelector(".cf-figure-title, h3") || {}).textContent || "CholeraFlow figure";
+  const subtitle = (figure.querySelector(".cf-figure-subtitle") || {}).textContent || "";
+  const caption = CF.qsa(".cf-figure-caption p, figcaption p, figcaption", figure).map(node => node.textContent.replace(/\s+/g, " ").trim()).filter(Boolean)[0] || "";
+  const legend = legendItems(figure);
+  const wrapText = (text, max) => {
+    const parts = String(text).split(/\s+/).flatMap(word => word.length > max ? (word.match(new RegExp(".{1,"+max+"}","g")) || []) : [word]);
+    const lines=[""]; parts.forEach(word=>{const i=lines.length-1; if(lines[i] && (lines[i]+" "+word).length>max)lines.push(word);else lines[i]=(lines[i]+" "+word).trim();});return lines;
+  };
+  const captionLines = caption ? wrapText(caption,Math.max(30,Math.floor((width-32)/6.4))) : [];
+  const top = 52 + (subtitle ? 18 : 0);
+  const legendRows = Math.ceil(legend.length / 3);
+  const bottom = 24 + legendRows * 20 + captionLines.length * 15 + 22;
+  const fullHeight = height + top + bottom;
+  svg.removeAttribute("style");
+  svg.removeAttribute("class");
+  CF.qsa("[data-tip]", svg).forEach(node => {
+    if (!node.querySelector(":scope > title")) node.prepend(CF.svg("title", null, node.dataset.tip));
+  });
+  CF.qsa(".is-filtered-out, .is-selected, .match, .dimmed", svg).forEach(node => node.classList.remove("is-filtered-out", "is-selected", "match", "dimmed"));
+  CF.qsa("[tabindex]", svg).forEach(node => node.removeAttribute("tabindex"));
+  const content = CF.svg("g", {transform: "translate(" + (-x0) + "," + (top - y0) + ")"});
+  content.append(...Array.from(svg.childNodes));
+  const out = CF.svg("svg", {viewBox: "0 0 " + width + " " + fullHeight, width, height: fullHeight, role: "img", "aria-labelledby": "cf-export-title"});
+  out.append(CF.svg("style", null, CF.exportCss()));
+  const defs = CF.svg("defs");
+  if (/url\(#cf-hatch\)/.test(source.outerHTML)) { const hatch = doc.getElementById("cf-hatch"); if (hatch) defs.append(hatch.cloneNode(true)); }
+  out.append(defs, CF.svg("title", {id: "cf-export-title"}, titleText.trim()));
+  out.append(CF.svg("rect", {x: 0, y: 0, width, height: fullHeight, fill: "#ffffff"}));
+  out.append(CF.svg("text", {x: 16, y: 28, "font-size": 16, "font-weight": 650, fill: "#14213d"}, titleText.trim()));
+  if (subtitle) out.append(CF.svg("text", {x: 16, y: 47, "font-size": 11.5, fill: "#5b6b80"}, subtitle.trim()));
+  out.append(content);
+  let y = top + height + 26;
+  legend.forEach((item, position) => {
+    const column = position % 3; const row = Math.floor(position / 3);
+    const lx = 16 + column * (width / 3); const ly = y + row * 20;
+    out.append(CF.svg("rect", {x: lx, y: ly - 10, width: 11, height: 11, rx: 2, fill: item.color}));
+    out.append(CF.svg("text", {x: lx + 17, y: ly, "font-size": 11, fill: "#14213d"}, item.label.length > 52 ? item.label.slice(0, 50) + "…" : item.label));
+  });
+  y += legendRows * 20 + 8;
+  captionLines.forEach((line,index) => out.append(CF.svg("text",{x:16,y:y+14+index*15,"font-size":10.5,fill:"#5b6b80"},line)));
+  out.append(CF.svg("text", {x: width - 16, y: fullHeight - 8, "font-size": 9.5, fill: "#7b8a9e", "text-anchor": "end"},
+    "CholeraFlow " + ((CF.data.run || {}).version || "") + (CF.data.run && CF.data.run.demo ? " · synthetic demonstration" : "") + " · " + ((CF.data.run || {}).date || "")));
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(out);
+};
+CF.exportSvg = (figure, filename) => {
+  const text = CF.buildFigureSvg(figure);
+  if (!text) { CF.announce("This figure has no vector graphic to export."); return; }
+  CF.download(text, filename || "choleraflow-" + CF.safeName(figure.id) + ".svg", "image/svg+xml;charset=utf-8");
+};
+CF.exportPng = (figure, filename, scale) => {
+  const text = CF.buildFigureSvg(figure);
+  if (!text) { CF.announce("This figure has no vector graphic to export."); return; }
+  const image = new Image();
+  const factor = scale || 3;
+  image.onload = () => {
+    try {
+      const canvas = doc.createElement("canvas");
+      canvas.width = Math.round(image.naturalWidth * factor);
+      canvas.height = Math.round(image.naturalHeight * factor);
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.scale(factor, factor);
+      context.drawImage(image, 0, 0);
+      canvas.toBlob(blob => { if (blob) CF.download(blob, filename || "choleraflow-" + CF.safeName(figure.id) + ".png"); else CF.announce("PNG export is not supported by this browser."); }, "image/png");
+    } catch (error) { console.error(error); CF.announce("PNG export is not supported by this browser; use SVG instead."); }
+  };
+  image.onerror = () => CF.announce("PNG export is not supported by this browser; use SVG instead.");
+  image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(text);
+};
+CF.figureCsv = figure => {
+  if (typeof figure.cfCsv === "function") return figure.cfCsv();
+  const table = figure.querySelector("table");
+  if (!table) return null;
+  return Array.from(table.rows).filter(row => !row.classList.contains("cf-hide-filter")).map(row => Array.from(row.cells).map(cellText));
+};
+CF.focusFigure = figure => {
+  const exit = () => {
+    figure.classList.remove("is-focused");
+    if (doc.fullscreenElement === figure && doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+    doc.removeEventListener("keydown", onKey);
+  };
+  const onKey = event => { if (event.key === "Escape") exit(); };
+  if (figure.classList.contains("is-focused") || doc.fullscreenElement === figure) { exit(); return; }
+  if (figure.requestFullscreen) figure.requestFullscreen().catch(() => figure.classList.add("is-focused"));
+  else figure.classList.add("is-focused");
+  doc.addEventListener("keydown", onKey);
+  CF.announce("Figure focused. Press Escape to return.");
+};
+CF.enhanceFigures = scope => {
+  CF.qsa(".cf-figure[data-exports]:not([data-cf-ready])", scope).forEach(figure => {
+    figure.dataset.cfReady = "true";
+    const actions = figure.querySelector("[data-cf-figure-actions]");
+    if (!actions) return;
+    const wanted = (figure.dataset.exports || "").split(/\s+/).filter(Boolean);
+    const title = (figure.querySelector(".cf-figure-title") || {}).textContent || "figure";
+    const button = (icon, label, handler) => {
+      const node = CF.el("button", {type: "button", class: "cf-icon-btn", "aria-label": label + ": " + title.trim(), "data-tip": label}, CF.icon(icon));
+      node.addEventListener("click", handler);
+      actions.append(node);
+    };
+    if (wanted.includes("svg") && figureSvg(figure)) button("file-code", "Download SVG", () => CF.exportSvg(figure));
+    if (wanted.includes("png") && figureSvg(figure)) button("image", "Download PNG", () => CF.exportPng(figure));
+    if (wanted.includes("csv")) button("file-spreadsheet", "Download data (CSV)", () => {
+      const rows = CF.figureCsv(figure);
+      if (rows && rows.length) CF.download(CF.csv(rows), "choleraflow-" + CF.safeName(figure.id) + "-data.csv", "text/csv;charset=utf-8");
+      else CF.announce("No source data table is attached to this figure.");
+    });
+    button("maximize-2", "Focus figure", () => CF.focusFigure(figure));
+    actions.hidden = false;
+  });
+};

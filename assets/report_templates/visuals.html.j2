@@ -1,111 +1,46 @@
+{# Scientific figures with readable, responsive geometry and complete source tables. #}
+{%- from 'partials/icons.html.j2' import icon -%}
 {% macro chart_card(chart) -%}
-<figure class="chart-card" id="chart-{{ chart.id }}">
-  <div class="chart-heading"><h3 id="title-{{ chart.id }}">{{ chart.title }}</h3><button class="button js-svg-export" type="button" hidden aria-label="Download {{ chart.title }} as SVG">SVG</button></div>
+{% set distribution = chart.source_unit is defined %}
+{% set width = 620 %}
+{% set peak = chart.rows|map(attribute='value')|max if chart.kind == 'bars' and chart.rows else 1 %}
+{% set height = 300 if distribution else (100 + chart.plotted|length * 38 if chart.kind == 'bars' else 350) %}
+<figure class="chart-card cf-chart-card" id="chart-{{ chart.id }}" data-scope="{{ 'filterable' if chart.sample_marks else 'fixed' }}">
+  <header class="chart-heading"><div><p class="cf-chart-eyebrow">{{ 'Pairwise distribution' if distribution else ('Individual observations' if chart.sample_marks or chart.kind == 'scatter' else 'Recorded composition') }}</p><h3 id="title-{{ chart.id }}">{{ chart.title }}</h3></div><button class="button js-svg-export" type="button" hidden aria-label="Download {{ chart.title }} as SVG">{{ icon('download') }} SVG</button></header>
   {% if chart.status == 'ok' %}
-  <div class="chart-viewport" tabindex="0" role="region" aria-label="{{ chart.title }} graphic">
-  <svg class="report-chart" viewBox="0 0 720 {{ chart.height }}" role="img" aria-labelledby="title-{{ chart.id }} desc-{{ chart.id }}">
-    <desc id="desc-{{ chart.id }}">{{ chart.title }}. {{ chart.note }} Full numeric values are in the expandable chart data table.</desc>
-    {% if chart.kind == 'bars' %}
-      <line x1="240" y1="22" x2="240" y2="{{ chart.height - 40 }}" stroke="#b5c8d4"/>
-      {% for row in chart.plotted %}
-      <g><title>{{ row.label }}: {{ row.display }} {{ chart.unit }}</title>
-      <text x="228" y="{{ row.y + 10 }}" text-anchor="end" fill="#354f61" font-size="11">{{ row.label|truncate(32, true) }}</text>
-      <rect x="240" y="{{ row.y - 4 }}" width="{{ row.width }}" height="18" rx="3" fill="{{ row.color }}"/>
-      <text x="{{ 248 + row.width }}" y="{{ row.y + 10 }}" fill="#172a3c" font-size="11">{{ row.display }}</text></g>
-      {% endfor %}
-      <text x="240" y="{{ chart.height - 15 }}" fill="#536779" font-size="10">0</text>
-      <text x="600" y="{{ chart.height - 15 }}" text-anchor="end" fill="#536779" font-size="10">{{ chart.maximum }} {{ chart.unit }}</text>
+  <div class="chart-viewport cf-chart-viewport" tabindex="0" role="region" aria-label="{{ chart.title }} graphic">
+  <svg class="report-chart cf-svg" viewBox="0 0 {{ width }} {{ height }}" role="img" aria-labelledby="title-{{ chart.id }} desc-{{ chart.id }}">
+    <desc id="desc-{{ chart.id }}">{{ chart.title }}. {{ chart.note }} Complete values appear in the source table.</desc>
+    {% if distribution %}
+      {% set n = chart.plotted|length %}{% set slot = 480 / (n or 1) %}
+      {% for fraction in [0, 0.5, 1] %}{% set y = 220 - 175*fraction %}<line class="cf-chart-gridline" x1="62" x2="554" y1="{{ y }}" y2="{{ y }}"/><text class="cf-chart-tick" x="50" y="{{ y+4 }}" text-anchor="end">{{ (peak*fraction)|round(1) }}</text>{% endfor %}
+      {% for row in chart.plotted %}{% set x = 70 + loop.index0*slot + slot/2 %}{% set h = 175 * (row.value / peak) if peak else 0 %}
+      <g><title>{{ row.label }} {{ chart.source_unit }}: {{ row.display }} pairs</title>
+      {% if chart.dot_plot %}<line class="cf-chart-stem" x1="{{ x }}" x2="{{ x }}" y1="220" y2="{{ 220-h }}"/><circle class="cf-chart-dot" cx="{{ x }}" cy="{{ 220-h }}" r="7"/>{% else %}<rect class="cf-chart-bar" x="{{ x - [28,slot*0.32]|min }}" y="{{ 220-h }}" width="{{ [56,slot*0.64]|min }}" height="{{ h }}" rx="3"/>{% endif %}
+      <text class="cf-chart-value" x="{{ x }}" y="{{ 207-h }}" text-anchor="middle">{{ row.display }}</text><text class="cf-chart-tick" x="{{ x }}" y="242" text-anchor="middle">{{ row.label }}</text></g>{% endfor %}
+      <text class="cf-chart-axis-label" x="310" y="280" text-anchor="middle">{{ chart.source_unit }} · each unordered pair counted once</text><text class="cf-chart-tick" x="62" y="20">Number of pairs</text>
+    {% elif chart.kind == 'bars' %}
+      {% for fraction in [0, 0.5, 1] %}{% set x = 218 + fraction*306 %}<line class="cf-chart-gridline" x1="{{ x }}" x2="{{ x }}" y1="20" y2="{{ height-60 }}"/><text class="cf-chart-tick" x="{{ x }}" y="{{ height-36 }}" text-anchor="middle">{{ (peak*fraction)|round(2) }}</text>{% endfor %}
+      {% for row in chart.plotted %}{% set y = 37 + loop.index0*38 %}{% set length = 306 * (row.value/peak) if peak else 0 %}
+      <g{% if chart.sample_marks %} data-cf-source-label="{{ row.label }}"{% endif %}><title>{{ row.label }}: {{ row.display }} {{ chart.unit }}</title>
+      <text class="cf-chart-label{{ ' cf-chart-mono' if chart.sample_marks else '' }}" x="200" y="{{ y+5 }}" text-anchor="end">{{ row.label|truncate(28,true) }}</text>
+      {% if chart.dot_plot %}<line class="cf-chart-stem" x1="218" x2="{{ 218+length }}" y1="{{ y }}" y2="{{ y }}"/><circle class="cf-chart-dot" cx="{{ 218+length }}" cy="{{ y }}" r="6"/>{% else %}<rect class="cf-chart-track" x="218" y="{{ y-9 }}" width="306" height="18" rx="3"/><rect x="218" y="{{ y-9 }}" width="{{ length }}" height="18" rx="3" fill="{{ row.color }}"/>{% endif %}
+      <text class="cf-chart-value" x="{{ 230+length }}" y="{{ y+5 }}">{{ row.display }}</text></g>{% endfor %}
+      <text class="cf-chart-axis-label" x="218" y="{{ height-10 }}">{{ chart.unit }}</text>
     {% else %}
-      {% for tick in [0, 1, 2, 3, 4] %}<line x1="70" y1="{{ 285 - tick * 61.25 }}" x2="580" y2="{{ 285 - tick * 61.25 }}" stroke="#e3ebf0"/>{% endfor %}
-      <path d="M70,40 V285 H580" fill="none" stroke="#8ba3b3"/>
-      {% for point in chart.points %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="5" fill="#087d83" fill-opacity="0.72"><title>{{ point.label }} · {{ chart.x_label }}: {{ point.x_display }} · {{ chart.y_label }}: {{ point.y_display }}</title></circle>{% endfor %}
-      <text x="325" y="330" text-anchor="middle" fill="#354f61" font-size="12">{{ chart.x_label }}</text>
-      <text x="20" y="160" transform="rotate(-90 20 160)" text-anchor="middle" fill="#354f61" font-size="12">{{ chart.y_label }}</text>
-      <text x="65" y="302" fill="#536779" font-size="10">0</text><text x="580" y="302" text-anchor="end" fill="#536779" font-size="10">{{ chart.x_max }}</text>
-      <text x="65" y="44" text-anchor="end" fill="#536779" font-size="10">{{ chart.y_max }}</text>
+      {% for f in [0,0.25,0.5,0.75,1] %}{% set y=270-220*f %}<line class="cf-chart-gridline" x1="76" x2="560" y1="{{ y }}" y2="{{ y }}"/>{% endfor %}
+      <path class="cf-chart-axis" d="M76 48V270H560"/>
+      {% for point in chart.points %}<circle class="cf-chart-dot" data-cf-source-label="{{ point.label }}" cx="{{ 76+(point.x-70)*484/510 }}" cy="{{ 270-(285-point.y)*220/245 }}" r="6"><title>{{ point.label }} · {{ chart.x_label }}: {{ point.x_display }} · {{ chart.y_label }}: {{ point.y_display }}</title></circle>{% endfor %}
+      <text class="cf-chart-axis-label" x="318" y="327" text-anchor="middle">{{ chart.x_label }}</text><text class="cf-chart-axis-label" x="18" y="160" transform="rotate(-90 18 160)" text-anchor="middle">{{ chart.y_label }}</text>
+      <text class="cf-chart-tick" x="76" y="292">0</text><text class="cf-chart-tick" x="560" y="292" text-anchor="end">{{ chart.x_max }}</text><text class="cf-chart-tick" x="65" y="54" text-anchor="end">{{ chart.y_max }}</text>
     {% endif %}
-  </svg>
-  </div>
-  <figcaption>
-    <div class="chart-meta">{% if chart.source_count is defined %}{{ chart.source_count }} {{ chart.source_label }} · {{ chart.n }} {{ chart.category_label }}{% else %}{{ chart.n }} valid values{% endif %} · {{ chart.missing }} unavailable/invalid {{ chart.omitted_label|default('values') }} omitted{% if chart.shown < chart.n %} · showing first {{ chart.shown }} of {{ chart.n }}; all values below{% endif %}</div>
-    {% if chart.statistics %}<dl class="mini-stats">{% for label, value in chart.statistics.items() %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
+  </svg></div>
+  <figcaption><div class="chart-meta">{% if chart.source_count is defined %}<strong>{{ chart.source_count }}</strong> {{ chart.source_label }} · {{ chart.n }} {{ chart.category_label }}{% else %}<strong>{{ chart.n }}</strong> valid observations{% endif %} · {{ chart.missing }} unavailable/invalid {{ chart.omitted_label|default('values') }}{% if chart.shown < chart.n %} · first {{ chart.shown }} displayed; complete values below{% endif %}</div>
+    {% if chart.statistics %}<dl class="mini-stats">{% for label,value in chart.statistics.items() %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
     {% if chart.note %}<p class="muted">{{ chart.note }}</p>{% endif %}
-    {% if chart.source_unit %}<p class="muted">Horizontal labels: {{ chart.source_unit }}. Bar lengths: number of pairs.</p>{% endif %}
   </figcaption>
-  <details class="chart-data"><summary>View chart data ({{ chart.n }} rows)</summary><div class="scroll"><table aria-label="{{ chart.title }} source data">
-    <tr><th>{{ 'Sample' if chart.kind == 'scatter' else 'Sample / category' }}</th>{% if chart.kind == 'scatter' %}<th>{{ chart.x_label }}</th><th>{{ chart.y_label }}</th>{% else %}<th>{{ chart.unit }}</th>{% endif %}</tr>
-    {% for row in chart.rows %}<tr><td>{{ row.label }}</td>{% if chart.kind == 'scatter' %}<td>{{ row.x_value }}</td><td>{{ row.y_value }}</td>{% else %}<td>{{ row.value }}</td>{% endif %}</tr>{% endfor %}
-  </table></div></details>
-  {% else %}<div class="not-performed">No valid source values are available for this graph.{% if chart.missing %} {{ chart.missing }} values were unavailable or invalid.{% endif %}</div>{% endif %}
+  <details class="chart-data"><summary>Explore source values <span>{{ chart.rows|length }} rows</span></summary><div class="scroll"><table aria-label="{{ chart.title }} source data"><tr><th>{{ 'Sample' if chart.kind == 'scatter' else 'Sample / category' }}</th>{% if chart.kind == 'scatter' %}<th>{{ chart.x_label }}</th><th>{{ chart.y_label }}</th>{% else %}<th>{{ chart.unit }}</th>{% endif %}</tr>{% for row in chart.rows %}<tr><td>{{ row.label }}</td>{% if chart.kind == 'scatter' %}<td>{{ row.x_value }}</td><td>{{ row.y_value }}</td>{% else %}<td>{{ row.value }}</td>{% endif %}</tr>{% endfor %}</table></div></details>
+  {% else %}<div class="not-performed">No valid observations were supplied.{% if chart.missing %} {{ chart.missing }} missing or invalid values remain unavailable.{% endif %}</div>{% endif %}
 </figure>
 {%- endmacro %}
-
 {% macro chart_grid(charts) -%}<div class="charts-grid">{% for chart in charts %}{{ chart_card(chart) }}{% endfor %}</div>{%- endmacro %}
-
-{% macro network_panel(view) -%}
-<figure class="chart-card network-panel" id="allele-network">
-  <div class="chart-heading"><div><p class="eyebrow">Explore cgMLST relationships</p><h3 id="allele-network-title">GrapeTree-style distance network</h3></div><button class="button js-svg-export" type="button" hidden aria-label="Download distance network as SVG">Download SVG</button></div>
-  {% if view.status == 'ok' %}
-  <div class="network-summary"><span><b>{{ view.nodes|length }}</b> samples</span><span><b>{{ view.edges|length }}</b> observed edges</span><span><b>{{ view.component_count }}</b> components</span><span><b>{{ view.omitted_pairs }}</b> unavailable/invalid pairs</span></div>
-  <div class="network-controls" hidden>
-    <label>Color by <select class="network-color" aria-label="Color network by metadata">{% for column in view.annotations.columns %}<option value="{{ column.key }}">{{ column.label }}</option>{% endfor %}</select></label>
-    <label>Find sample <input class="network-find" type="search" placeholder="Sample identifier" aria-label="Find a network sample"></label>
-    <label>Zoom <input class="network-zoom" type="range" min="100" max="400" step="25" value="100" aria-label="Network zoom"></label>
-    <label><input class="network-labels" type="checkbox" {% if view.nodes|length <= 30 %}checked{% endif %}> Sample labels</label>
-    <label><input class="network-distances" type="checkbox" checked> Edge distances</label>
-    <button class="button network-reset" type="button">Reset view</button>
-  </div>
-  <p class="network-feedback" aria-live="polite">One node per sample · colors show supplied country metadata.</p>
-  <div class="network-viewport" tabindex="0" role="region" aria-label="Distance network; scroll to explore when zoomed">
-  <svg class="report-network{% if view.nodes|length > 30 %} hide-node-labels{% endif %}" viewBox="0 0 {{ view.width }} {{ view.height }}" role="img" aria-labelledby="allele-network-title allele-network-description">
-    <desc id="allele-network-description">Minimum spanning forest from observed pairwise allele distances. One vertex per sample; equal-sized nodes. Edge labels show distances; line lengths are layout-only. Colors show supplied country metadata.</desc>
-    {% for edge in view.edges %}<g class="network-edge"><title>{{ edge.sample_1 }} ↔ {{ edge.sample_2 }}: {{ edge.distance }} allele differences</title><line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#96aab6" stroke-width="1.8"/><text class="network-distance" x="{{ (edge.x1 + edge.x2)/2 }}" y="{{ (edge.y1 + edge.y2)/2 - 7 }}" text-anchor="middle" font-size="11" fill="#536779">{{ edge.distance }}</text></g>{% endfor %}
-    {% for node in view.nodes %}{% set meta = view.annotations.samples[node.sample] %}<g class="network-node" data-sample="{{ node.sample }}" data-metadata="{{ meta|tojson|forceescape }}">
-      <title>{{ node.sample }} · Country: {{ meta.country.value }} · one sample</title><circle cx="{{ node.x }}" cy="{{ node.y }}" r="7" fill="{{ meta.country.color }}" stroke="#fff" stroke-width="2"/><text class="network-sample-label" x="{{ node.x + 12 }}" y="{{ node.y + 4 }}" font-size="11" fill="#172a3c">{{ node.sample|truncate(24,true) }}</text>
-    </g>{% endfor %}
-  </svg>
-  </div>
-  <div class="network-legend metadata-legend" aria-label="Network color legend">{% for entry in view.annotations.legends.country %}<span data-value="{{ entry.value }}" data-color="{{ entry.color }}" data-count="{{ entry.count }}"><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>
-  <p class="network-selection" aria-live="polite">Sample metadata and observed edges are available in the tables below.</p>
-  <figcaption class="muted">Display method: deterministic minimum spanning forest (Kruskal, ties by sample ID). {{ view.note }} GrapeTree-style describes the presentation; GrapeTree/MSTreeV2 is not run.</figcaption>
-  <details class="chart-data"><summary>Sample metadata ({{ view.nodes|length }} samples)</summary><div class="scroll"><table aria-label="Distance network sample metadata"><tr><th>Sample</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for node in view.nodes %}<tr><td>{{ node.sample }}</td>{% for column in view.annotations.columns %}<td>{{ view.annotations.samples[node.sample][column.key].value }}</td>{% endfor %}</tr>{% endfor %}</table></div></details>
-  <details class="chart-data"><summary>Observed network edges ({{ view.edges|length }})</summary><div class="scroll"><table aria-label="Distance network observed edges"><tr><th>Sample 1</th><th>Sample 2</th><th>Allele differences</th></tr>{% for edge in view.edges %}<tr><td>{{ edge.sample_1 }}</td><td>{{ edge.sample_2 }}</td><td>{{ edge.distance }}</td></tr>{% endfor %}</table></div></details>
-  {% else %}<div class="not-performed">{{ view.reason }}</div>{% endif %}
-</figure>
-{%- endmacro %}
-
-{% macro tree_panel(view, newick, panel_id, layout='rectangular') -%}
-{% set shape = view.circular if layout == 'circular' else view %}
-<figure class="tree-panel" id="{{ panel_id }}">
-  <div class="chart-heading"><h3 id="{{ panel_id }}-title">{{ layout|capitalize }} tree</h3><button class="button js-svg-export" type="button" hidden aria-label="Download tree as SVG">Download SVG</button></div>
-  {% if view.status == 'ok' %}
-  <div class="tree-controls" hidden>
-    <label>Zoom <input class="tree-zoom" type="range" min="60" max="1000" step="10" value="100" aria-label="Tree zoom"></label>
-    <label>Find tip <input class="tree-find" type="search" placeholder="Sample label" aria-label="Find a tree tip"></label>
-    <span class="tree-match-count" aria-live="polite"></span>
-  </div>
-  <p class="muted">{{ view.tip_count }} tips · {{ view.layout }}. Input order and topology are preserved; this display does not infer or change rooting.</p>
-  <div class="tree-viewport" tabindex="0" role="region" aria-label="Scrollable tree">
-  <svg class="tree-svg {{ 'tree-circular' if layout == 'circular' else 'tree-rectangular' }}" viewBox="{{ view.annotations.circular_viewbox if layout == 'circular' else '0 0 ' ~ view.annotations.rect_width ~ ' ' ~ view.height }}" role="img" aria-labelledby="{{ panel_id }}-title {{ panel_id }}-description">
-    <desc id="{{ panel_id }}-description">A tree rendered directly from the supplied Newick file. {{ view.layout }}. Internal labels are shown as supplied and are not reinterpreted.</desc>
-    {% for edge in shape.branches %}{% if edge.kind == 'arc' %}<path d="{{ edge.path }}" fill="none" stroke="#355a6a" stroke-width="1.5"/>{% else %}<line x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}" stroke="#355a6a" stroke-width="1.5"/>{% endif %}{% endfor %}
-    {% if layout == 'circular' %}{% for cell in view.annotations.circular_cells %}<path class="metadata-cell" d="{{ cell.path }}" fill="{{ cell.color }}"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></path>{% endfor %}
-    {% else %}{% for column in view.annotations.columns %}<text x="{{ column.x + 40 }}" y="13" text-anchor="middle" font-size="9" fill="#354f61">{{ column.label }}</text>{% endfor %}
-    {% for cell in view.annotations.rect_cells %}<rect class="metadata-cell" x="{{ cell.x }}" y="{{ cell.y }}" width="{{ cell.width }}" height="{{ cell.height }}" fill="{{ cell.color }}"><title>{{ cell.sample }} · {{ cell.column }}: {{ cell.value }}</title></rect>{% endfor %}{% endif %}
-    {% for node in shape.nodes %}
-      {% if node.leaf %}<circle cx="{{ node.x }}" cy="{{ node.y }}" r="3" fill="#087d83"/><text class="tree-tip" data-tip-label="{{ node.label }}" x="{{ node.label_x if layout == 'circular' else node.x + 8 }}" y="{{ node.label_y if layout == 'circular' else node.y + 4 }}" {% if layout == 'circular' %}text-anchor="{{ node.text_anchor }}" transform="rotate({{ node.label_rotation }} {{ node.label_x }} {{ node.label_y }})"{% endif %} fill="#172a3c" font-size="{{ shape.font_size if layout == 'circular' else 12 }}"><title>{{ node.label }} · Supplied branch length: {{ node.branch_length_text if node.branch_length_text is not none else 'Not provided' }}</title>{{ node.label|truncate(18 if layout == 'circular' else 46, true) }}</text>
-      {% elif node.label %}<text x="{{ node.x + 3 }}" y="{{ node.y - 5 }}" fill="#536779" font-size="10">{{ node.label }}</text>{% endif %}
-    {% endfor %}
-    {% if shape.scale %}<line x1="{{ shape.scale.x1 }}" y1="{{ shape.scale.y }}" x2="{{ shape.scale.x2 }}" y2="{{ shape.scale.y }}" stroke="#355a6a" stroke-width="2"/><text x="{{ shape.scale.x1 }}" y="{{ shape.scale.y + 17 }}" fill="#536779" font-size="10">{{ shape.scale.label }}</text>{% endif %}
-  </svg>
-  </div>
-  {% if view.note %}<figcaption class="muted">{{ view.note }}</figcaption>{% endif %}
-  <p class="muted">{{ view.annotations.mapping_note }} Circular ring order, inner to outer: Country, Year, Lineage, MLST, Plasmid cluster.</p>
-  <details class="source-details"><summary>Metadata colors and tip mapping</summary>
-    {% for legend in view.annotations.legends %}<h4>{{ legend.label }}</h4><div class="metadata-legend">{% for entry in legend.entries %}<span><i style="background:{{ entry.color }}"></i>{{ entry.value }} ({{ entry.count }})</span>{% endfor %}</div>{% endfor %}
-    <div class="scroll"><table aria-label="{{ layout }} tree metadata"><tr><th>Tip</th><th>Matched sample</th><th>Match method</th>{% for column in view.annotations.columns %}<th>{{ column.label }}</th>{% endfor %}</tr>{% for row in view.annotations.rows %}<tr><td>{{ row.tip_label }}</td><td>{{ row.sample }}</td><td>{{ row.match_method }}</td>{% for column in view.annotations.columns %}<td>{{ row['values'][column.key] }}</td>{% endfor %}</tr>{% endfor %}</table></div>
-  </details>
-  {% else %}<div class="not-performed">Tree view unavailable — {{ view.reason }}</div>{% endif %}
-  {% if newick %}<details class="source-details"><summary>Original tree data (Newick)</summary><pre class="newick">{{ newick }}</pre></details>{% endif %}
-</figure>
-{%- endmacro %}

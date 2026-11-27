@@ -70,7 +70,8 @@ def sourceFingerprints() {
     def sources = [file("${projectDir}/main.nf"), file("${projectDir}/nextflow.config"), file("${projectDir}/requirements.txt")]
     for (directory in ['bin', 'modules/local', 'subworkflows', 'conf', 'assets/report_templates']) {
         file("${projectDir}/${directory}").toFile().eachFileRecurse { source ->
-            if (source.isFile() && ['.py', '.nf', '.config', '.j2'].any { suffix -> source.name.endsWith(suffix) }) sources.add(source.toPath())
+            // Report assets (.woff2 fonts, .json data) are embedded in the HTML, so they are fingerprinted too.
+            if (source.isFile() && ['.py', '.nf', '.config', '.j2', '.woff2', '.json'].any { suffix -> source.name.endsWith(suffix) }) sources.add(source.toPath())
         }
     }
     return sources.sort { it.toString() }.collect { source -> fingerprint(source) }

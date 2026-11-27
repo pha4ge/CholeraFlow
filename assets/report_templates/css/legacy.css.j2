@@ -1,0 +1,69 @@
+/* ── Transitional styles for pre-redesign markup still emitted by shared macros
+   (visuals.html.j2 chart cards, tree and network panels). Remove rules here once
+   no template emits the corresponding classes. */
+.cf-page .scroll { max-width: 100%; overflow: auto; border: 1px solid var(--cf-border); border-radius: var(--cf-radius); background: var(--cf-surface); }
+.cf-page table:not(.cf-table) { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--cf-text-md); }
+.cf-page table:not(.cf-table) th, .cf-page table:not(.cf-table) td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--cf-border); }
+.cf-page table:not(.cf-table) th { background: var(--cf-surface-2); color: var(--cf-text-2); font-weight: 650; white-space: nowrap; font-size: var(--cf-text-sm); }
+.cf-page table:not(.cf-table) tr:last-child > * { border-bottom: 0; }
+.cf-page .kv { border: 1px solid var(--cf-border); border-radius: var(--cf-radius); overflow: hidden; }
+.cf-page .kv td:first-child { width: 34%; background: var(--cf-surface-2); font-weight: 600; }
+.cf-page h3 { margin: 22px 0 10px; font-size: 15px; }
+.not-performed { padding: 14px 16px; border: 1px dashed var(--cf-border-strong); border-left: 3px solid var(--cf-text-3); border-radius: var(--cf-radius-sm); background: var(--cf-surface-2); color: var(--cf-text-2); font-size: var(--cf-text-md); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: var(--cf-text-xs); font-weight: 650; }
+.pill.pass { background: var(--cf-pass-bg); color: var(--cf-pass-ink); } .pill.warn { background: var(--cf-warn-bg); color: var(--cf-warn-ink); } .pill.fail { background: var(--cf-fail-bg); color: var(--cf-fail-ink); }
+.vir-present { background: var(--cf-s-pass) !important; color: #fff; text-align: center; font-weight: 700; }
+.vir-absent { background: var(--cf-surface-3) !important; text-align: center; }
+.vir-nt { color: var(--cf-text-2); text-align: center; font-style: italic; }
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; margin: 16px 0; align-items: start; }
+.chart-card, .tree-panel { margin: 0; min-width: 0; padding: 16px; border: 1px solid var(--cf-border); border-radius: var(--cf-radius-lg); background: var(--cf-surface); box-shadow: var(--cf-shadow-1); }
+.tree-panel + .tree-panel { margin-top: 20px; }
+.chart-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.chart-heading h3 { margin: 0; font-size: 14.5px; }
+.chart-heading .button, .button { display: inline-flex; align-items: center; padding: 5px 10px; border: 1px solid var(--cf-border-strong); border-radius: 7px; background: var(--cf-surface); color: var(--cf-text); font-size: var(--cf-text-sm); font-weight: 600; }
+.chart-viewport { overflow: auto; max-height: 440px; margin-bottom: 10px; }
+.report-chart { display: block; width: 100%; min-width: 520px; font-family: var(--cf-font-sans); }
+.report-chart text { fill: var(--cf-chart-ink-2); }
+.chart-meta { color: var(--cf-text-2); font-size: var(--cf-text-xs); margin: 6px 0; }
+.mini-stats { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px; margin: 0; background: var(--cf-surface-2); border-radius: var(--cf-radius-sm); }
+.mini-stats dt { font-size: var(--cf-text-xs); color: var(--cf-text-2); } .mini-stats dd { margin: 0; font-size: 15px; font-weight: 650; }
+.source-details, .chart-data { margin-top: 12px; border-top: 1px solid var(--cf-border); }
+details.source-details > summary, details.chart-data > summary { cursor: pointer; padding: 9px 0; color: var(--cf-accent-ink); font-size: var(--cf-text-md); font-weight: 600; }
+.sample-record { margin: 8px 0; padding: 0 12px; border: 1px solid var(--cf-border); border-radius: var(--cf-radius); background: var(--cf-surface); }
+.sample-record > summary { cursor: pointer; padding: 10px 0; font-family: var(--cf-font-mono); font-size: 12.5px; font-weight: 600; }
+.sample-record h4 { margin: 12px 0 6px; font-size: var(--cf-text-sm); }
+.record-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; margin: 0 0 12px; overflow: hidden; border: 1px solid var(--cf-border); border-radius: var(--cf-radius-sm); background: var(--cf-border); }
+.record-fields > div { min-width: 0; padding: 8px 11px; background: var(--cf-surface-2); }
+.record-fields dt { color: var(--cf-text-2); font-size: var(--cf-text-xs); } .record-fields dd { margin: 2px 0 0; font-size: var(--cf-text-sm); overflow-wrap: anywhere; }
+.sample-filter, .tree-find, .network-find { height: 30px; padding: 0 9px; border: 1px solid var(--cf-border-strong); border-radius: 7px; background: var(--cf-surface); color: var(--cf-text); margin: 4px 8px; }
+.tree-controls, .network-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 12px; margin-bottom: 10px; border: 1px solid var(--cf-border); border-radius: var(--cf-radius); background: var(--cf-surface-2); font-size: var(--cf-text-sm); color: var(--cf-text-2); }
+.tree-controls label, .network-controls label { display: inline-flex; align-items: center; gap: 6px; }
+.tree-viewport { overflow: auto; max-height: 680px; border: 1px solid var(--cf-border); border-radius: var(--cf-radius); background: var(--cf-surface); }
+.tree-svg { display: block; width: 100%; min-width: 760px; font-family: var(--cf-font-sans); }
+.tree-svg text { fill: var(--cf-chart-ink); }
+.tree-tip.match { fill: var(--cf-fail-ink) !important; font-weight: 700; text-decoration: underline; }
+.tree-circular { min-width: 900px; }
+.metadata-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: var(--cf-text-sm); margin: 8px 0 16px; }
+.metadata-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.metadata-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.network-panel { margin: 0; padding: 20px; border: 1px solid var(--cf-border); border-radius: var(--cf-radius-lg); background: var(--cf-surface); }
+.network-summary { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 12px 0; color: var(--cf-text-2); font-size: var(--cf-text-sm); }
+.network-summary b { color: var(--cf-text); font-size: 15px; margin-right: 3px; }
+.network-feedback { min-height: 20px; font-size: var(--cf-text-sm); color: var(--cf-text-2); }
+.network-viewport { overflow: auto; height: clamp(300px, 44vw, 600px); border: 1px solid var(--cf-border); border-radius: var(--cf-radius); background: radial-gradient(circle, var(--cf-chart-grid) 1px, transparent 1px) 0 0 / 22px 22px, var(--cf-surface); cursor: grab; }
+.report-network { display: block; width: 100%; height: 100%; font-family: var(--cf-font-sans); }
+.report-network text { fill: var(--cf-chart-ink); }
+.network-distance, .network-sample-label { paint-order: stroke; stroke: var(--cf-surface); stroke-width: 4px; stroke-linejoin: round; }
+.network-node { cursor: pointer; }
+.network-node.dimmed { opacity: .2; }
+.network-node.match circle, .network-node.selected circle, .network-node:focus circle { stroke: var(--cf-text); stroke-width: 3px; }
+.hide-node-labels .network-sample-label, .hide-edge-distances .network-distance { display: none; }
+.network-selection { padding: 10px 13px; border-radius: var(--cf-radius-sm); background: var(--cf-accent-soft); color: var(--cf-accent-ink); font-size: var(--cf-text-sm); overflow-wrap: anywhere; }
+.matrix-table { font-variant-numeric: tabular-nums; }
+.matrix-table th { position: sticky; left: 0; z-index: 1; }
+pre.newick, pre.diagnostics, .cf-pre { max-height: 420px; overflow: auto; padding: 14px 16px; border-radius: var(--cf-radius); background: var(--cf-sunken); color: var(--cf-text); font-family: var(--cf-font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sentences { padding-left: 20px; } .sentences li { margin-bottom: 10px; }
+.caveat { margin-top: 16px; padding: 13px 16px; border-left: 3px solid var(--cf-accent); border-radius: var(--cf-radius-sm); background: var(--cf-accent-soft); font-size: var(--cf-text-md); }
+.limitations { padding: 18px 20px; border: 1px solid var(--cf-warn-line); border-radius: var(--cf-radius-lg); background: var(--cf-warn-bg); }
+.limitations ul { padding-left: 20px; margin: 0; } .limitations li { margin-bottom: 8px; }
+.checksum { font-family: var(--cf-font-mono); font-size: 11.5px; overflow-wrap: anywhere; }

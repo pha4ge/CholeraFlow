@@ -1,0 +1,467 @@
+/* CholeraFlow report runtime — application shell. */
+CF.shell = (() => {
+  const pages = CF.qsa("main > .cf-page");
+  const pageIds = pages.map(page => page.id);
+  const navLinks = CF.qsa(".cf-nav-link");
+  const navInfo = new Map((CF.data.navigation || []).map(item => [item.id, item]));
+  const crumbGroup = CF.qs("[data-cf-crumb-group]");
+  const crumbPage = CF.qs("[data-cf-crumb-page]");
+  const sidebar = doc.getElementById("cf-sidebar");
+  const scrim = CF.qs(".cf-scrim");
+  const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  /* ── Router: #page, #element-inside-page, #sample/<id> ─────────────── */
+  function markCurrent(id) {
+    const info = navInfo.get(id);
+    navLinks.forEach(link => {
+      if (link.dataset.page === id) link.setAttribute("aria-current", CF.state.layout === "paged" ? "page" : "location");
+      else link.removeAttribute("aria-current");
+    });
+    if (crumbGroup) crumbGroup.textContent = info ? info.group : "Report";
+    if (crumbPage) crumbPage.textContent = info ? info.title : "";
+  }
+  function showPage(id, options) {
+    const opts = options || {};
+    if (!pageIds.includes(id)) id = pageIds[0];
+    const changed = CF.state.page !== id;
+    CF.state.page = id;
+    if (CF.state.layout === "paged") pages.forEach(page => page.classList.toggle("is-active", page.id === id));
+    markCurrent(id);
+    CF.initPage(id);
+    if (changed) CF.emit("page", {id});
+    if (opts.focus) {
+      const heading = doc.getElementById(id + "-title");
+      if (heading) { heading.tabIndex = -1; heading.focus({preventScroll: true}); }
+    }
+  }
+  function route(event) {
+    let hash = "";
+    try { hash = decodeURIComponent(location.hash.slice(1)); } catch (error) { hash = location.hash.slice(1); }
+    if (!hash) { showPage(CF.state.page || pageIds[0]); return; }
+    if (hash.startsWith("sample/")) {
+      const id = hash.slice(7);
+      if (!CF.state.page) showPage("samples");
+      if (CF.resolve(id)) CF.select(id);
+      return;
+    }
+    const target = doc.getElementById(hash);
+    if (!target) { showPage(pageIds[0]); return; }
+    const page = target.classList.contains("cf-page") ? target : target.closest(".cf-page");
+    if (!page) return;
+    showPage(page.id, {focus: Boolean(event) && target === page});
+    CF.revealInTabs(target);
+    CF.raf(() => {
+      if (target === page && CF.state.layout === "paged") { if (typeof window.scrollTo === "function") window.scrollTo(0, 0); }
+      else CF.scrollTo(target);
+      if (target !== page && event) { if (!target.hasAttribute("tabindex")) target.tabIndex = -1; target.focus({preventScroll: true}); }
+    });
+    closeSidebar();
+  }
+  CF.go = id => { if (location.hash.slice(1) === id) route({}); else location.hash = id; };
+  CF.showPage = showPage;
+
+  /* Continuous layout: scroll-spy keeps the navigation and breadcrumb current. */
+  let observer = null;
+  function spy(enable) {
+    if (observer) { observer.disconnect(); observer = null; }
+    if (!enable || !("IntersectionObserver" in window)) return;
+    const visible = new Set();
+    observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => { if (entry.isIntersecting) visible.add(entry.target.id); else visible.delete(entry.target.id); });
+      const first = pageIds.find(id => visible.has(id));
+      if (first && first !== CF.state.page) { CF.state.page = first; markCurrent(first); CF.initPage(first); }
+    }, {rootMargin: "-20% 0px -60% 0px"});
+    pages.forEach(page => observer.observe(page));
+  }
+  function setLayout(layout, persist) {
+    CF.state.layout = layout === "continuous" ? "continuous" : "paged";
+    root.classList.toggle("cf-paged", CF.state.layout === "paged");
+    CF.qsa("[data-cf-layout]").forEach(item => item.setAttribute("aria-checked", String(item.dataset.cfLayout === CF.state.layout)));
+    if (CF.state.layout === "continuous") { pages.forEach(page => page.classList.add("is-active")); CF.initAll(); }
+    spy(CF.state.layout === "continuous");
+    if (persist) CF.store.set("layout", CF.state.layout);
+    if (CF.state.page) { showPage(CF.state.page); if (CF.state.layout === "continuous") CF.scrollTo(doc.getElementById(CF.state.page)); }
+  }
+  CF.setLayout = setLayout;
+
+  /* ── Theme ──────────────────────────────────────────────────────────── */
+  function applyTheme(preference, persist) {
+    const pref = ["light", "dark", "system"].includes(preference) ? preference : "light";
+    const resolved = pref === "system" ? (media && media.matches ? "dark" : "light") : pref;
+    root.dataset.theme = resolved;
+    CF.state.theme = resolved;
+    CF.state.themePreference = pref;
+    CF.qsa("[data-cf-theme]").forEach(item => item.setAttribute("aria-checked", String(item.dataset.cfTheme === pref)));
+    if (persist) CF.store.set("theme", pref);
+    CF.emit("theme", {theme: resolved});
+  }
+  CF.setTheme = applyTheme;
+
+  /* ── Sidebar ────────────────────────────────────────────────────────── */
+  const menuButton = CF.qs(".cf-menu-btn");
+  function openSidebar() {
+    sidebar.classList.add("is-open");
+    if (scrim) scrim.hidden = false;
+    if (menuButton) menuButton.setAttribute("aria-expanded", "true");
+    const active = sidebar.querySelector("[aria-current]") || sidebar.querySelector("a");
+    if (active) active.focus();
+  }
+  function closeSidebar() {
+    if (!sidebar.classList.contains("is-open")) return;
+    sidebar.classList.remove("is-open");
+    if (scrim) scrim.hidden = true;
+    if (menuButton) { menuButton.setAttribute("aria-expanded", "false"); }
+  }
+  function setRail(enabled, persist) {
+    root.classList.toggle("cf-rail", enabled);
+    const button = CF.qs(".cf-sidebar-collapse");
+    if (button) {
+      button.setAttribute("aria-pressed", String(enabled));
+      button.setAttribute("aria-label", enabled ? "Expand navigation" : "Collapse navigation");
+      button.replaceChildren(CF.icon(enabled ? "panel-left-open" : "panel-left-close"));
+    }
+    if (persist) CF.store.set("rail", enabled);
+  }
+
+  /* ── Menus (menu button pattern) ───────────────────────────────────── */
+  let openMenu = null;
+  function closeMenu(restore) {
+    if (!openMenu) return;
+    const {menu, button} = openMenu;
+    menu.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+    openMenu = null;
+    if (restore) button.focus();
+  }
+  function items(menu) { return CF.qsa("[role^='menuitem']", menu).filter(item => !item.hidden); }
+  function toggleMenu(button) {
+    const menu = doc.getElementById(button.dataset.cfMenu);
+    if (!menu) return;
+    if (openMenu && openMenu.menu === menu) { closeMenu(true); return; }
+    closeMenu(false);
+    // Lazily initialised pages register their exports on initialisation; make
+    // the complete list available before showing it.
+    if (menu.id === "cf-export-menu") { CF.initAll(); buildExportMenu(menu); }
+    menu.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    openMenu = {menu, button};
+    const first = menu.querySelector("[aria-checked='true']") || items(menu)[0];
+    if (first) first.focus();
+  }
+  function menuKeys(event) {
+    if (!openMenu) return;
+    const list = items(openMenu.menu);
+    const index = list.indexOf(doc.activeElement);
+    if (event.key === "Escape") { event.preventDefault(); closeMenu(true); }
+    else if (event.key === "ArrowDown") { event.preventDefault(); list[(index + 1) % list.length].focus(); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); list[(index - 1 + list.length) % list.length].focus(); }
+    else if (event.key === "Home") { event.preventDefault(); list[0].focus(); }
+    else if (event.key === "End") { event.preventDefault(); list[list.length - 1].focus(); }
+    else if (event.key === "Tab") closeMenu(false);
+  }
+  function buildExportMenu(menu) {
+    menu.replaceChildren();
+    let group = null;
+    CF.exports.list().forEach(item => {
+      if (item.group !== group) {
+        group = item.group;
+        if (menu.childNodes.length) menu.append(CF.el("div", {class: "cf-menu-sep", role: "separator"}));
+        menu.append(CF.el("p", {class: "cf-menu-label"}, group || "Export"));
+      }
+      const status = CF.exports.status(item);
+      const entry = CF.el("button", {type: "button", role: "menuitem", "aria-disabled": status.ok ? null : "true", title: status.ok ? null : status.reason},
+        CF.icon(item.icon || "download"), CF.el("span", null, item.label, status.ok ? (item.description ? CF.el("small", null, item.description) : null) : CF.el("small", null, status.reason)));
+      entry.addEventListener("click", () => { if (!status.ok) { CF.announce(status.reason); return; } closeMenu(true); CF.exports.run(item.id); });
+      menu.append(entry);
+    });
+    menu.append(CF.el("div", {class: "cf-menu-sep", role: "separator"}));
+    const centre = CF.el("button", {type: "button", role: "menuitem"}, CF.icon("download"), CF.el("span", null, "Open the download centre"));
+    centre.addEventListener("click", () => { closeMenu(false); CF.go("downloads"); });
+    menu.append(centre);
+  }
+
+  /* ── Global search (combobox + listbox) ─────────────────────────────── */
+  function initSearch() {
+    const wrap = CF.qs("[data-cf-search]");
+    const input = doc.getElementById("cf-search-input");
+    const list = doc.getElementById("cf-search-results");
+    if (!wrap || !input || !list) return;
+    wrap.hidden = false;
+    let results = []; let active = -1;
+    const close = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); active = -1; };
+    const choose = index => {
+      const result = results[index];
+      if (!result) return;
+      close();
+      input.value = "";
+      if (result.kind === "sample") CF.select(result.id, {trigger: input});
+      else CF.go(result.id);
+    };
+    const render = () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      list.replaceChildren();
+      results = [];
+      if (!query) { close(); return; }
+      const samples = [];
+      CF.aliases.forEach((id, label) => { if (label.toLocaleLowerCase().includes(query) && !samples.some(item => item.id === id)) samples.push({kind: "sample", id, label}); });
+      samples.sort((a, b) => CF.collator.compare(a.id, b.id));
+      const sections = (CF.data.navigation || []).filter(page => (page.title + " " + page.group).toLocaleLowerCase().includes(query)).map(page => ({kind: "page", id: page.id, label: page.title, group: page.group}));
+      const shown = samples.slice(0, 8);
+      results = shown.concat(sections.slice(0, 6));
+      if (!results.length) { list.append(CF.el("li", {class: "cf-search-empty", role: "presentation"}, "No samples or sections match “" + input.value.trim() + "”.")); }
+      if (shown.length) list.append(CF.el("li", {class: "cf-search-group", role: "presentation"}, samples.length > shown.length ? "Samples · " + shown.length + " of " + samples.length : "Samples"));
+      results.forEach((result, index) => {
+        if (result.kind === "page" && (index === shown.length)) list.append(CF.el("li", {class: "cf-search-group", role: "presentation"}, "Sections"));
+        const option = CF.el("li", {id: "cf-search-option-" + index, role: "option", "aria-selected": "false"},
+          CF.icon(result.kind === "sample" ? "test-tube" : "arrow-right"),
+          CF.el("span", {class: result.kind === "sample" ? "cf-id" : null}, result.label),
+          result.kind === "sample" && result.label !== result.id ? CF.el("span", {class: "cf-muted cf-small"}, "→ " + result.id) : null,
+          CF.el("span", {class: "cf-search-kind"}, result.kind === "sample" ? "Sample" : result.group));
+        option.addEventListener("mousedown", event => { event.preventDefault(); choose(index); });
+        list.append(option);
+      });
+      list.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      active = -1;
+    };
+    const highlight = index => {
+      CF.qsa("[role=option]", list).forEach((option, position) => option.setAttribute("aria-selected", String(position === index)));
+      const option = doc.getElementById("cf-search-option-" + index);
+      if (option) { input.setAttribute("aria-activedescendant", option.id); CF.scrollTo(option, {block: "nearest"}); }
+    };
+    input.addEventListener("input", render);
+    input.addEventListener("keydown", event => {
+      if (event.key === "ArrowDown" && results.length) { event.preventDefault(); active = (active + 1) % results.length; highlight(active); }
+      else if (event.key === "ArrowUp" && results.length) { event.preventDefault(); active = (active - 1 + results.length) % results.length; highlight(active); }
+      else if (event.key === "Enter") { event.preventDefault(); choose(active >= 0 ? active : 0); }
+      else if (event.key === "Escape") { if (!list.hidden) { event.stopPropagation(); close(); } else input.blur(); }
+    });
+    input.addEventListener("blur", () => setTimeout(close, 120));
+  }
+
+  /* ── Filter panel and filter bar ────────────────────────────────────── */
+  function initFilters() {
+    const panel = doc.getElementById("cf-filter-panel");
+    const fields = panel && panel.querySelector("[data-cf-filter-fields]");
+    const toggle = CF.qs("[data-cf-action='open-filters']");
+    const bar = doc.getElementById("cf-filterbar");
+    const chips = bar && bar.querySelector("[data-cf-filter-chips]");
+    const summary = bar && bar.querySelector("[data-cf-filter-summary]");
+    const counter = CF.qs("[data-cf-filter-count]");
+    if (!panel || !fields || !toggle) return;
+    const available = CF.filterFields();
+    if (!available.length || CF.sampleIds.length < 2) { toggle.hidden = true; return; }
+    available.forEach(field => {
+      const fieldset = CF.el("fieldset");
+      fieldset.append(CF.el("legend", null, field.label));
+      Object.entries(field.counts).forEach(([value, count]) => {
+        const entry = (field.values || {})[value] || {token: "other"};
+        const input = CF.el("input", {type: "checkbox", value, "data-field": field.key});
+        input.addEventListener("change", () => CF.toggleFilter(field.key, value));
+        fieldset.append(CF.el("label", {class: "cf-filter-option"}, input, CF.el("span", {class: "cf-swatch cf-tone-" + entry.token}), CF.el("span", null, value), CF.el("span", {class: "cf-legend-count"}, count)));
+      });
+      fields.append(CF.el("div", {class: "cf-filter-field"}, fieldset));
+    });
+    const openPanel = () => { panel.hidden = false; toggle.setAttribute("aria-expanded", "true"); const first = panel.querySelector("input"); if (first) first.focus(); };
+    const closePanel = restore => { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); if (restore) toggle.focus(); };
+    toggle.addEventListener("click", () => (panel.hidden ? openPanel() : closePanel(true)));
+    panel.addEventListener("keydown", event => { if (event.key === "Escape") { event.stopPropagation(); closePanel(true); } });
+    doc.addEventListener("pointerdown", event => { if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) closePanel(false); });
+    CF.qsa("[data-cf-action='close-filters']").forEach(button => button.addEventListener("click", () => closePanel(true)));
+    CF.on("filters", ({ids}) => {
+      const active = CF.activeFilters();
+      CF.qsa("input[data-field]", fields).forEach(input => { input.checked = Boolean(CF.state.filters[input.dataset.field] && CF.state.filters[input.dataset.field].has(input.value)); });
+      if (counter) { counter.hidden = !active.length; counter.textContent = String(active.reduce((sum, [, values]) => sum + values.size, 0)); }
+      if (!bar) return;
+      bar.hidden = !active.length;
+      chips.replaceChildren();
+      active.forEach(([key, values]) => {
+        const label = (CF.data.palettes[key] || {}).label || key;
+        values.forEach(value => {
+          const remove = CF.el("button", {type: "button", "aria-label": "Remove filter " + label + ": " + value}, CF.icon("x"));
+          remove.addEventListener("click", () => CF.toggleFilter(key, value));
+          chips.append(CF.el("li", {class: "cf-chip"}, CF.el("span", null, label + ": " + value), remove));
+        });
+      });
+      if (summary) summary.textContent = ids ? "Filtered view · " + ids.size + " of " + CF.sampleIds.length + " samples" : "Filtered view";
+    });
+  }
+
+  /* ── Built-in exports ───────────────────────────────────────────────── */
+  function sampleRows(ids) {
+    const header = ["sample_id", "aliases", "sources", "country", "collection_date", "specimen_type", "genome_qc_status",
+      "assembly_size_mb", "n50_kb", "contigs", "gc_percent", "species_confirmation", "serogroup", "biotype", "ctx_prophage",
+      "sxt_element", "amr_status", "sxt_mdr_pattern", "reported_cluster", "mlst", "lineage", "plasmid_cluster", "in_tree", "review_flags"];
+    const rows = [header];
+    CF.sampleIds.filter(id => !ids || ids.has(id)).forEach(id => {
+      const s = CF.samples.get(id);
+      const qc = (s.genome_qc && s.genome_qc.metrics) || {};
+      const typing = (s.typing && s.typing.fields) || {};
+      const metric = key => (qc[key] && qc[key].value !== null && qc[key].value !== undefined) ? qc[key].value : "";
+      const field = key => (typing[key] ? typing[key].value : "");
+      rows.push([id, (s.labels || []).map(entry => entry.label).join("; "), (s.sources || []).join("; "),
+        s.derived.country, s.derived.collection_date, s.derived.specimen_type, s.genome_qc ? s.genome_qc.raw_status : "",
+        metric("genome_size_mb"), metric("n50"), metric("contig_count"), metric("gc_percent"),
+        field("species_confirmation"), field("serogroup"), field("biotype"), field("ctx_prophage"), field("sxt_element"),
+        s.amr ? s.amr.status : "", s.amr ? s.amr.sxt_mdr.state : "", s.derived.cluster, s.derived.mlst, s.derived.lineage,
+        s.derived.plasmid_cluster, s.derived.in_tree ? "yes" : "no", (s.flags || []).map(flag => flag.title).join("; ")]);
+    });
+    return rows;
+  }
+  function matrixText(key) {
+    const matrix = (CF.data.matrices || {})[key];
+    const lines = ["\t" + matrix.labels.map(CF.tsvCell).join("\t")];
+    matrix.cells.forEach((row, index) => lines.push([CF.tsvCell(matrix.labels[index])].concat(row.map(CF.tsvCell)).join("\t")));
+    return lines.join("\n") + "\n";
+  }
+  function newickNode(kind) { return doc.querySelector('[data-cf-newick="' + kind + '"]') || (kind === "cohort" ? doc.querySelector("#cohort-tree pre.newick") : doc.querySelector("#global-tree pre.newick")); }
+  function registerExports() {
+    const runName = CF.safeName((CF.data.run || {}).run_id || (CF.data.run || {}).date || "report");
+    CF.exports.register({id: "print", group: "Report", icon: "printer", label: "Print or save as PDF", description: "Every section, without interactive controls", run: () => window.print()});
+    CF.exports.register({id: "samples-csv", group: "Sample records", icon: "file-spreadsheet", label: "Sample records (CSV) — full cohort",
+      description: "One row per sample with supplied calls and flags", available: () => CF.sampleIds.length ? true : "No sample records are present.",
+      run: () => CF.download(CF.csv(sampleRows(null)), "choleraflow-sample-records-" + runName + ".csv", "text/csv;charset=utf-8")});
+    CF.exports.register({id: "samples-filtered-csv", group: "Sample records", icon: "filter", label: "Sample records (CSV) — filtered subset",
+      description: "Only samples matching the active filters", available: () => CF.activeFilters().length ? true : "No filters are active; use the full-cohort export.",
+      run: () => CF.download(CF.csv(sampleRows(CF.filteredIds())), "choleraflow-sample-records-filtered-" + runName + ".csv", "text/csv;charset=utf-8")});
+    CF.exports.register({id: "samples-json", group: "Sample records", icon: "file-json", label: "Sample records (JSON)",
+      description: "Structured records including every supplied source field", available: () => CF.sampleIds.length ? true : "No sample records are present.",
+      run: () => CF.download(JSON.stringify({schema: CF.data.schema, run: CF.data.run, samples: CF.data.samples}, null, 2) + "\n", "choleraflow-sample-records-" + runName + ".json", "application/json")});
+    [["cohort", "Cohort tree (Newick)", "The supplied tree file, unchanged"], ["global", "Global context tree (Newick)", "The supplied global tree, unchanged"]].forEach(([kind, label, description]) => {
+      CF.exports.register({id: "newick-" + kind, group: "Phylogeny", icon: "file-text", label, description,
+        available: () => newickNode(kind) ? true : "No " + (kind === "cohort" ? "cohort" : "global") + " tree was supplied to this report.",
+        run: () => CF.download(((CF.data.newick_sources || {})[kind] ?? (newickNode(kind).textContent.trim() + "\n")), "choleraflow-" + kind + "-tree-" + runName + ".nwk", "text/plain;charset=utf-8")});
+    });
+    [["snp", "SNP distance matrix (TSV)"], ["cgmlst", "cgMLST distance matrix (TSV)"]].forEach(([key, label]) => {
+      CF.exports.register({id: "matrix-" + key, group: "Distances", icon: "grid-3x3", label, description: "Supplied cell values, unchanged",
+        available: () => {
+          const matrix = (CF.data.matrices || {})[key];
+          if (!matrix) return "No " + (key === "snp" ? "SNP" : "cgMLST") + " matrix was supplied to this report.";
+          if (!matrix.embedded) return "Matrix has " + matrix.labels.length + " labels, above the embedding limit of " + matrix.limit + "; use the pipeline output file.";
+          return true;
+        },
+        run: () => CF.download(matrixText(key), "choleraflow-" + key + "-distance-matrix-" + runName + ".tsv", "text/tab-separated-values;charset=utf-8")});
+    });
+  }
+  function wireDownloadButtons() {
+    const refresh = button => {
+      const item = CF.exports.list().find(entry => entry.id === button.dataset.cfExport);
+      const status = item ? CF.exports.status(item) : {ok: false, reason: "Not available in this report."};
+      button.disabled = !status.ok;
+      button.title = status.ok ? "" : status.reason;
+      const holder = button.closest("[data-cf-export-item]") || button.parentElement;
+      const reason = holder && holder.querySelector("[data-cf-export-reason]");
+      if (reason) { reason.textContent = status.ok ? "" : status.reason; reason.hidden = status.ok; }
+    };
+    const refreshAll = () => CF.qsa("[data-cf-export]").forEach(refresh);
+    CF.qsa("[data-cf-export]").forEach(button => {
+      button.addEventListener("click", () => CF.exports.run(button.dataset.cfExport));
+    });
+    refreshAll();
+    CF.on("filters", refreshAll);
+    CF.on("exports", refreshAll);
+    // The download centre lists exports from every page, so initialise them all.
+    CF.on("page", ({id}) => { if (id === "downloads") { CF.initAll(); refreshAll(); } });
+    if (CF.state.page === "downloads") { CF.initAll(); refreshAll(); }
+  }
+
+  /* ── Presentation mode, print, help ─────────────────────────────────── */
+  function setPresentation(enabled) {
+    root.classList.toggle("cf-present", enabled);
+    let exit = CF.qs(".cf-present-exit");
+    if (enabled && !exit) {
+      exit = CF.el("button", {type: "button", class: "cf-btn cf-present-exit"}, CF.icon("minimize-2"), CF.el("span", null, "Exit presentation"));
+      exit.addEventListener("click", () => setPresentation(false));
+      doc.body.append(exit);
+      exit.focus();
+    } else if (!enabled && exit) exit.remove();
+    CF.announce(enabled ? "Presentation mode. Press Escape to exit." : "Presentation mode closed.");
+  }
+  let printDetails = [];
+  function beforePrint() {
+    CF.initAll();
+    printDetails = CF.qsa("details:not([open])").filter(item => !item.querySelector("pre") && !item.closest(".cf-nav"));
+    printDetails.forEach(item => { item.open = true; });
+  }
+  function afterPrint() { printDetails.forEach(item => { item.open = false; }); printDetails = []; }
+
+  /* ── Wiring ─────────────────────────────────────────────────────────── */
+  function init() {
+    CF.qsa("[data-cf-toolbar-actions], .cf-menu-btn, .cf-sidebar-collapse").forEach(node => { node.hidden = false; });
+    applyTheme(CF.store.get("theme", "light"), false);
+    if (media && media.addEventListener) media.addEventListener("change", () => { if (CF.state.themePreference === "system") applyTheme("system", false); });
+    setRail(Boolean(CF.store.get("rail", false)) && innerWidth > 960, false);
+    setLayout(CF.store.get("layout", "paged"), false);
+    initSearch();
+    initFilters();
+    registerExports();
+    doc.addEventListener("click", event => {
+      const action = event.target.closest("[data-cf-action]");
+      const menuButtonTarget = event.target.closest("[data-cf-menu]");
+      const select = event.target.closest("[data-cf-select]");
+      const theme = event.target.closest("[data-cf-theme]");
+      const layout = event.target.closest("[data-cf-layout]");
+      if (menuButtonTarget) { toggleMenu(menuButtonTarget); return; }
+      if (openMenu && !openMenu.menu.contains(event.target)) closeMenu(false);
+      if (theme) { applyTheme(theme.dataset.cfTheme, true); closeMenu(true); return; }
+      if (layout) { closeMenu(true); setLayout(layout.dataset.cfLayout, true); return; }
+      if (select && !event.target.closest("a[href]:not([data-cf-select])")) {
+        event.preventDefault();
+        CF.select(select.dataset.cfSelect, {trigger: select, source: select.closest(".cf-page") ? select.closest(".cf-page").id : null});
+        return;
+      }
+      const filterLink = event.target.closest("[data-cf-apply-filter]");
+      if (filterLink) {
+        const [field, ...rest] = filterLink.dataset.cfApplyFilter.split(":");
+        CF.setFilter(field, [rest.join(":")]);
+      }
+      if (!action) return;
+      switch (action.dataset.cfAction) {
+        case "toggle-sidebar": sidebar.classList.contains("is-open") ? closeSidebar() : openSidebar(); break;
+        case "close-sidebar": closeSidebar(); break;
+        case "collapse-sidebar": setRail(!root.classList.contains("cf-rail"), true); break;
+        case "close-drawer": CF.drawer.close(); break;
+        case "clear-filters": CF.clearFilters(); break;
+        case "print": window.print(); break;
+        case "presentation": closeMenu(false); setPresentation(!root.classList.contains("cf-present")); break;
+        case "help": { const dialog = doc.getElementById("cf-help"); if (dialog && dialog.showModal) dialog.showModal(); else CF.go("guide"); break; }
+        case "close-help": { const dialog = doc.getElementById("cf-help"); if (dialog && dialog.open) dialog.close(); break; }
+        default: break;
+      }
+    });
+    doc.addEventListener("keydown", event => {
+      const select = event.target.closest && event.target.closest("[data-cf-select]");
+      if (select && (event.key === "Enter" || event.key === " ") && !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) {
+        event.preventDefault();
+        CF.select(select.dataset.cfSelect, {trigger: select});
+        return;
+      }
+      menuKeys(event);
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable;
+      if (event.key === "Escape") {
+        if (root.classList.contains("cf-present")) setPresentation(false);
+        else if (CF.drawer.isOpen()) CF.drawer.close();
+        else closeSidebar();
+        return;
+      }
+      if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "/") { const input = doc.getElementById("cf-search-input"); if (input) { event.preventDefault(); input.focus(); } }
+      else if (event.key === "?") { const dialog = doc.getElementById("cf-help"); if (dialog && dialog.showModal && !dialog.open) { event.preventDefault(); dialog.showModal(); } }
+      else if ((event.key === "[" || event.key === "]") && CF.state.layout === "paged") {
+        const index = pageIds.indexOf(CF.state.page);
+        const next = pageIds[index + (event.key === "]" ? 1 : -1)];
+        if (next) { event.preventDefault(); CF.go(next); }
+      }
+    });
+    // Make selectable SVG marks keyboard reachable.
+    CF.qsa("svg [data-cf-select]").forEach(node => {
+      if (!node.hasAttribute("tabindex")) node.setAttribute("tabindex", "0");
+      if (!node.hasAttribute("role")) node.setAttribute("role", "button");
+    });
+    window.addEventListener("hashchange", route);
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+    CF.on("page", () => { closeSidebar(); });
+  }
+  return {init, route, wireDownloadButtons, sampleRows};
+})();

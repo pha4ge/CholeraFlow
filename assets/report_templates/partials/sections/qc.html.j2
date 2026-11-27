@@ -1,0 +1,59 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['qc'] -%}
+{{ page_header(page, 'Genome assembly QC and mapping-sequence QC as recorded by the pipeline.') }}
+{% call panel('Recorded QC status', 'shield-check', 'Full cohort. Warning is shown separately from strict pass; missing records are not failures.') %}
+<div class="cf-status-strip" role="img" aria-label="QC status distribution across {{ model.sample_count }} sample identifiers">
+{% for state in views.qc.status.rows if state.genome %}<span class="cf-qc-segment cf-qc-{{ state.state }}" style="flex-grow:{{ state.genome }}" title="{{ state.label }}: {{ state.genome }} of {{ model.sample_count }}">{{ state.genome }}</span>{% endfor %}</div>
+<div class="cf-cluster">{% for state in views.qc.status.rows %}<span>{{ status_badge(state.state) }} {{ state.genome }} of {{ model.sample_count }} ({{ state.genome_pct }})</span>{% endfor %}</div>
+<details class="cf-disclosure"><summary>Stage-specific memberships (not a funnel)</summary><dl class="cf-kv">{% if views.qc.inclusion %}{% for stage in views.qc.inclusion.stages %}<div><dt>{{ stage.label }}</dt><dd>{{ stage.count if stage.count is not none else stage.state }}</dd></div>{% endfor %}{% endif %}</dl><p>These groups need not be nested. Genome QC eligibility and comparative inclusion follow different upstream rules.</p></details>
+{% endcall %}
+{% set v=views.qc %}
+<p class="cf-chart-section-label">Assembly evidence</p>
+{% if v.genome %}
+{%- from 'partials/qc_figures.html.j2' import metrics, scatter -%}
+{% call figure('qc-metric-board', 'The assembly profile', 'Read each sample across five complementary measurements. Colour and shape identify its recorded QC state.', scope='filterable' if v.genome.chart.form != 'histogram' else 'fixed', exports=('svg','png'), caption='Units and available measurements are stated per column. Missing values are NA, never zero. Assembly size and GC axes span the observed range; count and length axes are labelled explicitly.') %}
+{{ metrics(v.genome.chart) }}
+<div class="cf-qc-key">{% for tone,label,symbol in [('pass','Pass','●'),('warn','Warning','▲'),('fail','Fail','■'),('na','Not assessed','○')] %}<span class="cf-legend-item"><i class="cf-swatch" style="background:var(--cf-s-{{ tone }})"></i>{{ symbol }} {{ label }}</span>{% endfor %}</div>
+{% endcall %}
+<div class="charts-grid">{% for block in v.scatters if block.chart.form != 'empty' %}{% call figure(block.chart.id, block.title, 'Two measurements, one point per recorded sample.', scope='filterable', exports=('svg','png'), caption=block.n ~ ' complete pairs · ' ~ block.omitted|length ~ ' incomplete pairs omitted. ' ~ block.axes) %}{{ scatter(block.chart) }}{% endcall %}{% endfor %}</div>
+{% if v.gap %}{% call figure('mapping-gap-profile', 'Mapping-sequence coverage', 'Reported N/gap percentage in the aligned sequence.', scope='filterable', exports=('svg','png'), caption='Sequence QC is separate from genome QC. These values are not read depth or assembly completeness.') %}{{ metrics(v.gap.chart) }}{% endcall %}{% endif %}
+{% if v.extra %}{% call figure('qc-optional-metrics','Additional recorded QC metrics','Only supplied numeric BUSCO/CheckM values are shown.',scope='fixed',exports=('svg','png'),caption='No completeness or contamination value is inferred from other measurements.') %}{{ metrics(v.extra.chart) }}{% endcall %}{% endif %}
+{% if v.extra_note %}<p class="muted">{{ v.extra_note }}</p>{% endif %}
+{% endif %}
+{% if qc.status == 'not_performed' %}<div class="not-performed">Analysis not performed — {{ qc.reason }}</div>{% else %}
+    <h3>Assembly QC table</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Sample</th><th>Status</th><th>Genome (Mb)</th><th>GC %</th>
+          <th>Largest contig (kb)</th><th>N50</th><th>Contigs</th><th>BUSCO</th><th>CheckM</th></tr>
+      {% for r in qc.rows %}
+      <tr>
+        <td>{{ sample_id(r.sample) }}</td>
+        <td><span class="pill {{ 'pass' if r.overall_status in ['pass'] else ('warn' if r.overall_status=='warn' else ('fail' if r.overall_status=='fail' else 'neutral')) }}">{{ r.overall_status }}</span></td>
+        <td>{{ r.genome_size_mb }}</td><td>{{ r.gc_percent }}</td>
+        <td>{{ r.largest_contig_kb }}</td><td>{{ r.n50 }}</td><td>{{ r.contig_count }}</td>
+        <td>{{ r.busco }}</td><td>{{ r.checkm }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+    {% if qc.excluded %}
+      <h3>Excluded samples</h3>
+      <table aria-label="Excluded genome QC samples">
+        <tr><th>Sample</th><th>Reason</th></tr>
+        {% for r in qc.excluded %}<tr><td>{{ sample_id(r.sample) }}</td><td>Failed QC thresholds ({{ r.overall_status }})</td></tr>{% endfor %}
+      </table>
+    {% endif %}
+  {% endif %}
+<div class="sequence-panel">
+  <h3>Mapping-sequence QC details</h3>
+  {% if sequence_qc %}<div class="scroll"><table aria-label="Mapping-sequence QC">
+    <tr><th>Sample</th><th>Status</th><th>Sequences</th><th>Total aligned bp</th><th>N/gap bp</th><th>N/gap %</th><th>Reported reason</th></tr>
+    {% for row in sequence_qc %}<tr><td>{{ row.sample }}</td><td>{{ row.status }}</td><td>{{ row.n_sequences }}</td><td>{{ row.total_bp }}</td><td>{{ row.gap_bp }}</td><td>{{ row.n_percentage }}</td><td>{{ row.reason }}</td></tr>{% endfor %}
+  </table></div>{% else %}<div class="not-performed">Mapping-sequence QC was not available for this report.</div>{% endif %}
+</div>
+{{ page_footer(page) }}

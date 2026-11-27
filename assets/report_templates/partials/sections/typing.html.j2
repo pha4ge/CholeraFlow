@@ -1,0 +1,29 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['typing'] -%}
+{{ page_header(page, 'Reported species confirmation, serogroup, biotype, CTX prophage and SXT element calls.') }}
+{% if characterisation.rows %}
+{% call figure('typing-profile', 'The reported characterisation profile', 'Read each supplied sample across its independently reported calls.', scope='fixed', exports=('svg','png'), caption=characterisation.rows|length ~ ' characterised records among ' ~ model.sample_count ~ ' report identifiers. No species, serogroup, biotype or element call is inferred from another field.') %}
+<div class="cf-figure-viewport" tabindex="0" role="region" aria-label="Reported typing profiles"><svg class="cf-svg cf-typing-profile" viewBox="0 0 1100 {{ 70+characterisation.rows|length*42 }}" role="img" aria-label="Reported characterisation calls by sample">
+{% set fields=[('species_confirmation','Species call'),('serogroup','Serogroup'),('biotype','Biotype'),('ctx_prophage','CTX prophage'),('sxt_element','SXT element')] %}
+{% for field,label in fields %}<text class="cf-chart-tick" x="{{ 190+loop.index0*178+82 }}" y="24" text-anchor="middle">{{ label }}</text>{% endfor %}
+{% for row in characterisation.rows %}{% set y=40+loop.index0*42 %}<text class="cf-chart-label cf-chart-mono" x="174" y="{{ y+21 }}" text-anchor="end">{{ row.sample|truncate(26,true) }}</text>{% for field,label in fields %}<g><title>{{ row.sample }} · {{ label }}: {{ row[field] }}</title><rect class="cf-typing-tile" x="{{ 190+loop.index0*178 }}" y="{{ y }}" width="166" height="32" rx="4"/><text class="cf-chart-label" x="{{ 190+loop.index0*178+83 }}" y="{{ y+21 }}" text-anchor="middle">{{ (row[field] or 'Not recorded')|truncate(24,true) }}</text></g>{% endfor %}{% endfor %}
+</svg></div>{% endcall %}{% endif %}
+<details class="cf-disclosure"><summary>Explore cohort call distributions</summary>{{ chart_grid(charts.typing) }}</details>
+  {% if characterisation.status == 'not_performed' %}
+    <div class="not-performed">Analysis not performed — {{ characterisation.reason }}</div>
+  {% else %}
+    <div class="scroll"><table>
+      <tr><th>Sample</th><th>Species confirmation</th><th>Serogroup</th><th>Biotype</th><th>CTX prophage</th><th>SXT element</th></tr>
+      {% for r in characterisation.rows %}<tr><td>{{ r.sample }}</td>
+        <td>{{ r.species_confirmation if r.species_confirmation != 'not_run' else 'not run' }}</td>
+        <td>{{ r.serogroup if r.serogroup != 'not_run' else 'not run' }}</td>
+        <td>{{ r.biotype if r.biotype != 'not_run' else 'not run' }}</td>
+        <td>{{ r.ctx_prophage if r.ctx_prophage != 'not_run' else 'not run' }}</td>
+        <td>{{ r.sxt_element if r.sxt_element != 'not_run' else 'not run' }}</td></tr>{% endfor %}
+    </table></div>
+  {% endif %}
+{{ page_footer(page) }}

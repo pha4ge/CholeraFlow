@@ -1,0 +1,46 @@
+/* Shared scientific figure language: restrained ink, deliberate axes, readable marks. */
+.cf-chart-card { border-radius:12px; padding:20px; box-shadow:none; }
+.cf-chart-card .chart-heading { align-items:flex-start; padding-bottom:14px; border-bottom:1px solid var(--cf-border); }
+.cf-chart-eyebrow { color:var(--cf-text-2); font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin:0 0 6px; }
+.cf-chart-card .chart-heading h3 { font-size:16px; line-height:1.4; }
+.cf-chart-card .chart-viewport { padding:14px 0 4px; max-height:560px; }
+.cf-chart-card .report-chart { min-width:440px; font-family:var(--cf-font-sans); }
+.cf-chart-card .chart-data summary { display:flex; justify-content:space-between; font-size:12px; }
+.cf-chart-card .chart-data summary span { color:var(--cf-text-2); font-weight:400; }
+.cf-chart-card .mini-stats { border:1px solid var(--cf-border); padding:12px 16px; background:var(--cf-surface-2); gap:10px 24px; }
+.cf-chart-card .mini-stats dd { font-size:18px; font-weight:600; letter-spacing:-.03em; }
+.cf-chart-card figcaption > p { font-size:12px; line-height:1.6; margin-top:12px; }
+.cf-chart-gridline { stroke:var(--cf-chart-grid); stroke-width:1; }
+.cf-chart-axis { stroke:var(--cf-chart-axis); fill:none; }
+svg .cf-chart-label, svg .cf-chart-value { fill:var(--cf-text); font-size:12px; }
+svg .cf-chart-value { font-weight:650; font-variant-numeric:tabular-nums; }
+svg .cf-chart-tick, svg .cf-chart-axis-label { fill:var(--cf-text-2); font-size:11px; }
+svg .cf-chart-axis-label { font-weight:500; }
+.cf-chart-mono { font-family:var(--cf-font-mono); font-size:11px !important; }
+.cf-chart-track { fill:var(--cf-surface-3); }
+.cf-chart-bar, .cf-chart-dot { fill:var(--cf-accent); }
+.cf-chart-dot { stroke:var(--cf-surface); stroke-width:2; }
+.cf-chart-stem { stroke:var(--cf-accent); stroke-width:2; stroke-opacity:.45; }
+.cf-chart-card [data-cf-select] { cursor:pointer; }
+.cf-chart-card [data-cf-select]:hover { opacity:.75; }
+.cf-chart-card .chart-meta { padding:8px 0; font-size:11px; }
+.cf-chart-section-label { display:flex; align-items:center; gap:12px; margin:22px 0 12px; color:var(--cf-text-2); font-size:11px; text-transform:uppercase; letter-spacing:.1em; }
+.cf-chart-section-label::after { content:''; height:1px; background:var(--cf-border); flex:1; }
+@media(max-width:640px){ .cf-chart-card{padding:14px;} .cf-chart-card .chart-heading h3{font-size:14px;} }
+@media print{ .cf-chart-card{break-inside:avoid;box-shadow:none;} .cf-chart-card .report-chart{min-width:0;} }
+
+.network-panel { box-shadow:none;border-radius:12px; }
+.network-panel .chart-heading { padding-bottom:16px;border-bottom:1px solid var(--cf-border);align-items:center; }
+.network-panel .chart-heading h3 { font-size:20px; }
+.network-panel .eyebrow { color:var(--cf-accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px; }
+.network-summary { padding:8px 0 12px;gap:22px; }
+.network-summary b { font-size:26px;font-weight:600;letter-spacing:-.03em; }
+.network-viewport { height:440px;background:var(--cf-chart-surface);border-radius:8px; }
+.network-controls { border:0;border-radius:6px;padding:10px 12px; }
+.network-selection { background:var(--cf-surface-2);border:1px solid var(--cf-border); }
+.network-node circle { transition:stroke-width .12s; }
+.network-node:hover circle { stroke:var(--cf-text);stroke-width:3; }
+.network-distance { font-weight:650;stroke-width:6px; }
+@media(max-width:640px){.network-viewport{height:360px;}.network-panel{padding:14px;}}
+
+.cf-chart-card .report-chart { max-width:760px;margin:0 auto; }

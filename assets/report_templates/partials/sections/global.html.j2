@@ -1,0 +1,14 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['global'] -%}
+{{ page_header(page, 'Placement of these isolates within a supplied global reference tree, when that analysis was run.') }}
+  {% if global.status == 'not_performed' %}
+    <div class="not-performed">{{ global.message }}</div>
+  {% else %}
+    {{ tree_panel(global.tree_view, global.newick, 'global-tree', explorer=views.phylogeny.global) }}
+    {{ tree_panel(global.tree_view, none, 'global-tree-circular', 'circular', explorer=views.phylogeny.global) }}
+  {% endif %}
+{{ page_footer(page) }}

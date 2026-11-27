@@ -38,6 +38,38 @@ assert not (out / 'cgmlst').exists()
 assert not (out / 'characterisation/amr').exists()
 print('Synthetic workflow smoke test passed. No genomic results were validated.')
 PY
+
+# The preview and the actual published report must use the same offline design.
+# Exercise the production Nextflow process with all demonstration source files,
+# including nested template/font staging, then compare every rendered SVG too.
+python3 - "${validation_dir}" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('tests').resolve()))
+from test_generate_report import _full, gr, TEMPLATE
+out = Path(sys.argv[1])
+inputs = out / 'report-inputs'
+inputs.mkdir()
+args = _full(str(inputs))
+# Match the production process's documented stageAs filenames. Source filenames
+# appear in the coverage figure's provenance tooltips and must also match.
+for field, staged in [('mlst', 'mlst_summary.tsv'),
+                      ('lineage_assignments', 'lineage_assignments.txt'),
+                      ('plasmid_results', 'plasmid_clusters.txt')]:
+    path = inputs / staged
+    path.write_bytes(Path(getattr(args, field)).read_bytes())
+    setattr(args, field, str(path))
+args.demo = True
+gr.render(gr.build_context(args), TEMPLATE, str(out / 'report-reference.html'))
+PY
+nextflow run tests/test_report_pipeline.nf -c nextflow.config -ansi-log false \
+    -work-dir "${validation_dir}/report-work" --outdir "${validation_dir}/report-parity" \
+    --report_fixture_dir "${validation_dir}/report-inputs" --demo_run true \
+    --max_memory 1.GB --max_cpus 1
+python3 tests/check_report_parity.py "${validation_dir}/report-reference.html" \
+    "${validation_dir}/report-parity/reports/outbreak_report.html" --figures
+python3 tests/check_report_parity.py examples/reports/outbreak_report.html \
+    "${validation_dir}/results/reports/outbreak_report.html"
 printf 'Validation outputs: %s\n' "${validation_dir}"
 
 # Use a deliberately limited test double for snp-dists to verify channel wiring.

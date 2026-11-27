@@ -1,121 +1,187 @@
-/* Development-only regression check for the committed synthetic report.
- * Run with Node 22+ and jsdom available on NODE_PATH. Neither is a report runtime
- * dependency. Example: NODE_PATH=/path/to/temp/node_modules node tests/report_dom_checks.cjs
+/* Development-only regression checks for the committed synthetic report.
+ * Run with Node 22+ and jsdom on NODE_PATH (neither is a report runtime dependency):
+ *   NODE_PATH=/path/to/node_modules node tests/report_dom_checks.cjs [report.html]
+ * Browser-level checks (layout, Firefox/WebKit) live in tests/browser/.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const {JSDOM, VirtualConsole} = require('jsdom');
+
+const file = process.argv[2] || path.join(__dirname, '../examples/reports/outbreak_report.html');
+const html = fs.readFileSync(file, 'utf8');
 const errors = [];
+const consoleErrors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on('jsdomError', error => errors.push(error.message));
-let exported;
-const html = fs.readFileSync(path.join(__dirname, '../examples/reports/outbreak_report.html'), 'utf8');
-const dom = new JSDOM(html, {runScripts: 'dangerously', virtualConsole, beforeParse(window) {
-  window.Blob = class {constructor(parts) {this.parts = parts;}};
-  window.URL.createObjectURL = blob => {exported = blob.parts.join(''); return 'blob:local-test';};
+virtualConsole.on('error', message => consoleErrors.push(String(message)));
+let exported = null;
+let exportedName = null;
+const dom = new JSDOM(html, {runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole, beforeParse(window) {
+  window.Blob = class { constructor(parts, options) { this.parts = parts; this.type = options && options.type; } };
+  window.URL.createObjectURL = blob => { exported = blob.parts.map(String).join(''); return 'blob:local-test'; };
   window.URL.revokeObjectURL = () => {};
-  window.HTMLAnchorElement.prototype.click = function () {};
+  window.HTMLAnchorElement.prototype.click = function () { exportedName = this.getAttribute('download'); };
   window.print = () => {};
+  window.scrollTo = () => {};
+  window.Element.prototype.scrollIntoView = function () {};
+  window.matchMedia = () => ({matches: false, addEventListener() {}, removeEventListener() {}});
 }});
-const doc = dom.window.document;
-assert.deepEqual(errors, []);
-assert.equal(doc.querySelectorAll('main > section').length, 11);
-assert.equal(doc.querySelectorAll('svg.report-chart').length, 22);
-assert.equal(doc.querySelectorAll('.tree-svg .tree-tip').length, 6);
-assert.equal(doc.querySelectorAll('.tree-circular').length, 1);
-assert.equal(doc.querySelectorAll('.tree-rectangular .metadata-cell').length, 15);
-assert.equal(doc.querySelectorAll('.tree-circular .metadata-cell').length, 15);
-assert.equal(doc.querySelectorAll('script[src], link[rel=stylesheet], img[src^=http]').length, 0);
-const tree = doc.querySelector('#cohort-tree');
-const find = tree.querySelector('.tree-find');
-find.value = 'KENYA'; find.dispatchEvent(new dom.window.Event('input'));
-assert.equal(tree.querySelectorAll('.tree-tip.match').length, 1);
-assert.equal(tree.querySelector('.tree-match-count').textContent, '1 matching tips');
-find.value = 'Supplied branch length'; find.dispatchEvent(new dom.window.Event('input'));
-assert.equal(tree.querySelectorAll('.tree-tip.match').length, 0);
-const zoom = tree.querySelector('.tree-zoom');
-zoom.value = '160'; zoom.dispatchEvent(new dom.window.Event('input'));
-assert.equal(tree.querySelector('svg').style.width, '160%');
-tree.querySelector('.js-svg-export').click();
-const exportedSvg = new dom.window.DOMParser().parseFromString(exported, 'image/svg+xml');
-assert.equal(exportedSvg.querySelector('parsererror'), null, 'Export must be valid SVG XML');
-assert.equal(exportedSvg.querySelectorAll('text.tree-tip').length, 3);
-assert.equal(exportedSvg.querySelector('script'), null);
-assert.ok(exportedSvg.getElementById(exportedSvg.documentElement.getAttribute('aria-labelledby')));
-doc.querySelector('#chart-n50 .js-svg-export').click();
-assert.ok(exported.includes('Assembly N50'));
-assert.ok(exported.includes('248.199'));
-const network = doc.querySelector('#allele-network');
-assert.equal(network.querySelector('.network-controls').hidden, false);
-assert.equal(network.querySelectorAll('.network-node').length, 3);
-assert.equal(network.querySelectorAll('.network-edge').length, 1);
-const networkSearch = network.querySelector('.network-find');
-networkSearch.value = 'KENYA'; networkSearch.dispatchEvent(new dom.window.Event('input'));
-assert.equal(network.querySelectorAll('.network-node.match').length, 1);
-assert.equal(network.querySelectorAll('.network-node.dimmed').length, 2);
-assert.ok(network.querySelector('.network-feedback').textContent.includes('1 of 3 matching samples'));
-const matched = network.querySelector('.network-node.match');
-matched.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
-assert.ok(network.querySelector('.network-selection').textContent.includes('Country: Kenya'));
-const color = network.querySelector('.network-color');
-color.value = 'year'; color.dispatchEvent(new dom.window.Event('change'));
-assert.equal(network.querySelectorAll('.network-legend span').length, 2);
-assert.ok(network.querySelector('.network-legend').textContent.includes('2022 (2)'));
-assert.equal(matched.querySelector('circle').getAttribute('fill'), JSON.parse(matched.dataset.metadata).year.color);
-const networkZoom = network.querySelector('.network-zoom');
-networkZoom.value = '200'; networkZoom.dispatchEvent(new dom.window.Event('input'));
-assert.equal(network.querySelector('svg').style.width, '200%');
-const nodeLabels = network.querySelector('.network-labels');
-nodeLabels.checked = false; nodeLabels.dispatchEvent(new dom.window.Event('change'));
-assert.ok(network.querySelector('svg').classList.contains('hide-node-labels'));
-const edgeLabels = network.querySelector('.network-distances');
-edgeLabels.checked = false; edgeLabels.dispatchEvent(new dom.window.Event('change'));
-assert.ok(network.querySelector('svg').classList.contains('hide-edge-distances'));
-network.querySelector('.js-svg-export').click();
-const networkExport = new dom.window.DOMParser().parseFromString(exported, 'image/svg+xml');
-assert.equal(networkExport.querySelector('parsererror'), null);
-assert.equal(networkExport.querySelectorAll('.network-node').length, 3);
-assert.equal(networkExport.querySelectorAll('.dimmed').length, 0);
-assert.ok(networkExport.documentElement.textContent.includes('Color by Year'));
-assert.ok(networkExport.documentElement.textContent.includes('2022 (2)'));
-assert.equal(networkExport.querySelector('script'), null);
-assert.ok(Number(networkExport.documentElement.getAttribute('viewBox').split(/\s+/)[3]) > 720);
-network.querySelector('.network-reset').click();
-assert.equal(color.value, 'country');
-assert.equal(networkSearch.value, '');
-assert.equal(network.querySelector('svg').style.width, '100%');
-assert.equal(network.querySelectorAll('.match, .dimmed, .selected').length, 0);
-assert.equal(nodeLabels.checked, true);
-assert.equal(edgeLabels.checked, true);
-assert.equal(network.querySelectorAll('.network-legend span').length, 3);
-const explorer = doc.querySelector('.sample-explorer');
-const search = explorer.querySelector('.sample-filter');
-search.value = 'KENYA'; search.dispatchEvent(new dom.window.Event('input'));
-assert.equal(Array.from(explorer.querySelectorAll('.sample-record')).filter(item => !item.hidden).length, 1);
-const originalData = doc.querySelector('#cohort-tree pre.newick').closest('details');
-assert.equal(originalData.open, false);
-const chartData = doc.querySelector('.chart-data');
-assert.equal(chartData.open, false);
-dom.window.dispatchEvent(new dom.window.Event('beforeprint'));
-assert.equal(chartData.open, true);
-assert.equal(originalData.open, false);
-dom.window.dispatchEvent(new dom.window.Event('afterprint'));
-assert.equal(chartData.open, false);
-const qcTable = Array.from(doc.querySelectorAll('#s2 table')).find(table => table.tHead && table.tHead.rows[0].cells[2]?.textContent.includes('Genome'));
-assert.ok(qcTable);
-const qcFilter = qcTable.closest('.scroll').previousElementSibling.querySelector('input');
-qcFilter.value = 'KENYA'; qcFilter.dispatchEvent(new dom.window.Event('input'));
-assert.equal(Array.from(qcTable.tBodies[0].rows).filter(row => !row.hidden).length, 1);
-const visibleRow = Array.from(qcTable.tBodies[0].rows).find(row => !row.hidden);
-visibleRow.cells[0].textContent = '=HYPERLINK("untrusted")';
-qcTable.closest('.scroll').previousElementSibling.querySelector('.button').click();
-assert.ok(exported.includes("'="));
-assert.ok(exported.includes('HYPERLINK(""untrusted"")'));
-assert.equal(exported.split('\r\n').filter(Boolean).length, 2);
+const {window} = dom;
+const doc = window.document;
+const CF = window.CF;
+const fire = (node, type, init) => node.dispatchEvent(new window.Event(type, Object.assign({bubbles: true}, init || {})));
+const key = (node, keyName) => node.dispatchEvent(new window.KeyboardEvent('keydown', {key: keyName, bubbles: true}));
+const go = hash => { window.location.hash = hash; fire(window, 'hashchange'); };
+const activePages = () => Array.from(doc.querySelectorAll('main > .cf-page.is-active')).map(page => page.id);
+
+/* ── Boot, structure and offline guarantees ─────────────────────────────── */
+assert.deepEqual(errors, [], 'no uncaught script errors');
+assert.ok(CF && CF.ready, 'runtime booted');
+const PAGES = ['overview', 'workflow', 'run', 'samples', 'metadata', 'qc', 'typing', 'virulence', 'amr',
+  'classifications', 'phylogeny', 'snp', 'cgmlst', 'network', 'global', 'clusters', 'interpretation',
+  'limitations', 'follow-up', 'methods', 'software', 'provenance', 'downloads', 'guide', 'about'];
+assert.deepEqual(Array.from(doc.querySelectorAll('main > .cf-page')).map(page => page.id), PAGES);
+PAGES.forEach(id => assert.ok(doc.querySelector('.cf-nav-link[href="#' + id + '"]'), 'sidebar link for ' + id));
+assert.equal(doc.querySelectorAll('script[src], link[rel=stylesheet], img[src^=http], iframe, object, embed').length, 0);
+assert.equal(doc.querySelectorAll('script:not([type])').length, 1, 'one executable inline script');
+assert.equal(doc.querySelectorAll('script[type="application/json"]').length, 1, 'one inert data island');
+assert.match(doc.querySelector('meta[http-equiv="Content-Security-Policy"]').content, /connect-src 'none'/);
+assert.ok(doc.body.textContent.includes('Synthetic demonstration — not validated surveillance results.'));
+assert.equal(CF.sampleIds.length, CF.data.sample_count);
+assert.ok(doc.documentElement.classList.contains('js'));
+
+/* ── Paged navigation, deep links and legacy anchors ───────────────────── */
+assert.deepEqual(activePages(), ['overview']);
+go('qc');
+assert.deepEqual(activePages(), ['qc']);
+assert.equal(doc.querySelector('.cf-nav-link[aria-current]').dataset.page, 'qc');
+assert.equal(doc.querySelector('[data-cf-crumb-page]').textContent, 'Quality control');
+go('s6');
+assert.deepEqual(activePages(), ['phylogeny'], 'legacy #s6 anchor opens the phylogeny page');
+go('overview-review');
+assert.deepEqual(activePages(), ['overview'], 'element anchors open their page');
+key(doc.body, ']');
+assert.equal(window.location.hash, '#workflow', '] moves to the next page');
+
+/* ── Search combobox → sample drawer → Escape restores focus ───────────── */
+const input = doc.getElementById('cf-search-input');
+input.focus();
+input.value = 'KENYA';
+fire(input, 'input');
+const options = Array.from(doc.querySelectorAll('#cf-search-results [role=option]'));
+assert.ok(options.length >= 1);
+assert.equal(input.getAttribute('aria-expanded'), 'true');
+key(input, 'ArrowDown');
+assert.ok(input.getAttribute('aria-activedescendant'));
+key(input, 'Enter');
+const drawer = doc.getElementById('cf-drawer');
+assert.equal(drawer.hidden, false, 'drawer opens from search');
+assert.equal(doc.querySelector('[data-cf-drawer-title]').textContent, 'VC_KENYA_003');
+assert.equal(CF.state.selected, 'VC_KENYA_003');
+assert.ok(doc.querySelectorAll('.is-selected[data-cf-sample="VC_KENYA_003"]').length >= 1, 'selection is highlighted in linked views');
+key(doc.body, 'Escape');
+assert.equal(drawer.hidden, true, 'Escape closes the drawer');
+
+/* ── Global filters are display-only and visible ───────────────────────── */
+CF.setFilter('country', ['Kenya']);
+assert.equal(doc.getElementById('cf-filterbar').hidden, false);
+assert.equal(doc.querySelectorAll('[data-cf-filter-chips] .cf-chip').length, 1);
+assert.deepEqual(Array.from(CF.filteredIds()), ['VC_KENYA_003']);
+const filterableScope = doc.querySelector('[data-scope="filterable"] [data-cf-scope] span');
+if (filterableScope) assert.match(filterableScope.textContent, /Filtered subset · 1 of 3/);
+const fixedScope = doc.querySelector('[data-scope="fixed"] [data-cf-scope] span');
+if (fixedScope) assert.match(fixedScope.textContent, /Full cohort · not filtered/);
+const metricsBefore = JSON.stringify(CF.data.metrics);
+doc.querySelector('[data-cf-action="clear-filters"]').click();
+assert.equal(CF.filteredIds(), null);
+assert.equal(doc.getElementById('cf-filterbar').hidden, true);
+assert.equal(JSON.stringify(CF.data.metrics), metricsBefore, 'filters never change reported values');
+
+/* ── Theme, layout and presentation mode ────────────────────────────────── */
+doc.querySelector('[data-cf-theme="dark"]').click();
+assert.equal(doc.documentElement.dataset.theme, 'dark');
+doc.querySelector('[data-cf-theme="light"]').click();
+assert.equal(doc.documentElement.dataset.theme, 'light');
+doc.querySelector('[data-cf-layout="continuous"]').click();
+assert.equal(activePages().length, PAGES.length, 'continuous layout shows every page');
+doc.querySelector('[data-cf-layout="paged"]').click();
+doc.querySelector('[data-cf-action="presentation"]').click();
+assert.ok(doc.documentElement.classList.contains('cf-present'));
+key(doc.body, 'Escape');
+assert.ok(!doc.documentElement.classList.contains('cf-present'));
+
+/* ── Exports: registry, CSV formula protection, standalone SVG ──────────── */
+const exportIds = CF.exports.list().map(item => item.id);
+['print', 'samples-csv', 'samples-json', 'newick-cohort', 'matrix-snp', 'matrix-cgmlst'].forEach(id => assert.ok(exportIds.includes(id), 'export ' + id));
+CF.exports.run('samples-csv');
+const csvRows = exported.replace(/^﻿/, '').trim().split('\r\n');
+assert.equal(csvRows.length, CF.sampleIds.length + 1);
+assert.match(csvRows[0], /^"sample_id"/);
+assert.match(exportedName, /^choleraflow-sample-records-.*\.csv$/);
+assert.equal(CF.csv([['=HYPERLINK("untrusted")', '+1', '@x', 'plain']]).replace('﻿', '').trim(),
+  '"\'=HYPERLINK(""untrusted"")","\'+1","\'@x","plain"');
+CF.exports.run('matrix-snp');
+assert.ok(exported.startsWith('\tVC_HAITI_001\tVC_KENYA_003\tVC_MALAWI_002\n'), 'matrix export keeps supplied labels and order');
+CF.exports.run('newick-cohort');
+assert.equal(exported.trim(), '(VC_HAITI_001:0.001,VC_KENYA_003:0.001,VC_MALAWI_002:0.02);');
+const figure = Array.from(doc.querySelectorAll('.cf-figure')).find(node => node.querySelector('svg:not(.cf-icon)'));
+assert.ok(figure, 'at least one vector figure');
+const svgText = CF.buildFigureSvg(figure);
+const parsed = new window.DOMParser().parseFromString(svgText, 'image/svg+xml');
+assert.equal(parsed.querySelector('parsererror'), null, 'exported SVG is well-formed XML');
+assert.equal(parsed.querySelector('script'), null);
+assert.ok(parsed.documentElement.querySelector('style').textContent.length > 0, 'export carries its styles');
+
+/* ── Print: closed details open for printing (except verbatim source text) ─ */
+const closed = Array.from(doc.querySelectorAll('main details:not([open])'));
+const plain = closed.find(node => !node.querySelector('pre'));
+const verbatim = closed.find(node => node.querySelector('pre'));
+fire(window, 'beforeprint', {bubbles: false});
+if (plain) assert.equal(plain.open, true);
+if (verbatim) assert.equal(verbatim.open, false);
+fire(window, 'afterprint', {bubbles: false});
+if (plain) assert.equal(plain.open, false);
+
+/* Presentation-layer controls must inspect unchanged supplied evidence. */
+CF.initAll();
+const sampleTable = doc.querySelector('[data-cf-table="sample-table"]');
+assert.equal(sampleTable.tBodies[0].rows.length, 3);
+const columnToggle = doc.querySelector('[data-sx-controls] input[type="checkbox"]');
+const columnWasVisible = !sampleTable.tHead.rows[0].cells[1].hidden;
+columnToggle.checked = !columnToggle.checked;
+fire(columnToggle, 'change');
+assert.equal(sampleTable.tHead.rows[0].cells[1].hidden, columnWasVisible, 'column chooser changes visibility');
+columnToggle.checked = !columnToggle.checked;
+fire(columnToggle, 'change');
+const recordSearch = doc.querySelector('[data-sx-rec-filter]');
+recordSearch.value = 'VC_HAITI_001'; fire(recordSearch, 'input');
+assert.equal(Array.from(doc.querySelectorAll('.sx-rec')).filter(node=>!node.hidden).length, 1);
+recordSearch.value = ''; fire(recordSearch, 'input');
+
+const matrixButton = doc.querySelector('#snp .cf-matrix-cell');
+assert.ok(matrixButton, 'numeric matrix cells can be inspected');
+matrixButton.click();
+assert.equal(CF.state.pair.value, matrixButton.textContent);
+assert.match(doc.querySelector('[data-cf-drawer-body]').textContent, /does not establish direct transmission/);
+CF.select('VC_HAITI_001');
+assert.equal(doc.querySelectorAll('#cf-drawer [role="tab"]').length, 6);
+assert.match(doc.querySelector('[data-cf-download-centre]').textContent, /SNP distance matrix/);
+const treeLayout = doc.querySelector('[aria-label="Tree layout"]');
+treeLayout.value = 'circular';
+fire(treeLayout, 'change');
+assert.ok(doc.getElementById('cohort-tree').classList.contains('cf-tree-inactive'));
+assert.ok(!doc.getElementById('cohort-tree-circular').classList.contains('cf-tree-inactive'));
+assert.ok(CF.exports.list().some(item=>item.id === 'workflow-svg'));
+assert.ok(CF.exports.list().some(item=>item.id === 'network-edges'));
+
+/* ── Without JavaScript every page and figure is present and readable ──── */
 const staticDom = new JSDOM(html);
-assert.equal(staticDom.window.document.querySelectorAll('svg').length, 25);
-assert.equal(staticDom.window.document.querySelectorAll('.report-network .network-node').length, 3);
-assert.equal(staticDom.window.document.querySelectorAll('.network-legend span').length, 3);
-staticDom.window.close(); dom.window.close();
-process.stdout.write('Extended report DOM checks passed: 22 charts, annotated rectangular/circular trees, network colors/search/keyboard/zoom/reset, SVG with legend, printing and no-JavaScript graphics.\n');
+const staticDoc = staticDom.window.document;
+assert.equal(staticDoc.querySelectorAll('main > .cf-page').length, PAGES.length);
+assert.equal(staticDoc.querySelectorAll('main > .cf-page[hidden]').length, 0);
+assert.ok(staticDoc.querySelectorAll('.cf-figure svg:not(.cf-icon), svg.report-chart, svg.tree-svg, svg.report-network').length >= 10, 'figures are server-rendered');
+assert.ok(staticDoc.querySelector('.limitations').textContent.includes('Genomic clustering does not prove transmission'));
+staticDom.window.close();
+dom.window.close();
+process.stdout.write('Report DOM checks passed: ' + PAGES.length + ' pages, navigation, deep links, search, drawer, filters, themes, layouts, exports, SVG, print and no-JavaScript content.\n');

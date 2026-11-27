@@ -1,0 +1,161 @@
+{#- CholeraFlow report component library (see docs/REPORT_DESIGN_SYSTEM.md).
+    All values are escaped by Jinja autoescaping; no macro marks supplied data safe. -#}
+{%- from 'partials/icons.html.j2' import icon -%}
+
+{#- Status vocabulary: state → (tone, icon, label). Colour is never the only cue. -#}
+{%- set STATUS = {
+  'pass': ('pass', 'circle-check', 'Pass'),
+  'warn': ('warn', 'triangle-alert', 'Warning'),
+  'fail': ('fail', 'octagon-x', 'Fail'),
+  'not_assessed': ('na', 'circle-minus', 'Not assessed'),
+  'missing': ('missing', 'circle-dashed', 'No record'),
+  'review': ('review', 'git-compare', 'Review'),
+  'ambiguous': ('review', 'git-compare', 'Ambiguous'),
+  'conflict': ('review', 'git-compare', 'Conflicting records'),
+  'present': ('brand', 'circle-check', 'Present'),
+  'absent': ('neutral', 'circle-minus', 'Absent'),
+  'not_tested': ('na', 'circle-dashed', 'Not tested'),
+  'detected': ('brand', 'circle-check', 'Marker detected'),
+  'not_detected': ('neutral', 'circle-minus', 'No marker reported'),
+  'unavailable': ('missing', 'circle-dashed', 'Result unavailable'),
+  'available': ('pass', 'circle-check', 'Available'),
+  'partial': ('warn', 'circle-dot', 'Partially available'),
+  'not_performed': ('na', 'ban', 'Not performed'),
+  'not_supplied': ('missing', 'file-x', 'Not supplied'),
+  'empty': ('missing', 'inbox', 'Empty'),
+  'invalid': ('fail', 'file-warning', 'Invalid'),
+  'failed': ('fail', 'octagon-x', 'Failed'),
+  'confirmed': ('pass', 'circle-check', 'Confirmed'),
+  'not_run': ('na', 'ban', 'Not run'),
+} -%}
+
+{%- macro badge(label, tone='neutral', icon_name=none, cls='', title=none) -%}
+<span class="cf-badge cf-badge--{{ tone }}{% if cls %} {{ cls }}{% endif %}"{% if title %} title="{{ title }}"{% endif %}>{% if icon_name %}{{ icon(icon_name) }}{% endif %}<span>{{ label }}</span></span>
+{%- endmacro -%}
+
+{%- macro status_badge(state, label=none, cls='') -%}
+{%- set spec = STATUS.get(state, ('neutral', 'circle-dot', state|replace('_', ' ')|capitalize)) -%}
+<span class="cf-badge cf-badge--{{ spec[0] }} cf-state{% if cls %} {{ cls }}{% endif %}" data-state="{{ state }}">{{ icon(spec[1]) }}<span>{{ label if label else spec[2] }}</span></span>
+{%- endmacro -%}
+
+{%- macro sample_id(value, select=true) -%}
+{%- if select and value -%}<button type="button" class="cf-id cf-id--link" data-cf-sample="{{ value }}" data-cf-select="{{ value }}" title="Open the record for {{ value }}">{{ value }}</button>
+{%- else -%}<span class="cf-id">{{ value }}</span>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro notice(title, tone='info', icon_name=none, cls='', id=none) -%}
+{%- set icons = {'info': 'info', 'warn': 'triangle-alert', 'review': 'git-compare', 'caveat': 'scale', 'demo': 'flask-conical', 'fail': 'octagon-x', 'pass': 'circle-check'} -%}
+<div class="cf-notice cf-notice--{{ tone }}{% if cls %} {{ cls }}{% endif %}"{% if id %} id="{{ id }}"{% endif %} role="note">
+  {{ icon(icon_name or icons.get(tone, 'info'), 'cf-notice-icon') }}
+  <div class="cf-notice-body">{% if title %}<p class="cf-notice-title">{{ title }}</p>{% endif %}{{ caller() if caller else '' }}</div>
+</div>
+{%- endmacro -%}
+
+{%- macro empty_state(title, text=none, icon_name='circle-dashed', state='not_performed', cls='') -%}
+<div class="cf-empty{% if cls %} {{ cls }}{% endif %}" data-state="{{ state }}">
+  <span class="cf-empty-icon" aria-hidden="true">{{ icon(icon_name) }}</span>
+  <div class="cf-empty-body">
+    <p class="cf-empty-title">{{ title }} {{ status_badge(state) }}</p>
+    {% if text %}<p class="cf-empty-text">{{ text }}</p>{% endif %}
+    {{ caller() if caller else '' }}
+  </div>
+</div>
+{%- endmacro -%}
+
+{#- Page scaffold. `page` is ctx.nav.pages[page_id]. -#}
+{%- macro page_header(page, lead=none) -%}
+<header class="cf-page-header">
+  {% if page.legacy %}<span class="cf-anchor" id="{{ page.legacy }}" aria-hidden="true"></span>{% endif %}
+  <div class="cf-page-heading">
+    <p class="cf-page-eyebrow">{{ page.group_title }}</p>
+    <h2 class="cf-page-title" id="{{ page.id }}-title"><span class="cf-page-icon" aria-hidden="true">{{ icon(page.icon) }}</span>{{ page.title }}</h2>
+    {% if lead %}<p class="cf-page-lead">{{ lead }}</p>{% endif %}
+  </div>
+  {% if caller %}<div class="cf-page-actions">{{ caller() }}</div>{% endif %}
+</header>
+{%- endmacro -%}
+
+{%- macro page_footer(page) -%}
+<nav class="cf-page-footer" aria-label="Previous and next report pages">
+  {% if page.prev %}<a class="cf-page-link cf-page-link--prev" href="#{{ page.prev.id }}" rel="prev">{{ icon('chevron-left') }}<span><small>Previous</small>{{ page.prev.title }}</span></a>{% else %}<span></span>{% endif %}
+  {% if page.next %}<a class="cf-page-link cf-page-link--next" href="#{{ page.next.id }}" rel="next"><span><small>Next</small>{{ page.next.title }}</span>{{ icon('chevron-right') }}</a>{% endif %}
+</nav>
+{%- endmacro -%}
+
+{%- macro panel(title=none, icon_name=none, subtitle=none, id=none, cls='', heading='h3') -%}
+<section class="cf-panel{% if cls %} {{ cls }}{% endif %}"{% if id %} id="{{ id }}"{% endif %}{% if title and id %} aria-labelledby="{{ id }}-title"{% endif %}>
+  {% if title %}<header class="cf-panel-header"><div>
+    <{{ heading }} class="cf-panel-title"{% if id %} id="{{ id }}-title"{% endif %}>{% if icon_name %}{{ icon(icon_name) }}{% endif %}{{ title }}</{{ heading }}>
+    {% if subtitle %}<p class="cf-panel-subtitle">{{ subtitle }}</p>{% endif %}
+  </div></header>{% endif %}
+  <div class="cf-panel-body">{{ caller() if caller else '' }}</div>
+</section>
+{%- endmacro -%}
+
+{#- Figure frame: header with title + scope badge + export actions (revealed by the
+    script), a scrollable body, caption and an optional source-data disclosure.
+    scope: 'filterable' (marks respond to global filters), 'fixed' (full-cohort
+    aggregate; never recalculated in the browser) or 'none'. -#}
+{%- macro figure(id, title, subtitle=none, scope='fixed', exports=('svg', 'png'), cls='', caption=none, note=none) -%}
+<figure class="cf-figure{% if cls %} {{ cls }}{% endif %}" id="{{ id }}" data-scope="{{ scope }}" data-exports="{{ exports|join(' ') }}" aria-labelledby="{{ id }}-title">
+  <header class="cf-figure-header">
+    <div class="cf-figure-heading">
+      <h3 class="cf-figure-title" id="{{ id }}-title">{{ title }}</h3>
+      {% if subtitle %}<p class="cf-figure-subtitle">{{ subtitle }}</p>{% endif %}
+    </div>
+    <div class="cf-figure-tools">
+      {% if scope != 'none' %}<span class="cf-scope" data-cf-scope>{{ icon('users') }}<span>{{ 'Full cohort' if scope == 'fixed' else 'All samples' }}</span></span>{% endif %}
+      <div class="cf-figure-actions" data-cf-figure-actions hidden></div>
+    </div>
+  </header>
+  <div class="cf-figure-body">{{ caller() if caller else '' }}</div>
+  {% if caption or note %}<figcaption class="cf-figure-caption">{% if caption %}<p class="cf-figure-meta">{{ caption }}</p>{% endif %}{% if note %}<p class="cf-figure-note">{{ note }}</p>{% endif %}</figcaption>{% endif %}
+</figure>
+{%- endmacro -%}
+
+{%- macro metric_card(metric, cls='') -%}
+{%- set has_value = metric.value is not none -%}
+<a class="cf-metric cf-metric--{{ metric.tone }}{% if cls %} {{ cls }}{% endif %}" href="{{ metric.href }}" data-metric="{{ metric.key }}"{% if metric.filter %} data-cf-filter-field="{{ metric.filter[0] }}" data-cf-filter-value="{{ metric.filter[1] }}"{% endif %}>
+  <span class="cf-metric-top"><span class="cf-metric-icon" aria-hidden="true">{{ icon(metric.icon) }}</span><span class="cf-metric-label">{{ metric.label }}</span></span>
+  <span class="cf-metric-figure">
+    {%- if has_value -%}
+      <span class="cf-metric-value">{{ metric.value }}{% if metric.unit == '%' %}<small>%</small>{% endif %}</span>
+      {%- if metric.denominator %}<span class="cf-metric-denom">of {{ metric.denominator }}</span>{% endif -%}
+      {%- if metric.percent is not none and metric.unit != '%' %}<span class="cf-metric-pct">{{ metric.percent }}%</span>{% endif -%}
+    {%- else -%}<span class="cf-metric-value cf-metric-value--na">—</span><span class="cf-metric-denom">not available</span>{%- endif -%}
+  </span>
+  {% if metric.denominator and has_value and metric.unit != '%' %}<span class="cf-meter" aria-hidden="true"><span style="width: {{ (100 * metric.value / metric.denominator)|round(1) }}%"></span></span>{% endif %}
+  <span class="cf-metric-note">{{ metric.note }}</span>
+</a>
+{%- endmacro -%}
+
+{%- macro swatch(entry) -%}<span class="cf-swatch cf-tone-{{ entry.token }}" aria-hidden="true"></span>{%- endmacro -%}
+
+{%- macro legend(entries, title=none, cls='', counts=true) -%}
+<div class="cf-legend{% if cls %} {{ cls }}{% endif %}">{% if title %}<span class="cf-legend-title">{{ title }}</span>{% endif %}
+  <ul>{% for entry in entries %}<li class="cf-legend-item">{{ swatch(entry) }}<span>{{ entry.value }}</span>{% if counts and entry.count is defined %}<span class="cf-legend-count">{{ entry.count }}</span>{% endif %}</li>{% endfor %}</ul>
+</div>
+{%- endmacro -%}
+
+{%- macro kv(items, cls='') -%}
+<dl class="cf-kv{% if cls %} {{ cls }}{% endif %}">{% for label, value in items %}<div><dt>{{ label }}</dt><dd>{{ value if value not in (none, '') else 'Not recorded' }}</dd></div>{% endfor %}</dl>
+{%- endmacro -%}
+
+{%- macro disclosure(summary, count=none, cls='', open=false) -%}
+<details class="cf-disclosure{% if cls %} {{ cls }}{% endif %}"{% if open %} open{% endif %}>
+  <summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>{{ summary }}</span>{% if count is not none %}<span class="cf-disclosure-count">{{ count }}</span>{% endif %}</summary>
+  <div class="cf-disclosure-body">{{ caller() if caller else '' }}</div>
+</details>
+{%- endmacro -%}
+
+{#- Tabs: progressive enhancement. Without the script every panel is shown in
+    order under its own heading; the script builds an ARIA tablist. -#}
+{%- macro tabs(id, items, label='Views', cls='') -%}
+<div class="cf-tabs{% if cls %} {{ cls }}{% endif %}" id="{{ id }}" data-cf-tabs data-label="{{ label }}">{{ caller() if caller else '' }}</div>
+{%- endmacro -%}
+{%- macro tabpanel(id, title, icon_name=none) -%}
+<section class="cf-tabpanel" id="{{ id }}" data-tab-title="{{ title }}"{% if icon_name %} data-tab-icon="{{ icon_name }}"{% endif %} aria-labelledby="{{ id }}-heading">
+  <h4 class="cf-tabpanel-title" id="{{ id }}-heading">{{ title }}</h4>
+  {{ caller() if caller else '' }}
+</section>
+{%- endmacro -%}

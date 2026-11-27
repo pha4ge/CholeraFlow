@@ -1,0 +1,110 @@
+/* Transitional enhancements for pre-redesign markup emitted by visuals.html.j2
+   (chart-card SVG buttons, tree and network panels, per-sample explorer).
+   Slices replace these as their pages are rebuilt; selectors are inert when
+   the legacy markup is absent. */
+CF.module("legacy", () => {
+  CF.qsa(".js-svg-export").forEach(button => {
+    const figure = button.closest("figure");
+    if (!figure || !figure.querySelector("svg:not(.cf-icon)")) return;
+    button.hidden = false;
+    button.addEventListener("click", () => CF.exportSvg(figure, "choleraflow-" + CF.safeName(figure.id) + ".svg"));
+  });
+  CF.qsa(".tree-panel").forEach(panel => {
+    const svg = panel.querySelector("svg.tree-svg");
+    const controls = panel.querySelector(".tree-controls");
+    if (!svg || !controls) return;
+    controls.hidden = false;
+    const zoom = panel.querySelector(".tree-zoom");
+    if (zoom) zoom.addEventListener("input", () => { svg.style.width = zoom.value + "%"; });
+    const input = panel.querySelector(".tree-find");
+    const tips = CF.qsa(".tree-tip", panel);
+    if (input) input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      tips.forEach(tip => {
+        const match = Boolean(query) && (tip.getAttribute("data-tip-label") || "").toLocaleLowerCase().includes(query);
+        tip.classList.toggle("match", match);
+        if (match) matches++;
+      });
+      const count = panel.querySelector(".tree-match-count");
+      if (count) count.textContent = query ? matches + " matching tips" : "";
+    });
+  });
+  CF.qsa(".network-panel").forEach(panel => {
+    const svg = panel.querySelector("svg.report-network");
+    const controls = panel.querySelector(".network-controls");
+    if (!svg || !controls) return;
+    const nodes = CF.qsa(".network-node", panel);
+    const color = panel.querySelector(".network-color");
+    const search = panel.querySelector(".network-find");
+    const zoom = panel.querySelector(".network-zoom");
+    const labels = panel.querySelector(".network-labels");
+    const distances = panel.querySelector(".network-distances");
+    const viewport = panel.querySelector(".network-viewport");
+    const selection = panel.querySelector(".network-selection");
+    const feedback = panel.querySelector(".network-feedback");
+    const legends = panel.querySelector(".network-legend");
+    const metadata = new Map(nodes.map(node => [node, JSON.parse(node.dataset.metadata)]));
+    controls.hidden = false;
+    const paint = () => {
+      const field = color.value; const fieldName = color.selectedOptions[0].textContent; const counts = new Map();
+      nodes.forEach(node => {
+        const entry = metadata.get(node)[field];
+        node.querySelector("circle").setAttribute("fill", entry.color);
+        node.dataset.tip = node.dataset.sample + " · " + fieldName + ": " + entry.value;
+        const previous = counts.get(entry.value);
+        counts.set(entry.value, {color: entry.color, count: previous ? previous.count + 1 : 1});
+      });
+      legends.replaceChildren();
+      Array.from(counts).sort((a, b) => CF.collator.compare(a[0], b[0])).forEach(([value, entry]) => {
+        const swatch = CF.el("i"); swatch.style.background = entry.color;
+        legends.append(CF.el("span", {dataset: {value, color: entry.color, count: String(entry.count)}}, swatch, value + " (" + entry.count + ")"));
+      });
+    };
+    const find = () => {
+      const query = search.value.trim().toLocaleLowerCase(); let matches = 0;
+      nodes.forEach(node => {
+        const match = Boolean(query) && node.dataset.sample.toLocaleLowerCase().includes(query);
+        node.classList.toggle("match", match); node.classList.toggle("dimmed", Boolean(query) && !match);
+        if (match) matches++;
+      });
+      feedback.textContent = query ? matches + " of " + nodes.length + " matching samples · all nodes and edges retained" : "One node per sample · edge labels are observed allele differences.";
+    };
+    nodes.forEach(node => {
+      node.setAttribute("tabindex", "0"); node.setAttribute("role", "button");
+      node.setAttribute("aria-label", "Inspect sample " + node.dataset.sample);
+      const select = () => {
+        nodes.forEach(other => other.classList.toggle("selected", other === node));
+        const values = metadata.get(node);
+        selection.textContent = node.dataset.sample + " · " + Array.from(color.options).map(option => option.textContent + ": " + values[option.value].value).join(" · ");
+      };
+      node.addEventListener("click", select);
+      node.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } });
+    });
+    color.addEventListener("change", paint);
+    search.addEventListener("input", find);
+    zoom.addEventListener("input", () => { svg.style.width = svg.style.height = zoom.value + "%"; });
+    labels.addEventListener("change", () => svg.classList.toggle("hide-node-labels", !labels.checked));
+    distances.addEventListener("change", () => svg.classList.toggle("hide-edge-distances", !distances.checked));
+    panel.querySelector(".network-reset").addEventListener("click", () => {
+      color.value = "country"; search.value = ""; zoom.value = "100";
+      svg.style.width = svg.style.height = "100%"; labels.checked = nodes.length <= 30; distances.checked = true;
+      svg.classList.toggle("hide-node-labels", !labels.checked); svg.classList.remove("hide-edge-distances");
+      nodes.forEach(node => node.classList.remove("selected"));
+      viewport.scrollLeft = viewport.scrollTop = 0;
+      paint(); find();
+    });
+  });
+  CF.qsa(".sample-explorer").forEach(explorer => {
+    const label = explorer.querySelector(".sample-filter-label");
+    const input = explorer.querySelector(".sample-filter");
+    if (!label || !input) return;
+    label.hidden = false;
+    const records = CF.qsa(".sample-record", explorer);
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase();
+      records.forEach(record => { record.hidden = !record.dataset.sample.toLocaleLowerCase().includes(query); });
+      explorer.querySelector(".sample-filter-count").textContent = records.filter(record => !record.hidden).length + " of " + records.length + " identifiers";
+    });
+  });
+});

@@ -1,0 +1,184 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- set page = nav.pages['samples'] -%}
+{%- set v = views.samples -%}
+{#- One table cell: supplied value, or a labelled state that is never blank, zero or negative. -#}
+{%- macro sx_cell(c, col) -%}
+<td{% if col.numeric %} class="num"{% elif col.key == 'aliases' %} class="sx-al"{% endif %}{% if col.hidden %} hidden{% endif %} data-sort="{{ c.sort }}"{% if c.export is not none %} data-export="{{ c.export }}"{% endif %}{% if c.title %} title="{{ c.title }}"{% endif %}>
+{%- if col.key == 'qc' -%}{{ status_badge(c.state, c.text) }}
+{%- elif col.key == 'coverage' -%}<span class="sx-strip" aria-hidden="true">{% for s in c.strip %}<i{% if s == 'result' %} class="r"{% elif s == 'not_assessed' %} class="n"{% endif %}></i>{% endfor %}</span>{{ c.text }}
+{%- elif col.key == 'cluster' and c.kind is defined -%}<span class="sx-k sx-k--{{ c.kind }}" aria-hidden="true"></span>{% if c.state == 'value' %}{{ c.text }}{% else %}<span class="sx-na">{{ c.text }}</span>{% endif %}{% if c.kind == 'multi' %}<small class="sx-sub"> · {{ c.size }}</small>{% endif %}
+{%- elif c.state == 'value' -%}{{ c.text }}
+{%- elif c.state == 'nonstandard' -%}<span class="sx-raw">{{ c.text }}</span>
+{%- elif c.state in ('review', 'ambiguous') -%}{{ badge(c.text, 'review', 'git-compare') }}
+{%- elif c.state == 'none_needed' -%}<span class="sx-none">{{ c.text }}</span>
+{%- else -%}<span class="sx-na">{{ c.text }}</span>
+{%- endif -%}
+</td>
+{%- endmacro -%}
+{{ page_header(page, 'One record per sample identifier, joined across every supplied output by exact identifier. Select any sample to open its complete record without leaving the page.') }}
+{% if v.empty %}
+{% call empty_state('No sample records were supplied', 'None of the report inputs contained a sample identifier, so there is nothing to list. Supply pipeline outputs (genome QC, characterisation, metadata or comparative results) to populate the explorer.', 'users', 'empty') %}{% endcall %}
+{% else %}
+{%- set s = v.summary -%}
+<dl class="sx-ledger" aria-label="Sample explorer summary">
+  <div class="sx-ledger-item"><dt>Samples</dt><dd class="sx-ledger-value">{{ s.samples }}</dd><dd class="sx-ledger-note">canonical identifiers</dd></div>
+  <div class="sx-ledger-item"><dt>Outputs with records</dt><dd class="sx-ledger-value">{{ s.outputs }}<small>/{{ s.outputs_total }}</small></dd><dd class="sx-ledger-note"><a href="#sx-coverage">report inputs holding sample rows</a></dd></div>
+  <div class="sx-ledger-item"><dt>Joined by alias</dt><dd class="sx-ledger-value">{{ s.aliased }}</dd><dd class="sx-ledger-note"><a href="#sx-identifiers">{{ s.aliases }} alias label{{ '' if s.aliases == 1 else 's' }}</a></dd></div>
+  <div class="sx-ledger-item{% if s.flagged %} is-review{% endif %}"><dt>Records to review</dt><dd class="sx-ledger-value">{{ s.flagged }}</dd><dd class="sx-ledger-note">{{ s.flags }} review flag{{ '' if s.flags == 1 else 's' }}, both values shown</dd></div>
+  <div class="sx-ledger-item{% if s.issues %} is-review{% endif %}"><dt>Identifier issues</dt><dd class="sx-ledger-value">{{ s.issues }}</dd><dd class="sx-ledger-note"><a href="#sx-identifiers">collisions and duplicates</a></dd></div>
+  <div class="sx-ledger-item"><dt>Single-source</dt><dd class="sx-ledger-value">{{ s.single_source }}</dd><dd class="sx-ledger-note">identifiers in one output only</dd></div>
+</dl>
+
+<section class="cf-panel sx-table-panel" id="sx-table-panel" aria-labelledby="sx-table-title">
+  <header class="cf-panel-header"><div>
+    <h3 class="cf-panel-title" id="sx-table-title">{{ icon('table-2') }}Sample table</h3>
+    <p class="cf-panel-subtitle">{{ v.count }} sample{{ '' if v.count == 1 else 's' }}, one row each. Values are shown as supplied; units are in the column headings. Empty and unavailable values are labelled, never blank or zero.</p>
+  </div></header>
+  <div class="cf-panel-body">
+    <div class="sx-controls" data-sx-controls hidden data-print="hide"></div>
+    <div class="cf-table-wrap cf-table-wrap--tall sx-table-wrap" data-cf-filterable>
+      <table class="cf-table cf-table--sticky-first sx-table" id="sx-table" data-cf-table="sample-table" aria-label="Sample table">
+        <thead><tr>
+          <th scope="col" data-col="id">Sample ID</th>
+          {%- for col in v.columns %}<th scope="col" data-col="{{ col.key }}"{% if col.numeric %} class="num"{% endif %}{% if col.hidden %} hidden data-default-hidden{% endif %}>{{ col.label }}{% if col.unit %} <span class="cf-unit">({{ col.unit }})</span>{% endif %}</th>{% endfor %}
+        </tr></thead>
+        <tbody>
+        {%- for row in v.rows %}
+        <tr data-cf-sample="{{ row.id }}" data-cf-select="{{ row.id }}"><th scope="row" data-export="{{ row.id }}">{{ sample_id(row.id) }}{% if row.aliases %}<span class="sx-alias" title="Also recorded as {{ row.aliases|join(', ') }}">+{{ row.aliases|length }} alias</span>{% endif %}<a class="sx-jump" href="#{{ row.anchor }}">source records</a></th>
+          {%- for col in v.columns %}{{ sx_cell(row.cells[col.key], col) }}{% endfor %}</tr>
+        {%- endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="sx-table-note">{{ icon('info') }}<span><strong>No record</strong>: the sample is absent from that output. <strong>Not recorded</strong>: the record exists but the field is empty. <strong>Not run</strong>: the output marks the analysis as not performed. Selecting a row opens the sample record; global filters hide rows but never change values.</span></p>
+  </div>
+</section>
+
+<div class="cf-grid sx-grid">
+  <div class="cf-span-7 sx-cov-col">
+  {%- set cov = v.coverage -%}
+  {% if cov %}
+  {% call figure('sx-coverage', 'Source coverage by sample', 'Which supplied outputs hold a record for each sample. Rows are grouped by coverage pattern, most common first.', scope='filterable', exports=('svg', 'png', 'csv'),
+       caption=(v.count ~ ' samples × ' ~ cov.columns|length ~ ' outputs; ' ~ cov.result_cells ~ ' of ' ~ cov.cells ~ ' cells hold a result; ' ~ cov.pattern_count ~ ' distinct coverage pattern' ~ ('' if cov.pattern_count == 1 else 's') ~ '. Column bars count samples with a result in each output across the full cohort.'),
+       note='A record shows that an output mentions the sample; it does not establish that the analysis is valid. Outputs with no record for any sample are omitted from the columns.') %}
+    <div class="cf-legend sx-cov-key">
+      <span class="cf-legend-title">Cell</span>
+      <ul>
+        <li class="cf-legend-item"><span class="cf-swatch sx-sw sx-sw--result" aria-hidden="true"></span><span>Result supplied</span></li>
+        <li class="cf-legend-item"><span class="cf-swatch sx-sw sx-sw--na" aria-hidden="true"></span><span>Record, not assessed</span></li>
+        <li class="cf-legend-item"><span class="cf-swatch sx-sw sx-sw--none" aria-hidden="true"></span><span>No record</span></li>
+      </ul>
+    </div>
+    <div class="cf-figure-viewport sx-cov-viewport" tabindex="0" role="region" aria-label="Source coverage matrix, scrollable">
+      <svg class="cf-sxm" data-cf-export="" viewBox="0 0 {{ cov.width }} {{ cov.height }}" width="{{ cov.width }}" height="{{ cov.height }}" role="img" aria-labelledby="sx-coverage-svg-title sx-coverage-svg-desc" font-family="Inter, system-ui, sans-serif">
+        <title id="sx-coverage-svg-title">Source coverage by sample</title>
+        <desc id="sx-coverage-svg-desc">{{ v.count }} samples by {{ cov.columns|length }} outputs. {{ cov.result_cells }} of {{ cov.cells }} cells hold a result. Rows are grouped into {{ cov.pattern_count }} coverage patterns.</desc>
+        <g class="cf-sxm-head">
+          <rect class="cf-sxm-headbg" x="0" y="0" width="{{ cov.width }}" height="{{ cov.head_h }}" fill="#ffffff"/>
+          {%- for c in cov.columns %}
+          <g class="cf-sxm-col" data-col="{{ c.key }}"><title>{{ c.label }}: result for {{ c.result }} of {{ v.count }} samples{% if c.not_assessed %}; {{ c.not_assessed }} record{{ '' if c.not_assessed == 1 else 's' }} not assessed{% endif %}{% if c.none %}; no record for {{ c.none }}{% endif %}{% if c.file %} · {{ c.file }}{% endif %}</title>
+            <text class="cf-sxm-collabel" transform="translate({{ c.cx + 3 }},{{ cov.label_top }}) rotate(-58)" fill="#14213d" font-size="11">{{ c.short }}</text>
+            <rect class="cf-sxm-track" x="{{ c.x }}" y="{{ cov.bar_top }}" width="{{ cov.cell }}" height="{{ cov.bar_h }}" rx="2" fill="#eef2f6"/>
+            {%- if c.bar %}<rect class="cf-sxm-bar" x="{{ c.x }}" y="{{ cov.bar_top + cov.bar_h - c.bar }}" width="{{ cov.cell }}" height="{{ c.bar }}" rx="2" fill="#0d9488"/>{% endif %}
+            <text class="cf-sxm-count" x="{{ c.cx }}" y="{{ cov.bar_top + cov.bar_h + 11 }}" text-anchor="middle" fill="#5b6b80" font-size="9.5">{{ c.result }}</text>
+          </g>
+          {%- endfor %}
+          <text class="cf-sxm-axis" x="{{ cov.grid_x - 10 }}" y="{{ cov.bar_top + 17 }}" text-anchor="end" fill="#5b6b80" font-size="10">Samples with a result</text>
+          <text class="cf-sxm-axis" x="{{ cov.total_x + 4 }}" y="{{ cov.head_h - 4 }}" fill="#5b6b80" font-size="10">Results</text>
+        </g>
+        {%- for g in cov.groups %}
+        <g class="cf-sxm-group" transform="translate(0,{{ g.y }})">
+          <line class="cf-sxm-rule" x1="16" x2="{{ cov.width - 8 }}" y1="6.5" y2="6.5" stroke="#e2e8f0"/>
+          <text class="cf-sxm-grouplabel" x="16" y="21" fill="#5b6b80" font-size="10.5"><tspan class="cf-sxm-groupcount" font-weight="650" fill="#14213d">{{ g.count }} sample{{ '' if g.count == 1 else 's' }}</tspan> · {{ g.description }}</text>
+        </g>
+        {%- for r in g.rows %}
+        <g class="cf-sxm-row" data-cf-sample="{{ r.id }}" data-cf-select="{{ r.id }}" transform="translate(0,{{ r.y }})"><title>{{ r.title }}</title><rect class="cf-sxm-hit" x="8" y="0" width="{{ cov.width - 16 }}" height="18" rx="4" fill="transparent"/><text class="cf-sxm-label" x="{{ cov.grid_x - 10 }}" y="13" text-anchor="end" fill="#14213d" font-size="11">{{ r.label }}</text>{% if g.paths.result %}<path class="cf-sxm-result" d="{{ g.paths.result }}" fill="#0d9488"/>{% endif %}{% if g.paths.not_assessed %}<path class="cf-sxm-na" d="{{ g.paths.not_assessed }}" fill="url(#cf-hatch)" stroke="#94a3b8"/>{% endif %}{% if g.paths.none %}<path class="cf-sxm-none" d="{{ g.paths.none }}" fill="#ffffff" stroke="#b6c2d0" stroke-dasharray="2 2"/>{% endif %}<text class="cf-sxm-total" x="{{ cov.total_x + 4 }}" y="13" fill="#5b6b80" font-size="10.5">{{ r.results }}</text></g>
+        {%- endfor %}
+        {%- endfor %}
+      </svg>
+    </div>
+    <details class="cf-disclosure sx-cov-data"><summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>Coverage patterns and output files</span><span class="cf-disclosure-count">{{ cov.pattern_count }}</span></summary>
+      <div class="cf-disclosure-body">
+        <div class="cf-table-wrap"><table class="cf-table sx-pattern-table" aria-label="Coverage patterns">
+          <thead><tr><th scope="col">Pattern</th><th scope="col" class="num">Samples</th><th scope="col" class="num">Outputs with a result</th><th scope="col">Gaps</th></tr></thead>
+          <tbody>{% for g in cov.groups %}<tr><td>{{ g.number }}</td><td class="num">{{ g.count }}</td><td class="num">{{ g.results }} of {{ cov.columns|length }}</td><td>{{ g.description }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+        <div class="cf-table-wrap"><table class="cf-table sx-output-table" aria-label="Outputs in the coverage matrix">
+          <thead><tr><th scope="col">Output</th><th scope="col">File</th><th scope="col" class="num">Result</th><th scope="col" class="num">Not assessed</th><th scope="col" class="num">No record</th></tr></thead>
+          <tbody>{% for c in cov.columns %}<tr><td>{{ c.label }}</td><td class="sx-file">{{ c.file or 'Not recorded' }}</td><td class="num">{{ c.result }}</td><td class="num">{{ c.not_assessed }}</td><td class="num">{{ c.none }}</td></tr>{% endfor %}
+          {% for o in cov.omitted %}<tr class="sx-omitted"><td>{{ o.label }}</td><td colspan="4"><span class="sx-na">{{ o.state }}</span> · no record for any sample, not drawn</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+    </details>
+  {% endcall %}
+  {% else %}
+  {% call empty_state('Source coverage unavailable', 'No supplied output holds a sample record, so there is no coverage to draw.', 'layers', 'empty') %}{% endcall %}
+  {% endif %}
+  </div>
+
+  <div class="cf-span-5">
+  {%- set ids = v.identifiers -%}
+  {% call panel('Identifier matching', 'fingerprint', 'How supplied identifiers were joined into the sample records above.', id='sx-identifiers', cls='sx-id-panel') %}
+    <ol class="sx-rule" aria-label="Matching rule">
+      <li class="sx-rule-step"><span class="sx-rule-tag sx-rule-tag--exact">{{ icon('check') }}Exact</span><p><code>VC_001</code> joins only <code>VC_001</code>, written identically in every output.</p></li>
+      <li class="sx-rule-step"><span class="sx-rule-tag sx-rule-tag--alias">{{ icon('link') }}Alias</span><p><code>X_snippy</code> joins <code>X</code> only when <code>X</code> is in another output, no output holds both labels, the label is unique per output and the metadata does not itself name <code>X_snippy</code>.</p></li>
+      <li class="sx-rule-step"><span class="sx-rule-tag sx-rule-tag--never">{{ icon('ban') }}Never</span><p>Case changes, punctuation, partial or fuzzy matches. Such identifiers stay separate and are listed here.</p></li>
+    </ol>
+    <p class="sr-only">{{ ids.rule }}</p>
+
+    <h4 class="sx-id-heading">Aliases used <span class="cf-disclosure-count">{{ ids.aliases|length }}</span></h4>
+    {% if ids.aliases %}
+    <div class="cf-table-wrap sx-id-wrap"><table class="cf-table sx-id-table" aria-label="Aliases used">
+      <thead><tr><th scope="col">Label as written</th><th scope="col">Sample</th><th scope="col">Outputs</th></tr></thead>
+      <tbody>{% for a in ids.aliases %}<tr data-cf-sample="{{ a.id }}"><td><code class="sx-code">{{ a.label }}</code></td><td>{{ sample_id(a.id) }}</td><td>{{ a.sources|join(', ') }}<span class="sx-sub"> · {{ a.method }}</span></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="sx-id-empty">{{ icon('circle-check') }}No aliases were needed: every output names its samples with the same identifiers.</p>{% endif %}
+
+    <h4 class="sx-id-heading">Collisions and duplicates <span class="cf-disclosure-count">{{ ids.issues|length }}</span></h4>
+    {% if ids.issues %}
+    <ul class="sx-issues">{% for i in ids.issues %}<li class="sx-issue">{{ badge(i.title, 'review', 'git-compare') }}<p><code class="sx-code">{{ i.label }}</code> in {{ i.source }}{% if i.id %} · {{ sample_id(i.id) }}{% endif %}</p><p class="sx-sub">{{ i.message }}</p></li>{% endfor %}</ul>
+    {% else %}<p class="sx-id-empty">{{ icon('circle-check') }}No alias collisions or duplicate identifiers in single-record outputs.</p>{% endif %}
+
+    <h4 class="sx-id-heading">Single-source identifiers <span class="cf-disclosure-count">{{ ids.single_source|length }}</span></h4>
+    {% if ids.single_source %}
+    <p class="sx-sub">Present in exactly one output, so they could not be joined to any other record. They may be genuine single-output samples or identifiers written differently elsewhere; nothing is merged automatically.</p>
+    <ul class="sx-single">{% for u in ids.single_source %}<li data-cf-sample="{{ u.id }}">{{ sample_id(u.id) }}<span class="sx-sub">{{ u.source }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="sx-id-empty">{{ icon('circle-check') }}{% if v.coverage_sources|length > 1 %}Every identifier appears in at least two outputs.{% else %}Only one output holds sample records, so cross-output joining does not apply.{% endif %}</p>{% endif %}
+
+    <h4 class="sx-id-heading">Reference pseudo-sample</h4>
+    {% if ids.references %}
+    {% for r in ids.references %}<p class="sx-ref">{{ icon('crosshair') }}<span><code class="sx-code">{{ r.label }}</code> appears in {{ r.sources|join(', ') if r.sources else 'the comparative outputs' }}. It is snippy-core's coordinate pseudo-sample, recorded separately and never counted as a sample.</span></p>{% endfor %}
+    {% else %}<p class="sx-id-empty">{{ icon('circle-check') }}No <code>Reference</code> pseudo-sample label in the supplied outputs.</p>{% endif %}
+  {% endcall %}
+  </div>
+</div>
+
+{% call panel('Source records, verbatim', 'scroll-text', 'Every field of every supplied row, exactly as written, grouped by canonical sample identifier. This list is the complete record and stays readable without JavaScript.', id='sx-records', cls='sx-records-panel') %}
+  <div class="sx-rec-tools" data-sx-rec-tools hidden data-print="hide">
+    <label class="cf-search sx-rec-search">{{ icon('search') }}<span class="sr-only">Find sample records by identifier or alias</span><input type="search" data-sx-rec-filter placeholder="Find by identifier or alias" autocomplete="off" spellcheck="false"></label>
+    <span class="sx-rec-count" data-sx-rec-count aria-live="polite">{{ v.records|length }} samples</span>
+    <button type="button" class="cf-btn cf-btn--sm" data-sx-rec-expand="open">{{ icon('chevron-down') }}<span>Expand all</span></button>
+    <button type="button" class="cf-btn cf-btn--sm" data-sx-rec-expand="close">{{ icon('chevron-up') }}<span>Collapse all</span></button>
+  </div>
+  <details class="cf-disclosure sx-files"><summary>{{ icon('chevron-right', 'cf-disclosure-chevron') }}<span>Source files behind these records</span></summary><div class="cf-disclosure-body">
+    <dl class="sx-files-list">{% for key in v.coverage_sources %}{% set f = v.source_files[key] %}<div><dt>{{ model.sources[key] }}</dt><dd><span class="sx-file">{{ f.file }}</span>{% if f.sha256 %}<code class="sx-sha" title="SHA-256">{{ f.sha256 }}</code>{% endif %}</dd></div>{% endfor %}</dl>
+  </div></details>
+  <p class="sx-rec-empty" data-sx-rec-empty hidden>No sample identifier or alias matches. Clear the search to list every record.</p>
+  <div class="sx-rec-list">
+  {%- for rec in v.records %}
+  <details class="sx-rec" id="{{ rec.anchor }}" data-cf-sample="{{ rec.id }}" data-sx-search="{{ rec.search }}"><summary><span class="cf-id">{{ rec.id }}</span><span class="sx-rec-meta">{{ rec.entries|length }} record{{ '' if rec.entries|length == 1 else 's' }} · {{ rec.sources|join(' · ') }}</span>{% if rec.flags %}<span class="sx-rec-flag">{{ icon('git-compare') }}{{ rec.flags }} to review</span>{% endif %}</summary>
+    <div class="sx-rec-body">
+      {%- for e in rec.entries %}
+      <h4 class="sx-rec-src">{{ e.label }}<span>as written: <code>{{ e.identifier }}</code></span></h4>
+      {%- if e.fields %}<dl class="sx-rec-fields">{% for k, val in e.fields %}<dt>{{ k }}</dt><dd>{% if val == '' %}<i class="sx-empty">empty</i>{% else %}{{ val }}{% endif %}</dd>{% endfor %}</dl>
+      {%- else %}<p class="sx-rec-note">{{ e.note }}; no further fields are stored for this output.</p>{% endif %}
+      {%- endfor %}
+      <p class="sx-rec-open" hidden><button type="button" class="cf-btn cf-btn--sm" data-cf-select="{{ rec.id }}">{{ icon('panel-left-open') }}<span>Open the structured record</span></button></p>
+    </div>
+  </details>
+  {%- endfor %}
+  </div>
+{% endcall %}
+{% endif %}
+{{ page_footer(page) }}

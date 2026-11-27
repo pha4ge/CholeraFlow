@@ -1,0 +1,12 @@
+{%- from 'partials/macros.html.j2' import page_header, page_footer, panel, figure, notice, empty_state, status_badge, badge, sample_id, disclosure, legend, kv, metric_card, tabs, tabpanel -%}
+{%- from 'partials/icons.html.j2' import icon -%}
+{%- from 'visuals.html.j2' import chart_grid, chart_card -%}
+{%- from 'partials/tree.html.j2' import tree_panel -%}
+{%- from 'partials/network.html.j2' import network_panel -%}
+{%- set page = nav.pages['downloads'] -%}
+{{ page_header(page, 'Local downloads of the data embedded in this file. Nothing is fetched or uploaded.') }}
+<p>All exports use data embedded in this document. Full-cohort and filtered exports are labelled separately. Matrices keep supplied values and labels; figures retain their scale and caveats.</p>
+<div data-cf-download-centre class="cf-download-grid"></div>
+<noscript><p>Local downloads require JavaScript. Source records and numeric tables remain readable in their sections; use your browser’s print command to save the complete report.</p></noscript>
+<p class="muted">Use each figure’s SVG button for a vector export. PNG export is available in the figure toolbar where supported. Source tables offer CSV export of visible rows.</p>
+{{ page_footer(page) }}

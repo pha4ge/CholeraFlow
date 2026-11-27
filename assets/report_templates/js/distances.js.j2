@@ -1,0 +1,27 @@
+/* Inspect supplied cells only; no distance calculation or imputation. */
+["snp", "cgmlst"].forEach(key => CF.module("matrix-"+key, () => {
+  const panel=doc.getElementById(key);
+  CF.qsa('.cf-distance-pair',panel).forEach(node=>{
+    const inspect=()=>CF.selectPair({a:node.dataset.a,b:node.dataset.b,value:node.dataset.distance,metricLabel:key==='snp'?'SNP distance':'cgMLST distance',unit:key==='snp'?'SNPs':'allele differences',source:key+' supplied matrix'});
+    node.addEventListener('click',inspect);node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();inspect();}});
+  });
+  const matrix=CF.data.matrices[key]; const page=doc.getElementById(key);
+  const table=page.querySelector(".matrix-table"); if(!matrix||!table)return;
+  const headers=Array.from(table.rows[0].cells).slice(1).map(cell=>cell.textContent);
+  Array.from(table.rows).slice(1).forEach(row=>{
+    const a=row.cells[0].textContent;
+    Array.from(row.cells).slice(1).forEach((cell,index)=>{
+      const value=cell.textContent.trim(); const b=headers[index];
+      if(value===""||!/^\d+$/.test(value)){cell.classList.add("cf-matrix-missing");cell.setAttribute("aria-label",a+" and "+b+": unavailable comparison");return;}
+      const button=CF.el("button",{type:"button",class:"cf-matrix-cell","aria-label":a+" and "+b+": "+value+(key==="snp"?" SNPs":" allele differences")},value);
+      button.addEventListener("click",()=>CF.selectPair({a,b,value,metricLabel:key==="snp"?"SNP distance":"cgMLST distance",unit:key==="snp"?"SNPs":"allele differences",source:key+" matrix · see Provenance for checksum"}));
+      cell.replaceChildren(button);
+    });
+  });
+  const input=CF.el("input",{type:"search",class:"cf-input","aria-label":"Find sample in "+key+" matrix",placeholder:"Highlight sample rows and columns"});
+  input.addEventListener("input",()=>{
+    const q=input.value.trim().toLocaleLowerCase();
+    Array.from(table.rows).forEach((row,i)=>Array.from(row.cells).forEach((cell,j)=>cell.classList.toggle("cf-matrix-match",Boolean(q)&&((i>0&&row.cells[0].textContent.toLocaleLowerCase().includes(q))||(j>0&&headers[j-1].toLocaleLowerCase().includes(q))))));
+  });
+  table.closest(".scroll").before(CF.el("label",{class:"cf-field"},"Find sample in matrix",input));
+}, {page:key}));
